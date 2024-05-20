@@ -7,7 +7,7 @@
 #include "raycommon.glsl"
 #include "wavefront.glsl"
 
-layout(location = 0) rayPayloadInEXT hitPayload prd;
+layout(location = 0) rayPayloadInEXT rayPayload payload;
 
 layout(push_constant) uniform _PushConstantRay
 {
@@ -15,13 +15,10 @@ layout(push_constant) uniform _PushConstantRay
 };
 
 void main() {
-  //prd.hitValue = pcRay.clearColor.xyz;
+	//payload.hitValue = pcRay.clearColor.xyz;
 
-  //iluminacion ambiental
-  if(pcRay.ambientLigth){
-    prd.hitValue = vec3(10);
-  } else {
-    prd.hitValue = vec3(0);
-  }
-  prd.done = 1;
+	//iluminacion ambiental
+	
+	payload.bsdf_sample = vec3(0);//vec3(10) * int(pcRay.ambientLigth);
+	payload.status = MISS;
 }

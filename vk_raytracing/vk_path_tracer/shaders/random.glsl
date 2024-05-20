@@ -1,4 +1,18 @@
 
+
+
+
+uint pcg_hash(inout uint seed){
+	seed = seed * 747796405u + 2891336453u;
+	uint word = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
+	return (word >> 22u) ^ word;
+}
+
+//// Generate a random float in [0, 1)
+float rnd(inout uint seed) {
+	return float(pcg_hash(seed)) / 4294967295.0f;
+}
+
 // Generate a random unsigned int from two unsigned int values, using 16 pairs
 // of rounds of the Tiny Encryption Algorithm. See Zafar, Olano, and Curtis,
 // "GPU Random Numbers via the Tiny Encryption Algorithm"
@@ -17,21 +31,6 @@ uint InitRandomSeed(uint val0, uint val1) {
   return v0;
 }
 
-// Generate a random unsigned int in [0, 2^24) given the previous RNG state
-// using the Numerical Recipes linear congruential generator
-uint RandomInt(inout uint prev) {
-  // LCG values from Numerical Recipes
-  uint LCG_A = 1664525u;
-  uint LCG_C = 1013904223u;
-  prev       = (LCG_A * prev + LCG_C);
-  return prev & 0x00FFFFFF;
-}
-
-// Generate a random float in [0, 1) given the previous RNG state
-float rnd(inout uint prev) {
-  return (float(RandomInt(prev)) / float(0x01000000));
-}
-
 vec2 randomGaussian(inout uint rngState) {
   const float k_pi = 3.14159265;
 
@@ -47,7 +46,7 @@ vec2 RandomInUnitDisk(inout uint seed) {
 	for (;;) {
 		const vec2 p = 2 * vec2(rnd(seed), rnd(seed)) - 1;
 		if (dot(p, p) < 1) {
-			return p;
+			return normalize(p);
 		}
 	}
 }
@@ -56,7 +55,7 @@ vec3 RandomInUnitSphere(inout uint seed) {
 	for (;;) {
 		const vec3 p = 2 * vec3(rnd(seed), rnd(seed), rnd(seed)) - 1;
 		if (dot(p, p) < 1) {
-			return p;
+			return normalize(p);
 		}
 	}
 }
