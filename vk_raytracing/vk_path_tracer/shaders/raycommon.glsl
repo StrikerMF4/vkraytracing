@@ -3,6 +3,8 @@ const uint CONTINUE = 1;
 const uint HIT_LIGHT = 2;
 const uint MISS = 3;
 
+const float PI = 3.14159265;
+
 struct rayPayload
 {
 	//Ray
@@ -20,8 +22,8 @@ struct rayPayload
 
 void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.status = CONTINUE;
-    payload.origin   = origin.xyz;
-    payload.direction      = direction.xyz;
+    payload.origin = origin.xyz;
+    payload.direction = direction.xyz;
 
     payload.bsdf_sample = vec3(0);
 	payload.surface_normal = vec3(0);

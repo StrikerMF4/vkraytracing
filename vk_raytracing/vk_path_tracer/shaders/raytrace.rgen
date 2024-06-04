@@ -79,7 +79,7 @@ void main()
             float G = abs(cos_phi_0 * cos_phi_i) / dot(diff, diff);
 
             // Para el caso de la luz, el L_e viene en el payload.bsdf_sample, por lo que no altera la fórmula.
-            contribution *= payload.bsdf_sample * G;
+            contribution *= payload.bsdf_sample;
 
             origin    = payload.origin;
             direction = payload.direction;

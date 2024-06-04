@@ -29,6 +29,131 @@ layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
 // clang-format on
 
 
+//La saqué de github https://github.com/ekzhang/rpt/blob/master/src/material.rs
+
+/// Bidirectional scattering distribution function
+///
+/// - `normal` - surface normal vector
+/// - `wo` - unit direction vector toward the viewer
+/// - `wi` - unit direction vector toward the incident ray
+///
+/// This works for both opaque and transmissive materials, based on a Beckmann
+/// microfacet distribution model, Cook-Torrance shading for the specular component,
+/// and Lambertian shading for the diffuse component. Useful references:
+///
+/// - http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
+/// - https://computergraphics.stackexchange.com/q/4394
+/// - https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
+/// - http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html
+/// - https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
+vec3 bsdf(vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material) {
+    float n_dot_wi = dot(normal, wi);
+    float n_dot_wo = dot(normal, wo);
+    bool wi_outside = n_dot_wi > 0;
+    bool wo_outside = n_dot_wo > 0;
+
+    
+
+
+//    if (material.transparent > 0.999 && (!wi_outside || !wo_outside)) {
+//        // Opaque materials do not transmit light
+//        return vec3(0.0);
+//    }
+    if (wi_outside == wo_outside) {
+        vec3 h = normalize(wi + wo); // halfway vector
+        float wo_dot_h = dot(wo, h);
+        float n_dot_h = dot(normal, h);
+        float nh2 = n_dot_h * n_dot_h;
+
+        // d: microfacet distribution function
+        // D = exp(((normal . h)^2 - 1) / (m^2 (normal . h)^2)) / (pi m^2 (normal . h)^4)
+        float m2 = material.roughness * material.roughness;
+        float d = exp((nh2 - 1.0) / (m2 * nh2)) / (m2 * PI * nh2 * nh2);
+
+        // f: fresnel, schlick's approximation
+        // F = F0 + (1 - F0)(1 - wi . h)^5
+        vec3 f = vec3(0);
+        if (!wi_outside && sqrt(1.0 - wo_dot_h * wo_dot_h) * material.IOR > 1.0) {
+            // Total internal reflection
+            f = vec3(1.0);
+        } else {
+            float f0 = pow((material.IOR - 1.0) / (material.IOR + 1.0), 2);
+            vec3 f1 = mix(vec3(f0), material.color, material.metallic);
+            f = f1 + (vec3(1.0) - f1) * pow(1.0 - wo_dot_h, 5);
+        }
+
+        // g: geometry function, microfacet shadowing
+        // G = min(1, 2(normal . h)(normal . wo)/(wo . h), 2(normal . h)(normal . wi)/(wo . h))
+        float g = min(n_dot_wi * n_dot_h, n_dot_wo * n_dot_h);
+        g = (2.0 * g) / wo_dot_h;
+        g = min(g, 1.0);
+
+        // BRDF: putting it all together
+        // Cook-Torrance = DFG / (4(normal . wi)(normal . wo))
+        // Lambert = (1 - F) * c / pi
+        vec3 specular = d * f * g / (4.0 * n_dot_wo * n_dot_wi);
+
+        if (material.transparent < 1.0) {
+            return specular;
+        } else {
+            vec3 diffuse = (vec3(1.0) - f) * material.color / PI;
+            return specular + diffuse;
+        }
+    } else {
+        // Ratio of refractive indices, n_i / n_o
+        float eta_t = 0;
+        if (wo_outside) {
+            eta_t = material.IOR;
+        } else {
+            eta_t = 1.0 / material.IOR;
+        };
+        vec3 h = normalize(wi * eta_t + wo); // halfway vector
+        float wi_dot_h = dot(wi, h);
+        float wo_dot_h = dot(wo, h);
+        float n_dot_h = dot(normal, h);
+        float nh2 = pow(n_dot_h, 2);
+
+        // d: microfacet distribution function
+        // D = exp(((normal . h)^2 - 1) / (m^2 (normal . h)^2)) / (pi m^2 (normal . h)^4)
+        float m2 = material.roughness * material.roughness;
+        float d = exp((nh2 - 1.0) / (m2 * nh2)) / (m2 * PI * nh2 * nh2);
+
+        // f: fresnel, schlick's approximation
+        // F = F0 + (1 - F0)(1 - wi . h)^5
+        float f0 = pow((material.IOR - 1.0) / (material.IOR + 1.0), 2.0);
+        vec3 f1 = mix(vec3(f0), material.color, material.metallic);
+        vec3 f = f1 + (vec3(1.0) - f1) * pow(1.0 - abs(wi_dot_h), 5);
+
+        // g: geometry function, microfacet shadowing
+        // G = min(1, 2(normal . h)(normal . wo)/(wo . h), 2(normal . h)(normal . wi)/(wo . h))
+        float g = min(abs(n_dot_wi * n_dot_h), abs(n_dot_wo * n_dot_h));
+        g = (2.0 * g) / abs(wo_dot_h);
+        g = min(g, 1.0);
+
+        // BTDF: putting it all together
+        // Cook-Torrance = |h . wi|/|normal . wi| * |h . wo|/|normal . wo|
+        //                  * n_o^2 (1 - F)DG / (n_i (h . wi) + n_o (h . wo))^2
+        vec3 btdf = abs(wi_dot_h * wo_dot_h / (n_dot_wi * n_dot_wo))
+            * (d * (vec3(1.0) - f) * g / pow(eta_t * wi_dot_h + wo_dot_h, 2));
+        return btdf * material.color;
+    }
+}
+
+float chiGGX(float v)
+{
+    return v > 0 ? 1 : 0;
+}
+
+float GGX_Distribution(vec3 n, vec3 h, float alpha)
+{
+    float NoH = dot(n,h);
+    float alpha2 = alpha * alpha;
+    float NoH2 = NoH * NoH;
+    float den = NoH2 * alpha2 + (1 - NoH2);
+    return (chiGGX(NoH) * alpha2) / ( PI * den * den );
+}
+
+
 void main() {
     //Object data-------------------------------------------------------------------------------------------
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
@@ -65,9 +190,9 @@ void main() {
     //--------------------------------------------------------------------------------------------------------
 
     payload.origin = hit_position;
-    if(length(material.emission) > 0) {
+    if(length(material.emittance) > 0) {
         // TO-DO: Cambiar esto por alguna aproximación al L de Veach
-        payload.bsdf_sample = 3 * material.emission * texture_color.rgb;
+        payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
         payload.status = HIT_LIGHT;
     } else {
         
@@ -81,143 +206,87 @@ void main() {
         //el "rebota" pude ser por lo difuso o por el brillo glossy, pero se elige la dirección de la misma forma 
         //  (si en la dirección elegida el glossy no afecta, va a aportar poco al BRDF)
 
+        vec3 wi = vec3(0.0f);
 
+        float rand = rnd(payload.random_seed);
+
+        float diff_prob = 1 - material.metallic;
+        float trans_prob = 1 - material.transparent;
+        
+        
+
+
+        if(rnd(payload.random_seed) < trans_prob){
+            const float angle = dot(payload.direction, payload.surface_normal);
+            const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
+            const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
+            const float cosine = angle > 0 ? material.IOR * angle : -angle;
+
+            if(rnd(payload.random_seed) > Schlick(cosine, material.IOR)){
+                wi = refract(payload.direction, outwardNormal, niOverNt);
+            }
+            else{
+                wi = reflect(payload.direction, payload.surface_normal);
+            }
+            payload.bsdf_sample = material.color;
+        }
+        else if(rnd(payload.random_seed) < diff_prob){
+            wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
+
+            float eta_t = 0;
+            float n_dot_wo = dot(payload.surface_normal, -payload.direction);
+            bool wo_outside = n_dot_wo > 0;
+            if (wo_outside) {
+                eta_t = material.IOR;
+            } else {
+                eta_t = 1.0 / material.IOR;
+            };
+            vec3 h = normalize(wi * eta_t + -payload.direction);
+            float micro = GGX_Distribution(payload.surface_normal, h, material.roughness);
+
+
+            payload.bsdf_sample = material.color * diff_prob + (1 - diff_prob) * micro;// / PI;
+        }
+        else{
+            wi = reflect(payload.direction, payload.surface_normal);
+            payload.bsdf_sample = material.color * micro;
+        }
+        //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
+        //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
+
+        payload.direction = wi;
 
         //En el programa actual cada material tiene una posible cualidad
-        float reflectProb;
-        switch (material.illum) {
-            case 5: //metal
-                payload.bsdf_sample = material.specular * texture_color.rgb;
-                payload.status = CONTINUE;//isScattered ? 1 : 0;
-                payload.direction = reflect(payload.direction, payload.surface_normal) + pcRay.fuzziness*RandomInUnitSphere(payload.random_seed); //editar parametro para fuzzy material
-                break;
-            case 7:	//dielectric
-                const float dot = dot(payload.direction, payload.surface_normal);
-                const vec3 outwardNormal = dot > 0 ? -payload.surface_normal : payload.surface_normal;
-                const float niOverNt = dot > 0 ? material.ior : 1 / material.ior;
-                const float cosine = dot > 0 ? material.ior * dot : -dot;
-                const vec3 refracted = refract(payload.direction, outwardNormal, niOverNt);
-                reflectProb = refracted != vec3(0) ? Schlick(cosine, material.ior) : 1; //total internal refraction
-                payload.bsdf_sample = material.specular * texture_color.rgb;
-                payload.status = CONTINUE;
-                payload.direction = rnd(payload.random_seed) < reflectProb
-                    ? reflect(payload.direction, payload.surface_normal)
-                    : refracted;
-                payload.direction += 0.0 * RandomInUnitSphere(payload.random_seed);
-                break;
-            default: //lambetian and glossy (se modula con respecto al coeficiente specular)
-                //const bool isScattered = dot(payload.direction, payload.surface_normal) < 0;
-                reflectProb = max(max(material.specular.x, material.specular.y),  material.specular.z);
-                payload.bsdf_sample = material.diffuse.rgb * texture_color.rgb;
-                payload.status = CONTINUE;//isScattered ? 1 : 0;
-                payload.direction = rnd(payload.random_seed) < reflectProb
-                    ? reflect(payload.direction, payload.surface_normal) + (pcRay.shininess/material.shininess)*RandomInUnitSphere(payload.random_seed)
-                    : payload.surface_normal + RandomInUnitSphere(payload.random_seed);
-        }
+//        float reflectProb;
+//        switch (material.illum) {
+//            case 5: //metal
+//                payload.bsdf_sample = material.specular * texture_color.rgb;
+//                payload.status = CONTINUE;//isScattered ? 1 : 0;
+//                payload.direction = reflect(payload.direction, payload.surface_normal) + pcRay.fuzziness*RandomInUnitSphere(payload.random_seed); //editar parametro para fuzzy material
+//                break;
+//            case 7:	//dielectric
+//                const float dot = dot(payload.direction, payload.surface_normal);
+//                const vec3 outwardNormal = dot > 0 ? -payload.surface_normal : payload.surface_normal;
+//                const float niOverNt = dot > 0 ? material.ior : 1 / material.ior;
+//                const float cosine = dot > 0 ? material.ior * dot : -dot;
+//                const vec3 refracted = refract(payload.direction, outwardNormal, niOverNt);
+//                reflectProb = refracted != vec3(0) ? Schlick(cosine, material.ior) : 1; //total internal refraction
+//                payload.bsdf_sample = material.specular * texture_color.rgb;
+//                payload.status = CONTINUE;
+//                payload.direction = rnd(payload.random_seed) < reflectProb
+//                    ? reflect(payload.direction, payload.surface_normal)
+//                    : refracted;
+//                payload.direction += 0.0 * RandomInUnitSphere(payload.random_seed);
+//                break;
+//            default: //lambetian and glossy (se modula con respecto al coeficiente specular)
+//                //const bool isScattered = dot(payload.direction, payload.surface_normal) < 0;
+//                reflectProb = max(max(material.specular.x, material.specular.y),  material.specular.z);
+//                payload.bsdf_sample = material.diffuse.rgb * texture_color.rgb;
+//                payload.status = CONTINUE;//isScattered ? 1 : 0;
+//                payload.direction = rnd(payload.random_seed) < reflectProb
+//                    ? reflect(payload.direction, payload.surface_normal) + (pcRay.shininess/material.shininess)*RandomInUnitSphere(payload.random_seed)
+//                    : payload.surface_normal + RandomInUnitSphere(payload.random_seed);
+//        }
     }
 }
 
-//La saqué de github https://github.com/ekzhang/rpt/blob/master/src/material.rs
-
-/// Bidirectional scattering distribution function
-///
-/// - `normal` - surface normal vector
-/// - `wo` - unit direction vector toward the viewer
-/// - `wi` - unit direction vector toward the incident ray
-///
-/// This works for both opaque and transmissive materials, based on a Beckmann
-/// microfacet distribution model, Cook-Torrance shading for the specular component,
-/// and Lambertian shading for the diffuse component. Useful references:
-///
-/// - http://www.codinglabs.net/article_physically_based_rendering_cook_torrance.aspx
-/// - https://computergraphics.stackexchange.com/q/4394
-/// - https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
-/// - http://www.pbr-book.org/3ed-2018/Materials/BSDFs.html
-/// - https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
-//float bsdf(normal: &glm::DVec3, wo: &glm::DVec3, wi: &glm::DVec3) -> Color {
-//    float n_dot_wi = normal.dot(wi);
-//    float n_dot_wo = normal.dot(wo);
-//    bool wi_outside = n_dot_wi > 0;
-//    bool wo_outside = n_dot_wo > 0;
-//    if (!self.transparent && (!wi_outside || !wo_outside)) {
-//        // Opaque materials do not transmit light
-//        return glm::vec3(0.0, 0.0, 0.0);
-//    }
-//    if (wi_outside == wo_outside) {
-//        vec3 h = (wi + wo).normalize(); // halfway vector
-//        float wo_dot_h = wo.dot(&h);
-//        float n_dot_h = normal.dot(&h);
-//        float nh2 = n_dot_h * n_dot_h;
-//
-//        // d: microfacet distribution function
-//        // D = exp(((normal . h)^2 - 1) / (m^2 (normal . h)^2)) / (pi m^2 (normal . h)^4)
-//        float m2 = self.roughness * self.roughness;
-//        float d = ((nh2 - 1.0) / (m2 * nh2)).exp() / (m2 * glm::pi::<f64>() * nh2 * nh2);
-//
-//        // f: fresnel, schlick's approximation
-//        // F = F0 + (1 - F0)(1 - wi . h)^5
-//        vec3 f = 0;
-//        if !wi_outside && (1.0 - wo_dot_h * wo_dot_h).sqrt() * self.index > 1.0 {
-//            // Total internal reflection
-//            f = vec3(1.0, 1.0, 1.0)
-//        } else {
-//            let f0 = ((self.index - 1.0) / (self.index + 1.0)).powi(2);
-//            let f0 = glm::lerp(vec3(f0, f0, f0), self.color, self.metallic);
-//            f0 + (vec3(1.0, 1.0, 1.0) - f0) * (1.0 - wo_dot_h).powi(5)
-//        };
-//
-//        // g: geometry function, microfacet shadowing
-//        // G = min(1, 2(normal . h)(normal . wo)/(wo . h), 2(normal . h)(normal . wi)/(wo . h))
-//        let g = f64::min(n_dot_wi * n_dot_h, n_dot_wo * n_dot_h);
-//        let g = (2.0 * g) / wo_dot_h;
-//        let g = g.min(1.0);
-//
-//        // BRDF: putting it all together
-//        // Cook-Torrance = DFG / (4(normal . wi)(normal . wo))
-//        // Lambert = (1 - F) * c / pi
-//        float specular = d * f * g / (4.0 * n_dot_wo * n_dot_wi);
-//        if self.transparent {
-//            specular
-//        } else {
-//            let diffuse =
-//                (glm::vec3(1.0, 1.0, 1.0) - f).component_mul(&self.color) / glm::pi::<f64>();
-//            specular + diffuse
-//        }
-//    } else {
-//        // Ratio of refractive indices, n_i / n_o
-//        let eta_t = if wo_outside {
-//            self.index
-//        } else {
-//            1.0 / self.index
-//        };
-//        let h = (wi * eta_t + wo).normalize(); // halfway vector
-//        let wi_dot_h = wi.dot(&h);
-//        let wo_dot_h = wo.dot(&h);
-//        let n_dot_h = normal.dot(&h);
-//        let nh2 = n_dot_h.powi(2);
-//
-//        // d: microfacet distribution function
-//        // D = exp(((normal . h)^2 - 1) / (m^2 (normal . h)^2)) / (pi m^2 (normal . h)^4)
-//        let m2 = self.roughness * self.roughness;
-//        let d = ((nh2 - 1.0) / (m2 * nh2)).exp() / (m2 * glm::pi::<f64>() * nh2 * nh2);
-//
-//        // f: fresnel, schlick's approximation
-//        // F = F0 + (1 - F0)(1 - wi . h)^5
-//        let f0 = ((self.index - 1.0) / (self.index + 1.0)).powi(2);
-//        let f0 = glm::lerp(&glm::vec3(f0, f0, f0), &self.color, self.metallic);
-//        let f = f0 + (glm::vec3(1.0, 1.0, 1.0) - f0) * (1.0 - wi_dot_h.abs()).powi(5);
-//
-//        // g: geometry function, microfacet shadowing
-//        // G = min(1, 2(normal . h)(normal . wo)/(wo . h), 2(normal . h)(normal . wi)/(wo . h))
-//        let g = f64::min((n_dot_wi * n_dot_h).abs(), (n_dot_wo * n_dot_h).abs());
-//        let g = (2.0 * g) / wo_dot_h.abs();
-//        let g = g.min(1.0);
-//
-//        // BTDF: putting it all together
-//        // Cook-Torrance = |h . wi|/|normal . wi| * |h . wo|/|normal . wo|
-//        //                  * n_o^2 (1 - F)DG / (n_i (h . wi) + n_o (h . wo))^2
-//        let btdf = (wi_dot_h * wo_dot_h / (n_dot_wi * n_dot_wo)).abs()
-//            * (d * (glm::vec3(1.0, 1.0, 1.0) - f) * g / (eta_t * wi_dot_h + wo_dot_h).powi(2));
-//        btdf.component_mul(&self.color)
-//    }
-//}
