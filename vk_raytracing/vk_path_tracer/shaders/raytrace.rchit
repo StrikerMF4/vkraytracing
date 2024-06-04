@@ -213,9 +213,6 @@ void main() {
         float diff_prob = 1 - material.metallic;
         float trans_prob = 1 - material.transparent;
         
-        
-
-
         if(rnd(payload.random_seed) < trans_prob){
             const float angle = dot(payload.direction, payload.surface_normal);
             const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
@@ -245,11 +242,11 @@ void main() {
             float micro = GGX_Distribution(payload.surface_normal, h, material.roughness);
 
 
-            payload.bsdf_sample = material.color * diff_prob + (1 - diff_prob) * micro;// / PI;
+            payload.bsdf_sample = material.color;// * micro;// / PI;
         }
         else{
             wi = reflect(payload.direction, payload.surface_normal);
-            payload.bsdf_sample = material.color * micro;
+            payload.bsdf_sample = material.color;
         }
         //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
         //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
