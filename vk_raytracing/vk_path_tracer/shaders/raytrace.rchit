@@ -25,7 +25,7 @@ layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 
-layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
+layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
 
@@ -164,6 +164,7 @@ void main() {
 
     // Indices of the triangle
     ivec3 ind = indices.i[gl_PrimitiveID];
+    //int ind = gl_PrimitiveID * 3;
     // Vertex of the triangle
     Vertex v0 = vertices.v[ind.x];
     Vertex v1 = vertices.v[ind.y];
@@ -208,19 +209,18 @@ void main() {
 
         vec3 wi = vec3(0.0f);
 
-        float rand = rnd(payload.random_seed);
+        float rnd = rand(payload.random_seed);
 
         float diff_prob = 1 - material.metallic;
-        float trans_prob = 1 - material.transparent
-
-
-        if(rnd(payload.random_seed) < trans_prob){
+        float trans_prob = 1 - material.transparent;
+        
+        if(rand(payload.random_seed) < trans_prob){
             const float angle = dot(payload.direction, payload.surface_normal);
             const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
             const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
             const float cosine = angle > 0 ? material.IOR * angle : -angle;
 
-            if(rnd(payload.random_seed) > Schlick(cosine, material.IOR)){
+            if(rand(payload.random_seed) > Schlick(cosine, material.IOR)){
                 wi = refract(payload.direction, outwardNormal, niOverNt);
             }
             else{
@@ -228,7 +228,7 @@ void main() {
             }
             payload.bsdf_sample = material.color;
         }
-        else if(rnd(payload.random_seed) < diff_prob){ //diffuse
+        else if(rand(payload.random_seed) < diff_prob){
             wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
 
             float eta_t = 0;
@@ -243,7 +243,7 @@ void main() {
             //float micro = GGX_Distribution(payload.surface_normal, h, material.roughness);
 
 
-            payload.bsdf_sample = material.color;// / PI;
+            payload.bsdf_sample = material.color;// * micro;// / PI;
         }
         else{
             wi = reflect(payload.direction, payload.surface_normal);

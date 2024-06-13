@@ -89,10 +89,13 @@ void HelloVulkan::createDescriptorSetLayout()
                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   // Obj descriptions
   m_descSetLayoutBind.addBinding(SceneBindings::eObjDescs, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   // Textures
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+  // Lights
+  m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -121,6 +124,9 @@ void HelloVulkan::updateDescriptorSet()
     diit.emplace_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
+
+  VkDescriptorBufferInfo dbiLights{ m_bLights.buffer, 0, VK_WHOLE_SIZE };
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eLights, &dbiLights));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -176,6 +182,21 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
     m.color  = glm::pow(m.color, glm::vec3(2.2f));
   }
 
+  // Assign ObjectID
+  for (auto& light : loader.m_lights)
+  {
+      light.object_id = m_objDesc.size();
+
+      Light result;
+
+      result.object_id = light.object_id;
+      result.emission = light.emission;
+      result.first_index = light.first_index;
+      result.last_index = light.last_index;
+
+      m_lights.push_back(result);
+  }
+
   ObjModel model;
   model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
   model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
@@ -190,6 +211,7 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
   model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+
   // Creates all textures found and find the offset for this model
   auto txtOffset = static_cast<uint32_t>(m_textures.size());
   createTextureImages(cmdBuf, loader.m_textures);
@@ -248,6 +270,23 @@ void HelloVulkan::createObjDescriptionBuffer()
   cmdGen.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
   m_debug.setObjectName(m_bObjDesc.buffer, "ObjDescs");
+}
+
+//--------------------------------------------------------------------------------------------------
+// Create a storage buffer containing the description of the scene lights
+// - The ID of the object that define it
+// - Emission
+// - Indexes of the faces that compose the light
+//
+void HelloVulkan::createLightBuffer()
+{
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+    auto cmdBuf = cmdGen.createCommandBuffer();
+    m_bLights = m_alloc.createBuffer(cmdBuf, m_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+    m_debug.setObjectName(m_bLights.buffer, "Lights");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -335,6 +374,7 @@ void HelloVulkan::destroyResources()
 
   m_alloc.destroy(m_bGlobals);
   m_alloc.destroy(m_bObjDesc);
+  m_alloc.destroy(m_bLights);
 
   for(auto& m : m_objModel)
   {
@@ -769,7 +809,7 @@ void HelloVulkan::createRtPipeline()
 
   // Push constant: we want to be able to update constants used by the shaders
   VkPushConstantRange pushConstant{VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-                                   0, sizeof(PushConstantRay)};
+                                   0, sizeof(PushConstantRayTracer)};
 
 
   VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
@@ -896,9 +936,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values
   m_pcRay.clearColor     = clearColor;
-  m_pcRay.lightPosition  = m_pcRaster.lightPosition;
-  m_pcRay.lightIntensity = m_pcRaster.lightIntensity;
-  m_pcRay.lightType      = m_pcRaster.lightType;
+  //m_pcRay
 
   std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
@@ -906,7 +944,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
                           (uint32_t)descSets.size(), descSets.data(), 0, nullptr);
   vkCmdPushConstants(cmdBuf, m_rtPipelineLayout,
                      VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-                     0, sizeof(PushConstantRay), &m_pcRay);
+                     0, sizeof(PushConstantRayTracer), &m_pcRay);
 
 
   vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width, m_size.height, 1);
