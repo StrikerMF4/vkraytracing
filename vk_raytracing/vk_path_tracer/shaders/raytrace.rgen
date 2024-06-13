@@ -3,7 +3,8 @@
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
 
 
 #include "raycommon.glsl"
@@ -13,19 +14,54 @@
 // clang-format off
 layout(location = 0) rayPayloadEXT rayPayload payload;
 
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions of an object
+layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
+
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
-layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
+
+layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
+layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+
+layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
 const int NBSAMPLES = 1;
-const uint MAX_DEPTH = 10;
+const uint MAX_DEPTH = 2;
+
+vec3 random_point_in_lights(){
+    // Pick a random light
+    uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
+
+    // Pick a triangle in the light
+    Light light = lights.i[light_index];
+    // TO-DO: resolver tema de indices (deberían venir divididos entre 3 para acceder como en el rhit) y que queden 1 indice por cara
+    uint light_triangle_index = pcg_hash(payload.random_seed) % ((light.last_index - light.first_index + 1) / 3); 
+
+    // Get buffers for the light object
+    ObjDesc objResource = objDesc.i[light.object_id];
+    Indices    indices     = Indices(objResource.indexAddress);
+    Vertices   vertices    = Vertices(objResource.vertexAddress);
+
+    // Indices of the triangle
+    //ivec3 ind = indices.i[light.first_index + light_triangle_index];
+    // Vertex of the triangle
+    Vertex v0 = vertices.v[light.first_index + light_triangle_index * 3];
+    Vertex v1 = vertices.v[light.first_index + light_triangle_index * 3 + 1];
+    Vertex v2 = vertices.v[light.first_index + light_triangle_index * 3 + 2];
+
+    vec3 point = randomPointInTriangle(payload.random_seed, v0.pos, v1.pos, v2.pos);
+    //const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+
+    return point;
+}
+
 
 void main()
 {
     // Initialize the random number
-    payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pcRay.frame);
+    payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
 
     vec3 output_color = vec3(0);
     uint depth = 0;
@@ -36,9 +72,9 @@ void main()
 
     for(int smpl = 0; smpl < NBSAMPLES; smpl++){
         // gaussian AA
-        vec2 rndvec = randomGaussian(payload.random_seed);
-        float r1 = rndvec.x;
-        float r2 = rndvec.y;
+        vec2 randvec = randomGaussian(payload.random_seed);
+        float r1 = randvec.x;
+        float r2 = randvec.y;
 
         // square AA
         //float r1 = rnd(seed);
@@ -46,14 +82,14 @@ void main()
 
         // Subpixel jitter: send the ray through a different position inside the pixel
         // each time, to provide antialiasing.
-        vec2 subpixel_jitter = pcRay.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+        vec2 subpixel_jitter = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
         const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
         const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
         vec2       d           = inUV * 2.0 - 1.0;
 
         //defocus blur
-        float Aperture = pcRay.camAperture;
-        float focus_dist = pcRay.focusDist;
+        float Aperture = settings.camAperture;
+        float focus_dist = settings.focusDist;
         vec2 offset = (Aperture/2) * RandomInUnitDisk(payload.random_seed);
         vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
         vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
@@ -63,22 +99,19 @@ void main()
         resetPayload(payload, origin, direction);
 
         // Path Tracing
+        
+        
+        //trace del punto a la luz
+        //vec3 point  = random_point_in_lights();
+        //payload.direction = normalize(point - payload.origin);
+        //traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, distance(point, payload.origin) - 0.001f, 0);
+
+
         vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
         vec3 contribution = vec3(1); //precargar con la funcion W_e de Veach (si es necesario)
         for(depth = 0; depth < MAX_DEPTH && payload.status == CONTINUE; depth++) {
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-            // Calcular G
-            // asumiendo normales y direcciones normalizadas, eliminar comentario cuando nos aseguremos que lo ...
-            //  sean, para que el dot sea el ángulo
-            // juntar en una linea luego de verificar funcionamiento
-
-            float cos_phi_0 = dot(normal, direction);
-            float cos_phi_i = dot(payload.surface_normal, -direction);
-            vec3 diff = origin - payload.origin;
-            float G = abs(cos_phi_0 * cos_phi_i) / dot(diff, diff);
-
-            // Para el caso de la luz, el L_e viene en el payload.bsdf_sample, por lo que no altera la fórmula.
             contribution *= payload.bsdf_sample;
 
             origin    = payload.origin;
@@ -87,14 +120,14 @@ void main()
         }
 
         // Rays that don't make it to a light don't contribute to the result
-        output_color += contribution * int(depth < MAX_DEPTH);
+        //output_color += contribution * int(depth < MAX_DEPTH);
     }
 
     output_color = output_color / NBSAMPLES;
 
-    if(pcRay.frame > 0)
+    if(settings.frame > 0)
     {   //Accumulation over time
-        float a         = 1.0f / float(pcRay.frame + 1);
+        float a         = 1.0f / float(settings.frame + 1);
         vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
         imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
     }

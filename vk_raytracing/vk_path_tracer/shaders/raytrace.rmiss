@@ -9,16 +9,16 @@
 
 layout(location = 0) rayPayloadInEXT rayPayload payload;
 
-layout(push_constant) uniform _PushConstantRay
+layout(push_constant) uniform _PushConstantRayTracer
 {
-  PushConstantRay pcRay;
+  PushConstantRayTracer settings;
 };
 
 void main() {
-	//payload.hitValue = pcRay.clearColor.xyz;
+	//payload.hitValue = settings.clearColor.xyz;
 
 	//iluminacion ambiental
 	
-	payload.bsdf_sample = vec3(0);//vec3(10) * int(pcRay.ambientLigth);
+	payload.bsdf_sample = vec3(0);//vec3(10) * int(settings.ambientLigth);
 	payload.status = MISS;
 }

@@ -211,6 +211,7 @@ int main(int argc, char** argv)
   helloVk.createGraphicsPipeline();
   helloVk.createUniformBuffer();
   helloVk.createObjDescriptionBuffer();
+  helloVk.createLightBuffer();
   helloVk.updateDescriptorSet();
 
   // #VKRay

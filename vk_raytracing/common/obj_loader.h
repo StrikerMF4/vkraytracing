@@ -39,6 +39,16 @@ struct MaterialObj
 
 	int textureID = -1;
 };
+
+struct LightObj {
+	int object_id = -1;
+	glm::vec3 emission = glm::vec3(0.0f, 0.0f, 0.0f);
+	
+	//Indexes that compose the light mesh
+	int first_index = -1;
+	int last_index = -1;
+};
+
 // OBJ representation of a vertex
 // NOTE: BLAS builder depends on pos being the first member
 struct VertexObj
@@ -67,4 +77,5 @@ public:
 	std::vector<MaterialObj> m_materials;
 	std::vector<std::string> m_textures;
 	std::vector<int32_t>     m_matIndx;
+	std::vector<LightObj>	 m_lights;
 };
