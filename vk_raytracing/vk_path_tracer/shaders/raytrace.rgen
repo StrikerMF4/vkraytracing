@@ -65,6 +65,7 @@ void main()
         // Path Tracing
         vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
         vec3 contribution = vec3(1); //precargar con la funcion W_e de Veach (si es necesario)
+        vec3 c = vec3(0);
         for(depth = 0; depth < MAX_DEPTH && payload.status == CONTINUE; depth++) {
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
@@ -79,6 +80,8 @@ void main()
             float G = abs(cos_phi_0 * cos_phi_i) / dot(diff, diff);
 
             // Para el caso de la luz, el L_e viene en el payload.bsdf_sample, por lo que no altera la fórmula.
+            c += (shadowray() + Le) * contribution;
+
             contribution *= payload.bsdf_sample;
 
             origin    = payload.origin;
@@ -87,7 +90,7 @@ void main()
         }
 
         // Rays that don't make it to a light don't contribute to the result
-        output_color += contribution * int(depth < MAX_DEPTH);
+        output_color += c * int(depth < MAX_DEPTH);
     }
 
     output_color = output_color / NBSAMPLES;

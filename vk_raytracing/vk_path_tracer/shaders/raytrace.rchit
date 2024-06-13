@@ -192,7 +192,7 @@ void main() {
     payload.origin = hit_position;
     if(length(material.emittance) > 0) {
         // TO-DO: Cambiar esto por alguna aproximación al L de Veach
-        payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
+        payload.Le = 3 * material.emittance * texture_color.rgb;
         payload.status = HIT_LIGHT;
     } else {
         
@@ -211,9 +211,7 @@ void main() {
         float rand = rnd(payload.random_seed);
 
         float diff_prob = 1 - material.metallic;
-        float trans_prob = 1 - material.transparent;
-        
-        
+        float trans_prob = 1 - material.transparent
 
 
         if(rnd(payload.random_seed) < trans_prob){
@@ -230,7 +228,7 @@ void main() {
             }
             payload.bsdf_sample = material.color;
         }
-        else if(rnd(payload.random_seed) < diff_prob){
+        else if(rnd(payload.random_seed) < diff_prob){ //diffuse
             wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
 
             float eta_t = 0;
@@ -242,51 +240,19 @@ void main() {
                 eta_t = 1.0 / material.IOR;
             };
             vec3 h = normalize(wi * eta_t + -payload.direction);
-            float micro = GGX_Distribution(payload.surface_normal, h, material.roughness);
+            //float micro = GGX_Distribution(payload.surface_normal, h, material.roughness);
 
 
-            payload.bsdf_sample = material.color * diff_prob + (1 - diff_prob) * micro;// / PI;
+            payload.bsdf_sample = material.color;// / PI;
         }
         else{
             wi = reflect(payload.direction, payload.surface_normal);
-            payload.bsdf_sample = material.color * micro;
+            payload.bsdf_sample = material.color;
         }
         //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
         //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
 
         payload.direction = wi;
-
-        //En el programa actual cada material tiene una posible cualidad
-//        float reflectProb;
-//        switch (material.illum) {
-//            case 5: //metal
-//                payload.bsdf_sample = material.specular * texture_color.rgb;
-//                payload.status = CONTINUE;//isScattered ? 1 : 0;
-//                payload.direction = reflect(payload.direction, payload.surface_normal) + pcRay.fuzziness*RandomInUnitSphere(payload.random_seed); //editar parametro para fuzzy material
-//                break;
-//            case 7:	//dielectric
-//                const float dot = dot(payload.direction, payload.surface_normal);
-//                const vec3 outwardNormal = dot > 0 ? -payload.surface_normal : payload.surface_normal;
-//                const float niOverNt = dot > 0 ? material.ior : 1 / material.ior;
-//                const float cosine = dot > 0 ? material.ior * dot : -dot;
-//                const vec3 refracted = refract(payload.direction, outwardNormal, niOverNt);
-//                reflectProb = refracted != vec3(0) ? Schlick(cosine, material.ior) : 1; //total internal refraction
-//                payload.bsdf_sample = material.specular * texture_color.rgb;
-//                payload.status = CONTINUE;
-//                payload.direction = rnd(payload.random_seed) < reflectProb
-//                    ? reflect(payload.direction, payload.surface_normal)
-//                    : refracted;
-//                payload.direction += 0.0 * RandomInUnitSphere(payload.random_seed);
-//                break;
-//            default: //lambetian and glossy (se modula con respecto al coeficiente specular)
-//                //const bool isScattered = dot(payload.direction, payload.surface_normal) < 0;
-//                reflectProb = max(max(material.specular.x, material.specular.y),  material.specular.z);
-//                payload.bsdf_sample = material.diffuse.rgb * texture_color.rgb;
-//                payload.status = CONTINUE;//isScattered ? 1 : 0;
-//                payload.direction = rnd(payload.random_seed) < reflectProb
-//                    ? reflect(payload.direction, payload.surface_normal) + (pcRay.shininess/material.shininess)*RandomInUnitSphere(payload.random_seed)
-//                    : payload.surface_normal + RandomInUnitSphere(payload.random_seed);
-//        }
     }
 }
 

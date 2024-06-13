@@ -13,6 +13,7 @@ struct rayPayload
 	vec3 direction;
 
 	//Data
+	vec3 Le;
 	vec3 bsdf_sample;
 	vec3 surface_normal;
 
@@ -25,6 +26,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
     payload.origin = origin.xyz;
     payload.direction = direction.xyz;
 
+	payload.Le = vec3(0);
     payload.bsdf_sample = vec3(0);
 	payload.surface_normal = vec3(0);
 }
