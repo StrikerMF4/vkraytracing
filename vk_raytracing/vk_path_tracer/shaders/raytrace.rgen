@@ -28,11 +28,15 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 // clang-format on
 
 const int NBSAMPLES = 1;
-const uint MAX_DEPTH = 2;
+const uint MAX_DEPTH = 10;
 
-vec3 random_point_in_lights(){
+const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const float tMin     = 0.001;
+const float tMax     = 10000.0;
+
+vec3 random_point_in_light(uint light_index){
     // Pick a random light
-    uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
+    //uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
 
     // Pick a triangle in the light
     Light light = lights.i[light_index];
@@ -57,18 +61,37 @@ vec3 random_point_in_lights(){
     return point;
 }
 
+vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
+
+    vec3 color = vec3(0);
+    for (uint light_index = 0; light_index < settings.light_count; light_index++){
+       vec3 L = random_point_in_light(light_index) - origin;
+       float lightdist = length(L);
+       L /= lightdist; // Normalize
+
+       traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+
+       if (payload.status == MISS) {
+         float cost = dot(N, L);
+         Light light = lights.i[light_index];
+         if (cost > 0) {
+            color += bsdf * (light.emission / (dot(L,L) * 4 * PI)) * cost;
+         }
+       }
+    }
+    return color;
+}
+
 
 void main()
 {
+    //if (settings.frame > 1000)
+        //return;
     // Initialize the random number
     payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
 
     vec3 output_color = vec3(0);
     uint depth = 0;
-
-    const uint  rayFlags = gl_RayFlagsOpaqueEXT;
-    const float tMin     = 0.001;
-    const float tMax     = 10000.0;
 
     for(int smpl = 0; smpl < NBSAMPLES; smpl++){
         // gaussian AA
@@ -113,18 +136,8 @@ void main()
         for(depth = 0; depth < MAX_DEPTH && payload.status == CONTINUE; depth++) {
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-            // Calcular G
-            // asumiendo normales y direcciones normalizadas, eliminar comentario cuando nos aseguremos que lo ...
-            //  sean, para que el dot sea el ángulo
-            // juntar en una linea luego de verificar funcionamiento
-
-            float cos_phi_0 = dot(normal, direction);
-            float cos_phi_i = dot(payload.surface_normal, -direction);
-            vec3 diff = origin - payload.origin;
-            float G = abs(cos_phi_0 * cos_phi_i) / dot(diff, diff);
-
-            // Para el caso de la luz, el L_e viene en el payload.bsdf_sample, por lo que no altera la fórmula.
-            c += (shadowray() + Le) * contribution;
+            c += (shadow_ray(payload.origin, payload.bsdf_sample, payload.surface_normal) + payload.Le) * contribution;
+            //c += shadow_ray(payload.origin, payload.bsdf_sample, payload.surface_normal);
 
             contribution *= payload.bsdf_sample;
 
@@ -134,7 +147,7 @@ void main()
         }
 
         // Rays that don't make it to a light don't contribute to the result
-        output_color += c * int(depth < MAX_DEPTH);
+        output_color += c* 0.5;
     }
 
     output_color = output_color / NBSAMPLES;

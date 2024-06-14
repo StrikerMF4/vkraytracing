@@ -1,5 +1,5 @@
 #include <array>
-
+#include <time.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -235,16 +235,18 @@ int main(int argc, char** argv)
   helloVk.m_pcRay.shininess = 0.f;
   helloVk.m_pcRay.fuzziness = 0.f;
 
-
+  helloVk.m_pcRay.light_count = helloVk.m_lights.size();
   helloVk.setupGlfwCallbacks(window);
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
  
 
-
+  time_t start = time(0);
   // Main loop
   while(!glfwWindowShouldClose(window))
   {
+    //if (difftime(time(0), start) > 1)
+       //continue;
     glfwPollEvents();
     if(helloVk.isMinimized())
       continue;

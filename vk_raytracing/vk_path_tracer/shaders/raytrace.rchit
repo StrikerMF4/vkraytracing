@@ -193,6 +193,7 @@ void main() {
     payload.origin = hit_position;
     if(length(material.emittance) > 0) {
         // TO-DO: Cambiar esto por alguna aproximación al L de Veach
+        payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
         payload.Le = 3 * material.emittance * texture_color.rgb;
         payload.status = HIT_LIGHT;
     } else {
