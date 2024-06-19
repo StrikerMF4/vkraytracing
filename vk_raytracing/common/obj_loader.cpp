@@ -75,12 +75,11 @@ void ObjLoader::loadModel(const std::string& filename)
 		m_indices.reserve(shape.mesh.indices.size() + m_indices.size());
 		m_matIndx.insert(m_matIndx.end(), shape.mesh.material_ids.begin(), shape.mesh.material_ids.end());
 
-		int length = shape.mesh.material_ids.size();
+		unsigned int light_first_index;
+		unsigned int light_last_index;
 
-		int material_index = shape.mesh.material_ids[0];
-		bool is_light = count(lights_materials_indexes.begin(), lights_materials_indexes.end(), material_index) > 0;
-
-		LightObj light{ -1, m_materials[material_index].emittance, INT32_MAX, -1 };
+		int last_material = -1;
+		bool last_material_is_light = false;
 
 		int i = 0;
 		for (const auto& index : shape.mesh.indices)
@@ -88,8 +87,6 @@ void ObjLoader::loadModel(const std::string& filename)
 			VertexObj    vertex = {};
 			const float* vp = &attrib.vertices[3 * index.vertex_index];
 			vertex.pos = { *(vp + 0), *(vp + 1), *(vp + 2) };
-
-			//int material_id = shape.mesh.material_ids[i++];
 
 			if (!attrib.normals.empty() && index.normal_index >= 0)
 			{
@@ -109,22 +106,33 @@ void ObjLoader::loadModel(const std::string& filename)
 				vertex.color = { *(vc + 0), *(vc + 1), *(vc + 2) };
 			}
 
-			if (is_light) {
-				int current_index = m_indices.size();
-				if (light.first_index > current_index) {
-					light.first_index = current_index;
+			int material_id = shape.mesh.material_ids[i++ / 3];
+
+			if (material_id != last_material) {
+				if (last_material_is_light) {
+					m_lights.push_back(LightObj{ m_materials[material_id].emittance, light_first_index, light_last_index });
 				}
-				else if (light.last_index < current_index) {
-					light.last_index = current_index;
+
+				last_material = material_id;
+				last_material_is_light = count(lights_materials_indexes.begin(), lights_materials_indexes.end(), material_id) > 0;
+
+				if (last_material_is_light) {
+					int current_index = m_indices.size();
+					light_first_index = current_index;
+					light_last_index = current_index;
 				}
+			}
+			else if (last_material_is_light) {
+				light_last_index = m_indices.size();
 			}
 
 			m_vertices.push_back(vertex);
 			m_indices.push_back(static_cast<int>(m_indices.size()));
 		}
 
-		if (is_light) {
-			m_lights.push_back(light);
+		if (last_material_is_light) {
+			int material_id = shape.mesh.material_ids[(i - 1) / 3];
+			m_lights.push_back(LightObj{ m_materials[material_id].emittance, light_first_index, light_last_index });
 		}
 	}
 

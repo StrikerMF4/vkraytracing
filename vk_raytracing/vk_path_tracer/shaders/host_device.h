@@ -102,8 +102,8 @@ struct Light {
 	int object_id;
 	vec3 emission;
 
-	int first_index;
-	int last_index;
+	uint first_index;
+	uint last_index;
 };
 
 

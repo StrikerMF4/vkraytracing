@@ -185,14 +185,12 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
   // Assign ObjectID
   for (auto& light : loader.m_lights)
   {
-      light.object_id = m_objDesc.size();
-
       Light result;
 
-      result.object_id = light.object_id;
+      result.object_id = m_objDesc.size();
       result.emission = light.emission;
-      result.first_index = light.first_index;
-      result.last_index = light.last_index;
+      result.first_index = light.first_index / 3;
+      result.last_index = light.last_index / 3;
 
       m_lights.push_back(result);
   }

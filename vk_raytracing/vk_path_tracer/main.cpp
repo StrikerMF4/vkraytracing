@@ -13,6 +13,7 @@
 #include "nvpsystem.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
+#include <time.h>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -155,6 +156,7 @@ int main(int argc, char** argv)
   }
 
   helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
+  //helloVk.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
 
   //Lego
   {
@@ -234,14 +236,13 @@ int main(int argc, char** argv)
   helloVk.m_pcRay.focusDist = 3.f;
   helloVk.m_pcRay.shininess = 0.f;
   helloVk.m_pcRay.fuzziness = 0.f;
-
   helloVk.m_pcRay.light_count = helloVk.m_lights.size();
+
   helloVk.setupGlfwCallbacks(window);
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
- 
-
   time_t start = time(0);
+
   // Main loop
   while(!glfwWindowShouldClose(window))
   {

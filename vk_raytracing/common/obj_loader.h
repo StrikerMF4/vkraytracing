@@ -41,12 +41,11 @@ struct MaterialObj
 };
 
 struct LightObj {
-	int object_id = -1;
 	glm::vec3 emission = glm::vec3(0.0f, 0.0f, 0.0f);
 	
 	//Indexes that compose the light mesh
-	int first_index = -1;
-	int last_index = -1;
+	unsigned int first_index = 0;
+	unsigned int last_index = 0;
 };
 
 // OBJ representation of a vertex
