@@ -60,7 +60,7 @@ vec3 RandomInUnitSphere(inout uint seed) {
 	}
 }
 
-vec3 randomPointInTriangle(uint seed, vec3 A, vec3 B, vec3 C) {
+vec3 randomPointInTriangle(inout uint seed, vec3 A, vec3 B, vec3 C) {
     float r1 = rand(seed);  // Supone que tienes una función rand() que retorna un valor entre 0 y 1
     float r2 = rand(seed);
 

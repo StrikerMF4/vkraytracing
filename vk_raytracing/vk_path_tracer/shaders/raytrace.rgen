@@ -40,7 +40,6 @@ vec3 random_point_in_light(uint light_index){
 
     // Pick a triangle in the light
     Light light = lights.i[light_index];
-    // TO-DO: resolver tema de indices (deberían venir divididos entre 3 para acceder como en el rhit) y que queden 1 indice por cara
     uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
 
     // Get buffers for the light object
@@ -92,9 +91,9 @@ void main()
     payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
 
     vec3 output_color = vec3(0);
-    uint depth = 0;
 
-    for(int smpl = 0; smpl < NBSAMPLES; smpl++){
+    uint depth = 0;
+    for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++){
         // gaussian AA
         vec2 randvec = randomGaussian(payload.random_seed);
         float r1 = randvec.x;

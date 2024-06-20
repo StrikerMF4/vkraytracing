@@ -9,10 +9,7 @@
 
 layout(location = 0) rayPayloadInEXT rayPayload payload;
 
-layout(push_constant) uniform _PushConstantRayTracer
-{
-  PushConstantRayTracer settings;
-};
+layout(push_constant) uniform _PushConstantRayTracer{ PushConstantRayTracer settings; };
 
 void main() {
 	//payload.hitValue = settings.clearColor.xyz;

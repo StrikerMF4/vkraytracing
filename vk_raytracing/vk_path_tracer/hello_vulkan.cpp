@@ -181,6 +181,12 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
   {
     m.color  = glm::pow(m.color, glm::vec3(2.2f));
   }
+  /*for(auto& m : loader.m_materials)
+  {
+    m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
+    m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
+    m.specular = glm::pow(m.specular, glm::vec3(2.2f));
+  }*/
 
   // Assign ObjectID
   for (auto& light : loader.m_lights)
