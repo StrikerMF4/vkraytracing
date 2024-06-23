@@ -774,7 +774,7 @@ void HelloVulkan::createRtPipeline()
   stages[eMiss] = stage;
   // The second miss shader is invoked when a shadow ray misses the geometry. It simply indicates that no occlusion has been found
   stage.module =
-      nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytraceShadow.rmiss.spv", true, defaultSearchPaths, true));
+      nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rmiss.spv", true, defaultSearchPaths, true));
   stage.stage    = VK_SHADER_STAGE_MISS_BIT_KHR;
   stages[eMiss2] = stage;
   // Hit Group - Closest Hit

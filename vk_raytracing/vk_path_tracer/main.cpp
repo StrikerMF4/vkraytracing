@@ -229,7 +229,7 @@ int main(int argc, char** argv)
   helloVk.updatePostDescriptorSet();
 
 
-  glm::vec4 clearColor   = glm::vec4(1, 1, 1, 1.00f);
+  glm::vec4 clearColor   = glm::vec4(0, 0, 0, 1.00f);
   bool      useRaytracer = true;
 
   helloVk.m_pcRay.camAperture = 0.f;

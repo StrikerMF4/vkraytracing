@@ -2,6 +2,7 @@
 const uint RAY_CONTINUE = 1;
 const uint RAY_HIT_LIGHT = 2;
 const uint RAY_MISS = 3;
+const uint RAY_ABSORBED = 4;
 
 const uint BSDF_DIFFUSE = 1;
 const uint BSDF_REFLECTION = 2;

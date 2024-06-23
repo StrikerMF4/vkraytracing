@@ -262,7 +262,7 @@ void main() {
             payload.bsdf_sample = material.color;// * micro;// / PI;
             payload.bsdf_type = BSDF_DIFFUSE;
         }else{
-            payload.status = RAY_MISS;
+            payload.status = RAY_ABSORBED;
         }
         
         //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
