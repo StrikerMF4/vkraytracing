@@ -61,8 +61,8 @@ vec3 RandomInUnitSphere(inout uint seed) {
 }
 
 vec3 randomPointInTriangle(inout uint seed, vec3 A, vec3 B, vec3 C) {
-    float r1 = 0.5;//rand(seed);  // Supone que tienes una función rand() que retorna un valor entre 0 y 1
-    float r2 = 0.5;//rand(seed);
+    float r1 = rand(seed);  // Supone que tienes una función rand() que retorna un valor entre 0 y 1
+    float r2 = rand(seed);
 
     // Ajustar r1 y r2 si la suma excede 1
     if (r1 + r2 > 1.0) {
