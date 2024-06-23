@@ -197,7 +197,7 @@ void main() {
         // TO-DO: Cambiar esto por alguna aproximación al L de Veach
         payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
         payload.Le = 3 * material.emittance * texture_color.rgb;
-        payload.status = HIT_LIGHT;
+        payload.status = RAY_HIT_LIGHT;
     } else {
         
         //Primero, determinar la nueva dirección basado en el material
@@ -214,10 +214,17 @@ void main() {
 
         float rnd = rand(payload.random_seed);
 
-        float diff_prob = 1 - material.metallic;
         float trans_prob = 1 - material.transparent;
+        float refl_prob = trans_prob + material.metallic;
+        float diff_prob = refl_prob + max(max(material.color.x, material.color.y), material.color.z);
+
+        if(diff_prob > 1){
+            trans_prob = trans_prob / diff_prob;
+            refl_prob = refl_prob / diff_prob;
+            diff_prob = 1.0;
+        }
         
-        if(rand(payload.random_seed) < trans_prob){
+        if(rnd < trans_prob){
             const float angle = dot(payload.direction, payload.surface_normal);
             const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
             const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
@@ -229,9 +236,15 @@ void main() {
             else{
                 wi = reflect(payload.direction, payload.surface_normal);
             }
-            payload.bsdf_sample = vec3(1.0);
+            payload.bsdf_sample = vec3(1.0); //specular color?
+            payload.bsdf_type = BSDF_TRANSMISSION;
         }
-        else if(rand(payload.random_seed) < diff_prob){
+        else if(rnd < refl_prob){
+            wi = reflect(payload.direction, payload.surface_normal);
+            payload.bsdf_sample = vec3(1.0); //specular color?
+            payload.bsdf_type = BSDF_REFLECTION;
+        }
+        else if(rnd < diff_prob){
             wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
 
             float eta_t = 0;
@@ -247,16 +260,15 @@ void main() {
 
 
             payload.bsdf_sample = material.color;// * micro;// / PI;
+            payload.bsdf_type = BSDF_DIFFUSE;
+        }else{
+            payload.status = RAY_MISS;
         }
-        else{
-            wi = reflect(payload.direction, payload.surface_normal);
-            payload.bsdf_sample = material.color;
-        }
+        
         //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
         //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
 
         payload.direction = wi;
-        payload.bsdf_sample =  material.color;
     }
 }
 

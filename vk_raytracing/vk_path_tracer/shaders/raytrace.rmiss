@@ -17,5 +17,5 @@ void main() {
 	//iluminacion ambiental
 	
 	payload.bsdf_sample = vec3(0);//vec3(10) * int(settings.ambientLigth);
-	payload.status = MISS;
+	payload.status = RAY_MISS;
 }

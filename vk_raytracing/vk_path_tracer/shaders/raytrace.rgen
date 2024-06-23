@@ -69,9 +69,10 @@ vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
        float lightdist = length(L);
        L /= lightdist; // Normalize
 
+       resetPayload(payload, origin, L);
        traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
 
-       if (payload.status == MISS) {
+       if (payload.status == RAY_MISS) {
          float cost = dot(N, L);
          Light light = lights.i[light_index];
          if (cost > 0) {
@@ -118,11 +119,8 @@ void main()
         vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
         vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
 
-
         resetPayload(payload, origin, direction);
-
         // Path Tracing
-        
         
         //trace del punto a la luz
         //vec3 point  = random_point_in_lights();
@@ -134,22 +132,29 @@ void main()
         vec3 w = vec3(1.0); //precargar con la funcion W_e de Veach (si es necesario)
         float cost = 1.0;
         vec3 c = vec3(0.0);
-        for(depth = 0; depth < MAX_DEPTH && payload.status == CONTINUE; depth++) {
-            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, origin, tMin, direction, tMax, 0);
+        for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
             float prob = 1.0;
             vec3 bsdf_sample = payload.bsdf_sample;
             vec3 Le = payload.Le;
+            uint ray_status = payload.status;
 
             origin    = payload.origin;
             direction = payload.direction;
             normal = payload.surface_normal;
 
-            //c += (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
+            if(payload.bsdf_type == BSDF_DIFFUSE){
+                c += (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
+            }else{
+                c += Le * w / prob;
+            }
 
             cost = abs(dot(direction, normal));
 
             w *= bsdf_sample * cost;
+            resetPayload(payload, origin, direction);
+            payload.status = ray_status;
         }
 
         // Rays that don't make it to a light don't contribute to the result
