@@ -223,7 +223,7 @@ void main() {
             const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
             const float cosine = angle > 0 ? material.IOR * angle : -angle;
 
-            if(rand(payload.random_seed) < Schlick(cosine, material.IOR)){
+            if(rand(payload.random_seed) > Schlick(cosine, material.IOR)){
                 wi = refract(payload.direction, outwardNormal, niOverNt);
             }
             else{
