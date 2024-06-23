@@ -135,24 +135,25 @@ void main()
         float cost = 1.0;
         vec3 c = vec3(0.0);
         for(depth = 0; depth < MAX_DEPTH && payload.status == CONTINUE; depth++) {
-            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, origin, tMin, direction, tMax, 0);
 
             float prob = 1.0;
-
-            c += (shadow_ray(payload.origin, payload.bsdf_sample, payload.surface_normal) + payload.Le) * w / prob;
-            //c += (shadow_ray(payload.origin, payload.bsdf_sample, payload.surface_normal) + payload.Le) * w / prob;
-
-            cost = abs(dot(payload.direction, payload.surface_normal));
-
-            w *= payload.bsdf_sample * cost;
+            vec3 bsdf_sample = payload.bsdf_sample;
+            vec3 Le = payload.Le;
 
             origin    = payload.origin;
             direction = payload.direction;
             normal = payload.surface_normal;
+
+            //c += (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
+
+            cost = abs(dot(direction, normal));
+
+            w *= bsdf_sample * cost;
         }
 
         // Rays that don't make it to a light don't contribute to the result
-        output_color += c * 0.5;
+        output_color += w;
     }
 
     output_color = output_color / NBSAMPLES;

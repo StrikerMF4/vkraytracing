@@ -190,6 +190,8 @@ void main() {
     }
     //--------------------------------------------------------------------------------------------------------
 
+    
+
     payload.origin = hit_position;
     if(length(material.emittance) > 0) {
         // TO-DO: Cambiar esto por alguna aproximación al L de Veach
@@ -221,13 +223,13 @@ void main() {
             const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
             const float cosine = angle > 0 ? material.IOR * angle : -angle;
 
-            if(rand(payload.random_seed) > Schlick(cosine, material.IOR)){
+            if(rand(payload.random_seed) < Schlick(cosine, material.IOR)){
                 wi = refract(payload.direction, outwardNormal, niOverNt);
             }
             else{
                 wi = reflect(payload.direction, payload.surface_normal);
             }
-            payload.bsdf_sample = material.color;
+            payload.bsdf_sample = vec3(1.0);
         }
         else if(rand(payload.random_seed) < diff_prob){
             wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
@@ -254,6 +256,7 @@ void main() {
         //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
 
         payload.direction = wi;
+        payload.bsdf_sample =  material.color;
     }
 }
 
