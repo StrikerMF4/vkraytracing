@@ -1,5 +1,5 @@
 /nvpro_core/
-/bin_x64/
+bin_x64
 vk_raytracing/nvpro_core/
 CMakeFiles/
 *.cmake

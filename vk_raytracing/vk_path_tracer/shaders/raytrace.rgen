@@ -69,7 +69,7 @@ vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
 		L /= lightdist; // Normalize
 
 		resetPayload(payload, origin, L);
-		traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
 
 		if (payload.status == RAY_MISS) {
 			float cost = dot(N, L);
@@ -162,7 +162,7 @@ void main()
 			payload.status = ray_status;
 		}
 
-		output_color += c + (int(depth >= MAX_DEPTH) * settings.clearColor.xyz * w / prob);
+		output_color += w * int(depth < MAX_DEPTH);// + (int(depth >= MAX_DEPTH) * settings.clearColor.xyz * w / prob);
 	}
 
 	output_color = output_color / NBSAMPLES;

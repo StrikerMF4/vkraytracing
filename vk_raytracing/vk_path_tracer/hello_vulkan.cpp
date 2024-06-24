@@ -642,7 +642,7 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
   // Identify the above data as containing opaque triangles.
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
   asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR | VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
   asGeom.geometry.triangles = triangles;
 
   // The entire array will be used to build the BLAS.
@@ -755,7 +755,7 @@ void HelloVulkan::createRtPipeline()
   {
     eRaygen,
     eMiss,
-    eMiss2,
+    eAnyHit,
     eClosestHit,
     eShaderGroupCount
   };
@@ -773,10 +773,9 @@ void HelloVulkan::createRtPipeline()
   stage.stage   = VK_SHADER_STAGE_MISS_BIT_KHR;
   stages[eMiss] = stage;
   // The second miss shader is invoked when a shadow ray misses the geometry. It simply indicates that no occlusion has been found
-  stage.module =
-      nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rmiss.spv", true, defaultSearchPaths, true));
-  stage.stage    = VK_SHADER_STAGE_MISS_BIT_KHR;
-  stages[eMiss2] = stage;
+  stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rahit.spv", true, defaultSearchPaths, true));
+  stage.stage    = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+  stages[eAnyHit] = stage;
   // Hit Group - Closest Hit
   stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rchit.spv", true, defaultSearchPaths, true));
   stage.stage         = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
@@ -785,7 +784,7 @@ void HelloVulkan::createRtPipeline()
 
   // Shader groups
   VkRayTracingShaderGroupCreateInfoKHR group{VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR};
-  group.anyHitShader       = VK_SHADER_UNUSED_KHR;
+  group.anyHitShader = VK_SHADER_UNUSED_KHR;
   group.closestHitShader   = VK_SHADER_UNUSED_KHR;
   group.generalShader      = VK_SHADER_UNUSED_KHR;
   group.intersectionShader = VK_SHADER_UNUSED_KHR;
@@ -800,10 +799,12 @@ void HelloVulkan::createRtPipeline()
   group.generalShader = eMiss;
   m_rtShaderGroups.push_back(group);
 
-  // Shadow Miss
-  group.type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-  group.generalShader = eMiss2;
+  // Any Hit
+  group.type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+  group.generalShader = VK_SHADER_UNUSED_KHR;
+  group.anyHitShader  = eAnyHit;
   m_rtShaderGroups.push_back(group);
+  group.anyHitShader = VK_SHADER_UNUSED_KHR;
 
   // closest hit shader
   group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
