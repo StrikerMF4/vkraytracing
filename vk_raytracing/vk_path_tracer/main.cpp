@@ -243,6 +243,11 @@ int main(int argc, char** argv)
 
   time_t start = time(0);
 
+  bool pause = false;
+  float time_elapsed = 0;
+  float time_limit = 0;
+  auto pause_timer_start = std::chrono::high_resolution_clock::now();
+
   // Main loop
   while(!glfwWindowShouldClose(window))
   {
@@ -269,6 +274,35 @@ int main(int argc, char** argv)
       ImGui::SliderFloat("Shininess", &helloVk.m_pcRay.shininess, 0.f, 700.f);
       ImGui::SliderFloat("Fuzziness", &helloVk.m_pcRay.fuzziness, 0.f, 1.f);
 
+	  if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+          pause = true;
+
+      if (ImGui::Button("Reset"))
+      {
+          helloVk.resetFrame();
+          pause = false;
+          pause_timer_start = std::chrono::high_resolution_clock::now();
+          time_elapsed = 0;
+      }
+	    
+      if (ImGui::Button("Pause"))
+	  {
+		  pause = !pause;
+
+          if (!pause)
+		  {
+			  pause_timer_start = std::chrono::high_resolution_clock::now();
+		  }
+	  }
+
+      if (!pause) {
+		  auto now = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<float> elapsed = now - pause_timer_start;
+          time_elapsed += elapsed.count();
+          pause_timer_start = now;
+      }
+
+      ImGui::Text("Rendering runtime: %.3f seconds", time_elapsed);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGuiH::Panel::End();
     }
@@ -301,17 +335,22 @@ int main(int argc, char** argv)
       offscreenRenderPassBeginInfo.framebuffer     = helloVk.m_offscreenFramebuffer;
       offscreenRenderPassBeginInfo.renderArea      = {{0, 0}, helloVk.getSize()};
 
-      // Rendering Scene
-      if(useRaytracer)
+      // Rendering Scene (reuse last frame if program is paused)
+      //Count time when not paused
+
+	  if (!pause)
       {
-        helloVk.raytrace(cmdBuf, clearColor);
-      }
-      else
-      {
-        vkCmdBeginRenderPass(cmdBuf, &offscreenRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        helloVk.rasterize(cmdBuf);
-        vkCmdEndRenderPass(cmdBuf);
-      }
+          if (useRaytracer)
+          {
+              helloVk.raytrace(cmdBuf, clearColor);
+          }
+          else
+          {
+              vkCmdBeginRenderPass(cmdBuf, &offscreenRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+              helloVk.rasterize(cmdBuf);
+              vkCmdEndRenderPass(cmdBuf);
+          }
+	  }
     }
 
     // 2nd rendering pass: tone mapper, UI
