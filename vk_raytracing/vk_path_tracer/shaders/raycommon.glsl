@@ -1,4 +1,6 @@
 
+#include "wavefront.glsl"
+
 const uint RAY_CONTINUE = 1;
 const uint RAY_HIT_LIGHT = 2;
 const uint RAY_MISS = 3;
@@ -7,8 +9,6 @@ const uint RAY_ABSORBED = 4;
 const uint BSDF_DIFFUSE = 1;
 const uint BSDF_REFLECTION = 2;
 const uint BSDF_TRANSMISSION = 3;
-
-const float PI = 3.14159265;
 
 struct rayPayload
 {
@@ -22,6 +22,9 @@ struct rayPayload
 	vec3 bsdf_sample;
 	uint bsdf_type;
 	vec3 surface_normal;
+
+
+	WaveFrontMaterial material;
 
 	//Exchange
 	uint random_seed;

@@ -1,5 +1,8 @@
 
 #include "host_device.h"
+#include "random.glsl"
+
+const float PI = 3.14159265;
 
 vec3 computeDiffuse(WaveFrontMaterial mat, vec3 lightDir, vec3 normal)
 {
@@ -35,3 +38,42 @@ float Schlick(const float cosine, const float refractionIndex)
 	r0 *= r0;
 	return r0 + (1 - r0) * pow(1 - cosine, 5);
 }
+
+vec3 from_tangent_to_local(vec3 normal,vec3 tangent)
+{
+	vec3 new_v = vec3(0);
+	if (abs(normal.x) > 0.99) 
+		new_v = vec3(0.0,1.0,0.0);
+	else 
+		new_v =  vec3(1.0,0.0,0.0);
+    vec3 t = normalize(cross(normal, new_v));
+    vec3 b = cross(normal, t);
+    return tangent.x * t + tangent.y * b + tangent.z * normal;
+}
+
+vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
+{
+	float e1 = rand(seed);
+	float e2 = rand(seed);
+	float theta = atan(alpha * sqrt(e1) / sqrt(1.0 - e1));
+	float phi = 2 * PI * e2;
+
+	float x = sin(theta) * cos(phi);
+    float y = cos(theta);
+    float z = sin(theta) * sin(phi);
+	vec3 micro_normal = vec3(x, y, z);
+	return from_tangent_to_local(normal, micro_normal);
+}
+
+vec3 micro_reflect(vec3 i_ray, vec3 micro_normal)
+{
+	return 2 * abs(dot(i_ray, micro_normal)) * micro_normal - i_ray;
+}
+
+
+vec3 micro_transmit(vec3 i_ray, vec3 micro_normal, vec3 normal, float n)
+{
+	float c =  dot(i_ray,micro_normal);
+	return (n*c - sign(dot(i_ray,normal)) * sqrt( 1 + n * n * ( c * c - 1) )) * micro_normal - n * i_ray;
+}
+

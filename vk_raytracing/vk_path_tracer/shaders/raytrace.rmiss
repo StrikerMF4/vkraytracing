@@ -4,7 +4,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
 #include "raycommon.glsl"
-#include "wavefront.glsl"
+//#include "wavefront.glsl"
 
 layout(location = 0) rayPayloadInEXT rayPayload payload;
 
