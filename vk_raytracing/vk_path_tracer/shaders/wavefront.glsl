@@ -39,16 +39,16 @@ float Schlick(const float cosine, const float refractionIndex)
 	return r0 + (1 - r0) * pow(1 - cosine, 5);
 }
 
-vec3 from_tangent_to_local(vec3 normal,vec3 tangent)
+vec3 from_tangent_to_local(vec3 normal, vec3 tangent)
 {
-	vec3 new_v = vec3(0);
-	if (abs(normal.x) > 0.99) 
-		new_v = vec3(0.0,1.0,0.0);
-	else 
-		new_v =  vec3(1.0,0.0,0.0);
-    vec3 t = normalize(cross(normal, new_v));
-    vec3 b = cross(normal, t);
-    return tangent.x * t + tangent.y * b + tangent.z * normal;
+	float sgn = normal.z > 0.0F ? 1.0F : -1.0F;
+	float a   = -1.0F / (sgn + normal.z);
+	float b   = normal.x * normal.y * a;
+
+	tangent   = vec3(1.0f + sgn * normal.x * normal.x * a, sgn * b, -sgn * normal.x);
+	bitangent = vec3(b, sgn + normal.y * normal.y * a, -normal.y);
+
+    return tangent.x * tangent + tangent.y * bitangent + tangent.z * normal;
 }
 
 vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
@@ -59,9 +59,10 @@ vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
 	float phi = 2 * PI * e2;
 
 	float x = sin(theta) * cos(phi);
-    float y = cos(theta);
-    float z = sin(theta) * sin(phi);
+    float y = sin(theta) * sin(phi);
+    float z = cos(theta);
 	vec3 micro_normal = vec3(x, y, z);
+
 	return from_tangent_to_local(normal, micro_normal);
 }
 

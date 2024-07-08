@@ -68,21 +68,21 @@ void main() {
 
     payload.origin = hit_position;
     if(length(material.emittance) > 0) {
-        // TO-DO: Cambiar esto por alguna aproximación al L de Veach
+        // TO-DO: Cambiar esto por alguna aproximaciï¿½n al L de Veach
         payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
         payload.Le = 3 * material.emittance * texture_color.rgb;
         payload.status = RAY_HIT_LIGHT;
     } else {
         
-        //Primero, determinar la nueva dirección basado en el material
-        //Luego, se calcula el BSDF según esta nueva dirección
+        //Primero, determinar la nueva direcciï¿½n basado en el material
+        //Luego, se calcula el BSDF segï¿½n esta nueva direcciï¿½n
 
-        //Cuando la nueva dirección está en el sentido de la normal, se calcula el BRDF
-        //Cuando la nueva dirección está en el sentido opuesto a la normal, se calcula el BTDF
+        //Cuando la nueva direcciï¿½n estï¿½ en el sentido de la normal, se calcula el BRDF
+        //Cuando la nueva direcciï¿½n estï¿½ en el sentido opuesto a la normal, se calcula el BTDF
 
-        //Habría que hacer una ruleta rusa para saber si rebota o se transmite? (en el caso de que pueda hacer las dos cosas)
-        //el "rebota" pude ser por lo difuso o por el brillo glossy, pero se elige la dirección de la misma forma 
-        //  (si en la dirección elegida el glossy no afecta, va a aportar poco al BRDF)
+        //Habrï¿½a que hacer una ruleta rusa para saber si rebota o se transmite? (en el caso de que pueda hacer las dos cosas)
+        //el "rebota" pude ser por lo difuso o por el brillo glossy, pero se elige la direcciï¿½n de la misma forma 
+        //  (si en la direcciï¿½n elegida el glossy no afecta, va a aportar poco al BRDF)
 
         payload.material = material;
 
@@ -99,7 +99,8 @@ void main() {
             diff_prob = 1.0;
         }
 
-        vec3 micro_normal = ggx_micronormal(payload.surface_normal, 0.394, payload.random_seed); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
+        float alpha_ggx = material.roughness * material.roughness; //Estaba en nvcore
+        vec3 micro_normal = ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
         
         if(rnd < trans_prob){
             const float angle = dot(payload.direction, payload.surface_normal);
