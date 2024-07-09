@@ -93,11 +93,11 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
 		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
 
 		if (payload.status == RAY_MISS) {
-			float cost = dot(N, L);
+			//float cost = dot(N, L);
 			Light light = lights.i[light_index];
-			if (cost > 0) {
-				color += bsdf * (light.emission / (dot(L, L) * 4 * PI)) * cost;
-			}
+			//if (cost > 0) {
+				color += light.emission * dot(N, L) * bsdf;
+			//}
 		}
 	}
 	return color;
