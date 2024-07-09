@@ -99,7 +99,7 @@ void main() {
             diff_prob = 1.0;
         }
 
-        float alpha_ggx = material.roughness * material.roughness; //Estaba en nvcore
+        float alpha_ggx = material.roughness;// * material.roughness; //Estaba en nvcore
         vec3 micro_normal = ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
         
         if(rnd < trans_prob){

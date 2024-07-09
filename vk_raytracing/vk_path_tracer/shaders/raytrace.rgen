@@ -82,6 +82,26 @@ vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
 	return color;
 }
 
+vec3 GGX_shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
+	vec3 color = vec3(0);
+	for (uint light_index = 0; light_index < settings.light_count; light_index++){
+		vec3 L = random_point_in_light(light_index) - origin;
+		float lightdist = length(L);
+		L /= lightdist; // Normalize
+
+		resetPayload(payload, origin, L);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+
+		if (payload.status == RAY_MISS) {
+			float cost = dot(N, L);
+			Light light = lights.i[light_index];
+			if (cost > 0) {
+				color += bsdf * (light.emission / (dot(L, L) * 4 * PI)) * cost;
+			}
+		}
+	}
+	return color;
+}
 
 void main()
 {
