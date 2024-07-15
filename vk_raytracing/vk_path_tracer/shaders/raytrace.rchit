@@ -100,41 +100,45 @@ void main() {
         }
 
         float alpha_ggx = material.roughness;// * material.roughness; //Estaba en nvcore
-        vec3 micro_normal = ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
+        vec3 micro_normal = normalize(ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed, payload.theta)); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
+        payload.surface_micronormal = micro_normal;
         
         if(rnd < trans_prob){
             const float angle = dot(payload.direction, payload.surface_normal);
+            const float microAngle = dot(payload.direction, micro_normal);
             const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
-            const float niOverNt = angle > 0 ? material.IOR : 1 / material.IOR;
-            const float cosine = angle > 0 ? material.IOR * angle : -angle;
+            const vec3 outwardMicro = microAngle > 0 ? -micro_normal : micro_normal;
+            const float niOverNt = microAngle > 0 ? material.IOR : 1 / material.IOR;
+            const float cosine = microAngle > 0 ? material.IOR * microAngle : -microAngle;
 
             if(rand(payload.random_seed) > Schlick(cosine, material.IOR)){
-                wi = refract(payload.direction, outwardNormal, niOverNt);
-                //wi = micro_transmit( -payload.direction, micro_normal, payload.surface_normal, niOverNt);
+                //wi = refract(payload.direction, outwardMicro, material.IOR);
+                wi = micro_transmit(-payload.direction, outwardMicro, outwardNormal, niOverNt);
+                payload.bsdf_sample = vec3(length(wi));
             }
             else{
-               wi = reflect(payload.direction, payload.surface_normal);
-               //wi = micro_reflect(-payload.direction, micro_normal);
+               //wi = reflect(payload.direction, micro_normal);
+               wi = micro_reflect(-payload.direction, micro_normal);
             }
-            payload.bsdf_sample = vec3(1.0); //specular color?
+            payload.bsdf_sample = material.color; //specular color?
             payload.bsdf_type = BSDF_TRANSMISSION;
         }
         else if(rnd < refl_prob){
-            wi = reflect(payload.direction, payload.surface_normal);
-            //wi = micro_reflect(-payload.direction, micro_normal);
-            payload.bsdf_sample = vec3(1.0); //specular color?
+            //wi = reflect(payload.direction, payload.surface_normal);
+            wi = micro_reflect(-payload.direction, micro_normal);
+            payload.bsdf_sample = material.color; //specular color?
             payload.bsdf_type = BSDF_REFLECTION;
         }
         else if(rnd < diff_prob){
-            //wi = normalize(micro_reflect(-payload.direction, micro_normal) + RandomInUnitSphere(payload.random_seed));
-            wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
+            wi = normalize(micro_reflect(-payload.direction, micro_normal) + RandomInUnitSphere(payload.random_seed));
+            //wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
             payload.bsdf_sample = material.color;
             payload.bsdf_type = BSDF_DIFFUSE;
         }else{
             payload.status = RAY_ABSORBED;
         }
 
-        payload.bsdf_sample = micro_normal * 0.5 + 0.5;
+        //payload.bsdf_sample = micro_normal * 0.5 + 0.5;
         
         //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
         //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
