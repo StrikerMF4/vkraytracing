@@ -22,7 +22,8 @@ struct rayPayload
 	vec3 bsdf_sample;
 	uint bsdf_type;
 	vec3 surface_normal;
-
+	vec3 surface_micronormal;
+	float theta;
 
 	WaveFrontMaterial material;
 

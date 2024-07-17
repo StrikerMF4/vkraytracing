@@ -139,7 +139,7 @@ int main(int argc, char** argv)
   // Creation of the example-----------------------------------------------------------------------------------------------------------------
   
   //CornellBox Spheres
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
 
   {  //Minecraft floor
       /*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
@@ -155,7 +155,7 @@ int main(int argc, char** argv)
                         glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
   }
 
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
   //helloVk.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
 
   //Lego
