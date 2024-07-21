@@ -82,9 +82,7 @@ vec3 micro_transmit(vec3 i_ray, vec3 micro_normal, vec3 normal, float n)
 	float nsqr =  n * n;
 	float csqr = c * c;
 
-	return normalize((n*c - sign(dot(i_ray,normal)) * sqrt(abs( 1 + n * n * ( c * c - 1)))) * micro_normal - n * i_ray);
-
-	//return vec3(sqrt(1 + nsqr * (csqr - 1)));
+	return normalize((n*c - sign(dot(i_ray,normal)) * sqrt(abs((1 + n * n * ( c * c - 1))))) * micro_normal - n * i_ray);
 }
 
 

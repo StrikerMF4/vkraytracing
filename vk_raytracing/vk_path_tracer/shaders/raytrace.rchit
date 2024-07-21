@@ -28,6 +28,45 @@ layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
+
+vec3 transmition(vec3 micro_normal) {
+    bool ray_entering = dot(payload.direction, payload.surface_normal) < 0;
+    float ni = payload.ior_queue[payload.ior_index];
+    float nt = payload.material.IOR;
+    if (!ray_entering) {
+        nt = payload.ior_queue[payload.ior_index-1];
+    }
+
+    float n = ni / nt; 
+    vec3 normal_alt = ray_entering ? payload.surface_normal : -payload.surface_normal;
+    vec3 micro_normal_alt = ray_entering ? micro_normal : -micro_normal;
+
+    float cos_theta = -dot(payload.direction, normal_alt);
+    float sin_theta = n * n * (1.0 - cos_theta*cos_theta);
+
+    bool cannot_refract = (ni > nt && sin_theta > 1);
+
+    payload.bsdf_sample = vec3(1);
+
+    if (cannot_refract || Schlick(cos_theta, n) > rand(payload.random_seed))
+    {
+        payload.bsdf_type = BSDF_REFLECTION;
+        return micro_reflect(-payload.direction, micro_normal);
+    }
+    else{
+        if (ray_entering) {
+            payload.ior_index++;
+            payload.ior_queue[payload.ior_index] = payload.material.IOR; // Push ior into the queue
+        }
+        else {
+            payload.ior_index--; // Pop ior from the queue
+        }
+        payload.bsdf_type = BSDF_TRANSMISSION;
+        return micro_transmit(-payload.direction, micro_normal_alt, normal_alt, n);
+    }
+}
+
+
 void main() {
     //Object data-------------------------------------------------------------------------------------------
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
@@ -73,77 +112,38 @@ void main() {
         payload.Le = 3 * material.emittance * texture_color.rgb;
         payload.status = RAY_HIT_LIGHT;
     } else {
-        
-        //Primero, determinar la nueva direcci�n basado en el material
-        //Luego, se calcula el BSDF seg�n esta nueva direcci�n
-
-        //Cuando la nueva direcci�n est� en el sentido de la normal, se calcula el BRDF
-        //Cuando la nueva direcci�n est� en el sentido opuesto a la normal, se calcula el BTDF
-
-        //Habr�a que hacer una ruleta rusa para saber si rebota o se transmite? (en el caso de que pueda hacer las dos cosas)
-        //el "rebota" pude ser por lo difuso o por el brillo glossy, pero se elige la direcci�n de la misma forma 
-        //  (si en la direcci�n elegida el glossy no afecta, va a aportar poco al BRDF)
-
+     
         payload.material = material;
 
-        vec3 wi = vec3(0.0f);
         float rnd = rand(payload.random_seed);
+        float absorption = 0;
 
         float trans_prob = 1 - material.transparent;
         float refl_prob = trans_prob + material.metallic;
-        float diff_prob = refl_prob + max(max(material.color.x, material.color.y), material.color.z);
-
-        if(diff_prob > 1){
-            trans_prob = trans_prob / diff_prob;
-            refl_prob = refl_prob / diff_prob;
-            diff_prob = 1.0;
-        }
+        float absor_prob = refl_prob + absorption;
 
         float alpha_ggx = material.roughness;// * material.roughness; //Estaba en nvcore
         vec3 micro_normal = normalize(ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed, payload.theta)); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
         payload.surface_micronormal = micro_normal;
         
-        if(rnd < trans_prob){
-            const float angle = dot(payload.direction, payload.surface_normal);
-            const float microAngle = dot(payload.direction, micro_normal);
-            const vec3 outwardNormal = angle > 0 ? -payload.surface_normal : payload.surface_normal;
-            const vec3 outwardMicro = microAngle > 0 ? -micro_normal : micro_normal;
-            const float niOverNt = microAngle > 0 ? material.IOR : 1 / material.IOR;
-            const float cosine = microAngle > 0 ? material.IOR * microAngle : -microAngle;
-
-            if(rand(payload.random_seed) > Schlick(cosine, material.IOR)){
-                //wi = refract(payload.direction, outwardMicro, material.IOR);
-                wi = micro_transmit(-payload.direction, outwardMicro, outwardNormal, niOverNt);
-                payload.bsdf_sample = vec3(length(wi));
-            }
-            else{
-               //wi = reflect(payload.direction, micro_normal);
-               wi = micro_reflect(-payload.direction, micro_normal);
-            }
-            payload.bsdf_sample = material.color; //specular color?
-            payload.bsdf_type = BSDF_TRANSMISSION;
-        }
-        else if(rnd < refl_prob){
-            //wi = reflect(payload.direction, payload.surface_normal);
-            wi = micro_reflect(-payload.direction, micro_normal);
-            payload.bsdf_sample = material.color; //specular color?
+        if(rnd < trans_prob) {
+            payload.direction = transmition(micro_normal);
+            payload.bsdf_sample = material.color * texture_color; //specular color?
+        } 
+        else if(rnd < refl_prob) {
+            payload.direction = micro_reflect(-payload.direction, micro_normal);
+            payload.bsdf_sample = vec3(1); //specular color?
             payload.bsdf_type = BSDF_REFLECTION;
         }
-        else if(rnd < diff_prob){
-            wi = normalize(micro_reflect(-payload.direction, micro_normal) + RandomInUnitSphere(payload.random_seed));
-            //wi = normalize(payload.surface_normal + RandomInUnitSphere(payload.random_seed));
-            payload.bsdf_sample = material.color;
-            payload.bsdf_type = BSDF_DIFFUSE;
-        }else{
+        else if(rnd < absor_prob) {
             payload.status = RAY_ABSORBED;
         }
+        else {
+            payload.direction = micro_reflect(-payload.direction, micro_normal);
+            payload.bsdf_sample = material.color * texture_color;
+            payload.bsdf_type = BSDF_DIFFUSE;
+        }
 
-        //payload.bsdf_sample = micro_normal * 0.5 + 0.5;
-        
-        //vec3 normal, vec3 wo, vec3 wi, WaveFrontMaterial material
-        //payload.bsdf_sample = bsdf(payload.surface_normal, -payload.direction, wi, material);// material.color;
-
-        payload.direction = wi;
     }
 }
 
