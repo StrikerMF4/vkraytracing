@@ -29,6 +29,9 @@ struct rayPayload
 
 	//Exchange
 	uint random_seed;
+
+	float ior_queue[10];
+	uint ior_index;
 };
 
 void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
@@ -40,4 +43,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
     payload.bsdf_sample = vec3(0);
 	payload.bsdf_type = 0;
 	payload.surface_normal = vec3(0);
+
+	payload.ior_queue[0] = 1;
+	payload.ior_index = 0;
 }
