@@ -82,7 +82,7 @@ vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
 	return color;
 }
 
-vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m){
+vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color){
 	float IOR = payload.material.IOR;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
@@ -97,13 +97,10 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m){
 		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
 
 		if (payload.status == RAY_MISS) {
-			//float cost = dot(N, L);
 			Light light = lights.i[light_index];
 
 			float bsdf = CT_brdf(L, viewer, N, m, IOR, roughness, theta);
-			//if (cost > 0) {
-				color += light.emission * dot(N, L) * bsdf;
-			//}
+			color += light.emission * dot(N, L) * bsdf * point_color;
 		}
 	}
 	return color;
@@ -179,7 +176,7 @@ void main()
 
 			if(payload.bsdf_type != BSDF_TRANSMISSION && payload.status != RAY_HIT_LIGHT){
 				//c = (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
-				c = (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal) + Le) * w / prob;
+				c = (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample) + Le) * w / prob;
 			}else{
 				c += Le * w / prob;
 			}
