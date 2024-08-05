@@ -140,6 +140,13 @@ int main(int argc, char** argv)
   
   //CornellBox Spheres
   helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+  
+  //
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
+  //
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
+
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
 
   {  //Minecraft floor
       /*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));

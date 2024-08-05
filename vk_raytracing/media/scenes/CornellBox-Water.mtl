@@ -27,8 +27,7 @@ newmtl rightSphere
     Ns 200
     Ni 2.5
 	d 0.0000
-
-	Pr 0.01
+	Pr 0.00
     illum 7
    
 newmtl floor

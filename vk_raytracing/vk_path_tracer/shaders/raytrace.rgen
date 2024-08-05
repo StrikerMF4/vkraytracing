@@ -172,7 +172,6 @@ void main()
 			vec3 bsdf_sample = payload.bsdf_sample;
 			vec3 Le = payload.Le;
 			uint ray_status = payload.status;
-			uint ior_index = payload.ior_index;
 
 			origin    = payload.origin;
 			direction = payload.direction;
@@ -188,10 +187,9 @@ void main()
 			cost = abs(dot(direction, normal));
 
 			w *= bsdf_sample * cost;
-			//w = bsdf_sample;
+			//w *= bsdf_sample;
 			resetPayload(payload, origin, direction);
 			payload.status = ray_status;
-			payload.ior_index = ior_index;
 		}
 		output_color += c * int(depth < MAX_DEPTH) + (int(depth >= MAX_DEPTH) * settings.clearColor.xyz * w / prob);
 		//output_color += w;

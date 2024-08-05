@@ -1,5 +1,6 @@
 
 #version 460
+#extension GL_EXT_debug_printf : enable
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
@@ -29,15 +30,16 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 // clang-format on
 
 
-vec3 transmition(vec3 micro_normal) {
+vec3 transmition(vec3 micro_normal, WaveFrontMaterial material) {
     bool ray_entering = dot(payload.direction, payload.surface_normal) < 0;
-    float ni = payload.ior_queue[payload.ior_index];
+    float ni = 1;
     float nt = payload.material.IOR;
     if (!ray_entering) {
-        nt = payload.ior_queue[payload.ior_index-1];
+        ni = nt;
+        nt = 1;
     }
 
-    float n = ni / nt; 
+    float n = ni / nt;
     vec3 normal_alt = ray_entering ? payload.surface_normal : -payload.surface_normal;
     vec3 micro_normal_alt = ray_entering ? micro_normal : -micro_normal;
 
@@ -54,13 +56,6 @@ vec3 transmition(vec3 micro_normal) {
         return micro_reflect(-payload.direction, micro_normal);
     }
     else{
-        if (ray_entering) {
-            payload.ior_index++;
-            payload.ior_queue[payload.ior_index] = payload.material.IOR; // Push ior into the queue
-        }
-        else {
-            payload.ior_index--; // Pop ior from the queue
-        }
         payload.bsdf_type = BSDF_TRANSMISSION;
         return micro_transmit(-payload.direction, micro_normal_alt, normal_alt, n);
     }
@@ -127,7 +122,8 @@ void main() {
         payload.surface_micronormal = micro_normal;
         
         if(rnd < trans_prob) {
-            payload.direction = transmition(micro_normal);
+            payload.bsdf_sample = vec3(0);
+            payload.direction = transmition(micro_normal, material);
             payload.bsdf_sample = material.color * texture_color; //specular color?
         } 
         else if(rnd < refl_prob) {
