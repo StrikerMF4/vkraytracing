@@ -1,5 +1,5 @@
 #include <array>
-
+#include <time.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -13,6 +13,7 @@
 #include "nvpsystem.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
+#include <time.h>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -70,7 +71,7 @@ int main(int argc, char** argv)
 
   // Setup camera
   CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-  CameraManip.setLookat(glm::vec3(5, 4, -4), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+  CameraManip.setLookat(glm::vec3(0, 0.7, 2.2), glm::vec3(0, 0.7, 0), glm::vec3(0, 1, 0));
 
   // Setup Vulkan
   if(!glfwVulkanSupported())
@@ -138,7 +139,14 @@ int main(int argc, char** argv)
   // Creation of the example-----------------------------------------------------------------------------------------------------------------
   
   //CornellBox Spheres
-  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+  
+  //
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
+  //
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
+
+  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
 
   {  //Minecraft floor
       /*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
@@ -154,7 +162,8 @@ int main(int argc, char** argv)
                         glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
   }
 
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
+  //helloVk.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
 
   //Lego
   {
@@ -211,6 +220,7 @@ int main(int argc, char** argv)
   helloVk.createGraphicsPipeline();
   helloVk.createUniformBuffer();
   helloVk.createObjDescriptionBuffer();
+  helloVk.createLightBuffer();
   helloVk.updateDescriptorSet();
 
   // #VKRay
@@ -226,24 +236,30 @@ int main(int argc, char** argv)
   helloVk.updatePostDescriptorSet();
 
 
-  glm::vec4 clearColor   = glm::vec4(1, 1, 1, 1.00f);
+  glm::vec4 clearColor   = glm::vec4(0, 0, 0, 1.00f);
   bool      useRaytracer = true;
 
   helloVk.m_pcRay.camAperture = 0.f;
   helloVk.m_pcRay.focusDist = 3.f;
   helloVk.m_pcRay.shininess = 0.f;
   helloVk.m_pcRay.fuzziness = 0.f;
-
+  helloVk.m_pcRay.light_count = helloVk.m_lights.size();
 
   helloVk.setupGlfwCallbacks(window);
   ImGui_ImplGlfw_InitForVulkan(window, true);
 
- 
+  time_t start = time(0);
 
+  bool pause = false;
+  float time_elapsed = 0;
+  float time_limit = 0;
+  auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
   // Main loop
   while(!glfwWindowShouldClose(window))
   {
+    //if (difftime(time(0), start) > 1)
+       //continue;
     glfwPollEvents();
     if(helloVk.isMinimized())
       continue;
@@ -265,6 +281,35 @@ int main(int argc, char** argv)
       ImGui::SliderFloat("Shininess", &helloVk.m_pcRay.shininess, 0.f, 700.f);
       ImGui::SliderFloat("Fuzziness", &helloVk.m_pcRay.fuzziness, 0.f, 1.f);
 
+	  if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+          pause = true;
+
+      if (ImGui::Button("Reset"))
+      {
+          helloVk.resetFrame();
+          pause = false;
+          pause_timer_start = std::chrono::high_resolution_clock::now();
+          time_elapsed = 0;
+      }
+	    
+      if (ImGui::Button("Pause"))
+	  {
+		  pause = !pause;
+
+          if (!pause)
+		  {
+			  pause_timer_start = std::chrono::high_resolution_clock::now();
+		  }
+	  }
+
+      if (!pause) {
+		  auto now = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<float> elapsed = now - pause_timer_start;
+          time_elapsed += elapsed.count();
+          pause_timer_start = now;
+      }
+
+      ImGui::Text("Rendering runtime: %.3f seconds", time_elapsed);
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGuiH::Panel::End();
     }
@@ -297,17 +342,22 @@ int main(int argc, char** argv)
       offscreenRenderPassBeginInfo.framebuffer     = helloVk.m_offscreenFramebuffer;
       offscreenRenderPassBeginInfo.renderArea      = {{0, 0}, helloVk.getSize()};
 
-      // Rendering Scene
-      if(useRaytracer)
+      // Rendering Scene (reuse last frame if program is paused)
+      //Count time when not paused
+
+	  if (!pause)
       {
-        helloVk.raytrace(cmdBuf, clearColor);
-      }
-      else
-      {
-        vkCmdBeginRenderPass(cmdBuf, &offscreenRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        helloVk.rasterize(cmdBuf);
-        vkCmdEndRenderPass(cmdBuf);
-      }
+          if (useRaytracer)
+          {
+              helloVk.raytrace(cmdBuf, clearColor);
+          }
+          else
+          {
+              vkCmdBeginRenderPass(cmdBuf, &offscreenRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+              helloVk.rasterize(cmdBuf);
+              vkCmdEndRenderPass(cmdBuf);
+          }
+	  }
     }
 
     // 2nd rendering pass: tone mapper, UI

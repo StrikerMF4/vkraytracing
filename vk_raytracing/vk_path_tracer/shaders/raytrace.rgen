@@ -3,115 +3,205 @@
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
 
 
 #include "raycommon.glsl"
-#include "host_device.h"
-#include "random.glsl"
+//#include "host_device.h"
+//#include "random.glsl"
 
 // clang-format off
-layout(location = 0) rayPayloadEXT hitPayload prd;
+layout(location = 0) rayPayloadEXT rayPayload payload;
+
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions of an object
+layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
-layout(push_constant) uniform _PushConstantRay { PushConstantRay pcRay; };
+
+layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
+layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+
+layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
 const int NBSAMPLES = 1;
+const uint MAX_DEPTH = 10;
+
+const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const float tMin     = 0.001;
+const float tMax     = 10000.0;
+
+vec3 random_point_in_light(uint light_index){
+	// Pick a random light
+	//uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
+
+	// Pick a triangle in the light
+	Light light = lights.i[light_index];
+	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
+
+	// Get buffers for the light object
+	ObjDesc objResource = objDesc.i[light.object_id];
+	Indices    indices     = Indices(objResource.indexAddress);
+	Vertices   vertices    = Vertices(objResource.vertexAddress);
+
+	// Indices of the triangle
+	//ivec3 ind = indices.i[light.first_index + light_triangle_index];
+	// Vertex of the triangle
+	light_triangle_index = (light.first_index + light_triangle_index) * 3;
+	Vertex v0 = vertices.v[light_triangle_index];
+	Vertex v1 = vertices.v[light_triangle_index + 1];
+	Vertex v2 = vertices.v[light_triangle_index + 2];
+
+	vec3 point = randomPointInTriangle(payload.random_seed, v0.pos, v1.pos, v2.pos);
+	//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+
+	return point;
+}
+
+vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
+	vec3 color = vec3(0);
+	for (uint light_index = 0; light_index < settings.light_count; light_index++){
+		vec3 L = random_point_in_light(light_index) - origin;
+		float lightdist = length(L);
+		L /= lightdist; // Normalize
+
+		resetPayload(payload, origin, L);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+
+		if (payload.status == RAY_MISS) {
+			float cost = dot(N, L);
+			Light light = lights.i[light_index];
+			if (cost > 0) {
+				color += bsdf * (light.emission / (dot(L, L) * 4 * PI)) * cost;
+			}
+		}
+	}
+	return color;
+}
+
+vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color){
+	float IOR = payload.material.IOR;
+	float roughness = payload.material.roughness;
+	float theta = payload.theta;
+
+	vec3 color = vec3(0);
+	for (uint light_index = 0; light_index < settings.light_count; light_index++){
+		vec3 L = random_point_in_light(light_index) - origin;
+		float lightdist = length(L);
+		L /= lightdist; // Normalize
+
+		resetPayload(payload, origin, L);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+
+		if (payload.status == RAY_MISS) {
+			Light light = lights.i[light_index];
+
+			float bsdf = CT_brdf(L, viewer, N, m, IOR, roughness, theta);
+			color += light.emission * dot(N, L) * bsdf * point_color;
+		}
+	}
+	return color;
+}
 
 void main()
 {
-  // Initialize the random number
-  uint seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, pcRay.frame);
-  prd.RandomSeed = seed;
+	//if (settings.frame > 1000)
+		//return;
+	// Initialize the random number
+	payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
 
-  vec3 pixelColor = vec3(0);
-  vec3 hitValue = vec3(1);
-  for(int smpl = 0; smpl < NBSAMPLES; smpl++){
+	vec3 output_color = vec3(0);
 
-      // gaussian AA
-      vec2 rndvec = randomGaussian(seed);
-      float r1 = rndvec.x;
-      float r2 = rndvec.y;
+	uint depth = 0;
+	for(int pixel_sample = 0; pixel_sample < 1; pixel_sample++){
+		// gaussian AA
+		vec2 randvec = randomGaussian(payload.random_seed);
+		float r1 = randvec.x;
+		float r2 = randvec.y;
 
-      // square AA
-      //float r1 = rnd(seed);
-      //float r2 = rnd(seed);
+		// square AA
+		//float r1 = rnd(seed);
+		//float r2 = rnd(seed);
 
-      // Subpixel jitter: send the ray through a different position inside the pixel
-      // each time, to provide antialiasing.
-      vec2 subpixel_jitter = pcRay.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
-      const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
-      const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-      vec2       d           = inUV * 2.0 - 1.0;
+		// Subpixel jitter: send the ray through a different position inside the pixel
+		// each time, to provide antialiasing.
+		vec2 subpixel_jitter = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+		const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
+		const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+		vec2       d           = inUV * 2.0 - 1.0;
 
-      //defocus blur
-      float Aperture = pcRay.camAperture;
-      float focus_dist = pcRay.focusDist;
-      vec2 offset = (Aperture/2) * RandomInUnitDisk(prd.RandomSeed);
-      vec4 origin    = uni.viewInverse * vec4(offset, 0, 1);
-      vec4 target    = uni.projInverse * vec4(d.x, d.y, 1, 1);
-      vec4 direction = uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0);
+		//defocus blur
+		float Aperture = settings.camAperture;
+		float focus_dist = settings.focusDist;
+		vec2 offset = (Aperture/2) * RandomInUnitDisk(payload.random_seed);
+		vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
+		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
 
-      uint  rayFlags = gl_RayFlagsOpaqueEXT;
-      float tMin     = 0.001;
-      float tMax     = 10000.0;
+		resetPayload(payload, origin, direction);
+		// Path Tracing
+		
+		//trace del punto a la luz
+		//vec3 point  = random_point_in_lights();
+		//payload.direction = normalize(point - payload.origin);
+		//traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, distance(point, payload.origin) - 0.001f, 0);
 
-      prd.depth       = 0;
-      prd.hitValue    = vec3(0);
-      prd.attenuation = vec3(1.f, 1.f, 1.f);
-      prd.done        = 1;
-      prd.rayOrigin   = origin.xyz;
-      prd.rayDir      = direction.xyz;
+		float prob = 1.0;
+		vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
+		vec3 w = vec3(1.0); //precargar con la funcion W_e de Veach (si es necesario)
+		float cost = 1.0;
+		vec3 c = vec3(0.0);
+		for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+			prob = 1.0; //Hay que tomar la probabilidad antes de hacer el trace, con el trace se modifica
 
-      // trace path
-      hitValue = vec3(1);
-      for(;;) {
+			vec3 viewer = -payload.direction;
 
-        if(prd.depth == 10) {
-          hitValue = vec3(0)*hitValue;
-          break;
-        }
+			traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-        traceRayEXT(topLevelAS,     // acceleration structure
-                    rayFlags,       // rayFlags
-                    0xFF,           // cullMask
-                    0,              // sbtRecordOffset
-                    0,              // sbtRecordStride
-                    0,              // missIndex
-                    origin.xyz,     // ray origin
-                    tMin,           // ray min range
-                    direction.xyz,  // ray direction
-                    tMax,           // ray max range
-                    0               // payload (location = 0)
-        );
-        hitValue *= prd.hitValue;
+			if(payload.status == RAY_MISS){
+				c += settings.clearColor.xyz * w / prob;
+				break;
+			}
 
-        prd.depth++;
-        if(prd.done == 1)
-          break;
+			vec3 bsdf_sample = payload.bsdf_sample;
+			vec3 Le = payload.Le;
+			uint ray_status = payload.status;
 
-        origin.xyz    = prd.rayOrigin;
-        direction.xyz = prd.rayDir;
-        prd.done      = 1;  // Will stop if absorb or hit a ligth
-      }
-    pixelColor += hitValue; 
-  }
-  pixelColor = pixelColor / NBSAMPLES;
+			origin    = payload.origin;
+			direction = payload.direction;
+			normal = payload.surface_normal;
 
-  // Do accumulation over time
-  if(pcRay.frame > 0)
-  {
-    float a         = 1.0f / float(pcRay.frame + 1);
-    vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, pixelColor, a), 1.f));
-  }
-  else
-  {
-    // First frame, replace the value in the buffer
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(pixelColor, 1.f));
-  }
+			if(payload.bsdf_type != BSDF_TRANSMISSION && payload.status != RAY_HIT_LIGHT){
+				//c = (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
+				c = (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample) + Le) * w / prob;
+			}else{
+				c += Le * w / prob;
+			}
 
+			cost = abs(dot(direction, normal));
+
+			w *= bsdf_sample * cost;
+			//w *= bsdf_sample;
+			resetPayload(payload, origin, direction);
+			payload.status = ray_status;
+		}
+		output_color += c * int(depth < MAX_DEPTH) + (int(depth >= MAX_DEPTH) * settings.clearColor.xyz * w / prob);
+		//output_color += w;
+	}
+
+	output_color = output_color / NBSAMPLES;
+
+    if(settings.frame > 0)
+    {   //Accumulation over time
+        float a         = 1.0f / float(settings.frame + 1);
+        vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
+        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
+    }
+    else
+    {   // First frame, replace the value in the buffer
+		imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
+	}
 }

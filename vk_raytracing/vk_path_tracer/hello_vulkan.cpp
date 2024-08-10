@@ -89,10 +89,13 @@ void HelloVulkan::createDescriptorSetLayout()
                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   // Obj descriptions
   m_descSetLayoutBind.addBinding(SceneBindings::eObjDescs, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   // Textures
   m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
                                  VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+  // Lights
+  m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
@@ -121,6 +124,9 @@ void HelloVulkan::updateDescriptorSet()
     diit.emplace_back(texture.descriptor);
   }
   writes.emplace_back(m_descSetLayoutBind.makeWriteArray(m_descSet, SceneBindings::eTextures, diit.data()));
+
+  VkDescriptorBufferInfo dbiLights{ m_bLights.buffer, 0, VK_WHOLE_SIZE };
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eLights, &dbiLights));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -173,9 +179,26 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
   // Converting from Srgb to linear
   for(auto& m : loader.m_materials)
   {
+    m.color  = glm::pow(m.color, glm::vec3(2.2f));
+  }
+  /*for(auto& m : loader.m_materials)
+  {
     m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
     m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
     m.specular = glm::pow(m.specular, glm::vec3(2.2f));
+  }*/
+
+  // Assign ObjectID
+  for (auto& light : loader.m_lights)
+  {
+      Light result;
+
+      result.object_id = m_objDesc.size();
+      result.emission = light.emission;
+      result.first_index = light.first_index / 3;
+      result.last_index = light.last_index / 3;
+
+      m_lights.push_back(result);
   }
 
   ObjModel model;
@@ -192,6 +215,7 @@ void HelloVulkan::loadModel(const std::string& filename, glm::mat4 transform)
   model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
   model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
   model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+
   // Creates all textures found and find the offset for this model
   auto txtOffset = static_cast<uint32_t>(m_textures.size());
   createTextureImages(cmdBuf, loader.m_textures);
@@ -250,6 +274,23 @@ void HelloVulkan::createObjDescriptionBuffer()
   cmdGen.submitAndWait(cmdBuf);
   m_alloc.finalizeAndReleaseStaging();
   m_debug.setObjectName(m_bObjDesc.buffer, "ObjDescs");
+}
+
+//--------------------------------------------------------------------------------------------------
+// Create a storage buffer containing the description of the scene lights
+// - The ID of the object that define it
+// - Emission
+// - Indexes of the faces that compose the light
+//
+void HelloVulkan::createLightBuffer()
+{
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+    auto cmdBuf = cmdGen.createCommandBuffer();
+    m_bLights = m_alloc.createBuffer(cmdBuf, m_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    cmdGen.submitAndWait(cmdBuf);
+    m_alloc.finalizeAndReleaseStaging();
+    m_debug.setObjectName(m_bLights.buffer, "Lights");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -337,6 +378,7 @@ void HelloVulkan::destroyResources()
 
   m_alloc.destroy(m_bGlobals);
   m_alloc.destroy(m_bObjDesc);
+  m_alloc.destroy(m_bLights);
 
   for(auto& m : m_objModel)
   {
@@ -600,7 +642,7 @@ auto HelloVulkan::objectToVkGeometryKHR(const ObjModel& model)
   // Identify the above data as containing opaque triangles.
   VkAccelerationStructureGeometryKHR asGeom{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR};
   asGeom.geometryType       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR;
+  asGeom.flags              = VK_GEOMETRY_OPAQUE_BIT_KHR | VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
   asGeom.geometry.triangles = triangles;
 
   // The entire array will be used to build the BLAS.
@@ -713,7 +755,7 @@ void HelloVulkan::createRtPipeline()
   {
     eRaygen,
     eMiss,
-    eMiss2,
+    eAnyHit,
     eClosestHit,
     eShaderGroupCount
   };
@@ -731,10 +773,9 @@ void HelloVulkan::createRtPipeline()
   stage.stage   = VK_SHADER_STAGE_MISS_BIT_KHR;
   stages[eMiss] = stage;
   // The second miss shader is invoked when a shadow ray misses the geometry. It simply indicates that no occlusion has been found
-  stage.module =
-      nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytraceShadow.rmiss.spv", true, defaultSearchPaths, true));
-  stage.stage    = VK_SHADER_STAGE_MISS_BIT_KHR;
-  stages[eMiss2] = stage;
+  stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rahit.spv", true, defaultSearchPaths, true));
+  stage.stage    = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+  stages[eAnyHit] = stage;
   // Hit Group - Closest Hit
   stage.module = nvvk::createShaderModule(m_device, nvh::loadFile("spv/raytrace.rchit.spv", true, defaultSearchPaths, true));
   stage.stage         = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
@@ -743,7 +784,7 @@ void HelloVulkan::createRtPipeline()
 
   // Shader groups
   VkRayTracingShaderGroupCreateInfoKHR group{VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR};
-  group.anyHitShader       = VK_SHADER_UNUSED_KHR;
+  group.anyHitShader = VK_SHADER_UNUSED_KHR;
   group.closestHitShader   = VK_SHADER_UNUSED_KHR;
   group.generalShader      = VK_SHADER_UNUSED_KHR;
   group.intersectionShader = VK_SHADER_UNUSED_KHR;
@@ -758,10 +799,12 @@ void HelloVulkan::createRtPipeline()
   group.generalShader = eMiss;
   m_rtShaderGroups.push_back(group);
 
-  // Shadow Miss
-  group.type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-  group.generalShader = eMiss2;
+  // Any Hit
+  group.type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+  group.generalShader = VK_SHADER_UNUSED_KHR;
+  group.anyHitShader  = eAnyHit;
   m_rtShaderGroups.push_back(group);
+  group.anyHitShader = VK_SHADER_UNUSED_KHR;
 
   // closest hit shader
   group.type             = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
@@ -771,7 +814,7 @@ void HelloVulkan::createRtPipeline()
 
   // Push constant: we want to be able to update constants used by the shaders
   VkPushConstantRange pushConstant{VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-                                   0, sizeof(PushConstantRay)};
+                                   0, sizeof(PushConstantRayTracer)};
 
 
   VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
@@ -898,9 +941,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
   m_debug.beginLabel(cmdBuf, "Ray trace");
   // Initializing push constant values
   m_pcRay.clearColor     = clearColor;
-  m_pcRay.lightPosition  = m_pcRaster.lightPosition;
-  m_pcRay.lightIntensity = m_pcRaster.lightIntensity;
-  m_pcRay.lightType      = m_pcRaster.lightType;
+  //m_pcRay
 
   std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
   vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
@@ -908,7 +949,7 @@ void HelloVulkan::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clear
                           (uint32_t)descSets.size(), descSets.data(), 0, nullptr);
   vkCmdPushConstants(cmdBuf, m_rtPipelineLayout,
                      VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-                     0, sizeof(PushConstantRay), &m_pcRay);
+                     0, sizeof(PushConstantRayTracer), &m_pcRay);
 
 
   vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size.width, m_size.height, 1);
