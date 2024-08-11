@@ -10,6 +10,33 @@
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
 
+enum TechniqueType
+{
+	SHADOWRAY_PATHTRACER,
+	SIMPLE_PATHTRACER,
+	BIDIRECTIONAL_PATHTRACER
+};
+
+class Technique
+{
+private:
+    std::string codename;
+
+    std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
+    VkPipelineLayout                                  m_rtPipelineLayout;
+    VkPipeline                                        m_rtPipeline;
+public:
+	Technique() = default;
+
+    Technique(std::string codename) {
+        this->codename = codename;
+    };
+
+    void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
+
+    void destroyResources(VkDevice* m_device);
+};
+
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
 // - Each OBJ loaded are stored in an `ObjModel` and referenced by a `ObjInstance`
@@ -17,7 +44,7 @@
 // - Rendering is done in an offscreen framebuffer
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
-class HelloVulkan : public nvvkhl::AppBaseVk
+class VulkanHandler : public nvvkhl::AppBaseVk
 {
 public:
   void setup(const VkInstance& instance, const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t queueFamily) override;
@@ -139,4 +166,21 @@ public:
 
   // Push constant for ray tracer
   PushConstantRayTracer m_pcRay{};
+
+  // Techniques
+  std::unordered_map<std::string, Technique> m_techniques;
+
+  void setupTechnique(TechniqueType type) {
+      switch (type) {
+	  case SHADOWRAY_PATHTRACER:
+          m_techniques["shadowray_pathtracer"] = Technique("shadowray_pathtracer");
+		  break;
+	  case SIMPLE_PATHTRACER:
+		  m_techniques["simple_pathtracer"] = Technique("simple_pathtracer");
+		  break;
+	  case BIDIRECTIONAL_PATHTRACER:
+		  m_techniques["bidirectional_pathtracer"] = Technique("bidirectional_pathtracer");
+		  break;
+      }
+  }
 };

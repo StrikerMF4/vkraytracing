@@ -31,7 +31,7 @@ static void onErrorCallback(int error, const char* description)
 }
 
 // Extra UI
-void renderUI(HelloVulkan& helloVk)
+void renderUI(VulkanHandler& helloVk)
 {
   if(ImGui::CollapsingHeader("Extra widget"))
   {
@@ -121,7 +121,7 @@ int main(int argc, char** argv)
   vkctx.initDevice(compatibleDevices[0], contextInfo);
 
   // Create example
-  HelloVulkan helloVk;
+  VulkanHandler helloVk;
 
   // Window need to be opened to get the surface on which to draw
   const VkSurfaceKHR surface = helloVk.getVkSurface(vkctx.m_instance, window);
@@ -139,14 +139,14 @@ int main(int argc, char** argv)
   // Creation of the example-----------------------------------------------------------------------------------------------------------------
   
   //CornellBox Spheres
-  helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+  //helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
   
   //
   //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
   //
   //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
 
-  //helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
+  helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
 
   {  //Minecraft floor
       /*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
