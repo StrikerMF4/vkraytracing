@@ -12,20 +12,28 @@
 
 enum TechniqueType
 {
-	SHADOWRAY_PATHTRACER,
-	SIMPLE_PATHTRACER,
-	BIDIRECTIONAL_PATHTRACER
+	SIMPLE_PATHTRACER = 0,
+	SHADOWRAY_PATHTRACER = 1,
+	BIDIRECTIONAL_PATHTRACER = 2
 };
 
 class Technique
 {
-private:
+public:
     std::string codename;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
     VkPipelineLayout                                  m_rtPipelineLayout;
     VkPipeline                                        m_rtPipeline;
-public:
+
+    nvvk::Buffer                    m_rtSBTBuffer;
+
+    VkStridedDeviceAddressRegionKHR m_rgenRegion{};
+    VkStridedDeviceAddressRegionKHR m_missRegion{};
+    VkStridedDeviceAddressRegionKHR m_hitRegion{};
+    VkStridedDeviceAddressRegionKHR m_callRegion{};
+
+
 	Technique() = default;
 
     Technique(std::string codename) {
@@ -34,7 +42,11 @@ public:
 
     void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
 
-    void destroyResources(VkDevice* m_device);
+    void createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc, nvvk::DebugUtil* m_debug, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* m_rtProperties);
+
+	void raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m_pcRay, std::vector<VkDescriptorSet>* descSets, VkExtent2D* m_size);
+
+    void destroyResources(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc);
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -154,33 +166,32 @@ public:
   VkDescriptorPool                                  m_rtDescPool;
   VkDescriptorSetLayout                             m_rtDescSetLayout;
   VkDescriptorSet                                   m_rtDescSet;
-  std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
-  VkPipelineLayout                                  m_rtPipelineLayout;
-  VkPipeline                                        m_rtPipeline;
-
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
 
   // Push constant for ray tracer
   PushConstantRayTracer m_pcRay{};
 
   // Techniques
-  std::unordered_map<std::string, Technique> m_techniques;
+  std::unordered_map<TechniqueType, Technique*> m_techniques;
+  Technique* current_technique;
 
   void setupTechnique(TechniqueType type) {
       switch (type) {
 	  case SHADOWRAY_PATHTRACER:
-          m_techniques["shadowray_pathtracer"] = Technique("shadowray_pathtracer");
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer");
 		  break;
 	  case SIMPLE_PATHTRACER:
-		  m_techniques["simple_pathtracer"] = Technique("simple_pathtracer");
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer");
 		  break;
 	  case BIDIRECTIONAL_PATHTRACER:
-		  m_techniques["bidirectional_pathtracer"] = Technique("bidirectional_pathtracer");
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer");
 		  break;
       }
   }
+
+  void changeTechnique(TechniqueType type) {
+      current_technique = m_techniques[type];
+      //resetFrame();
+  }
+
+
 };
