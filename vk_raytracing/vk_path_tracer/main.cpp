@@ -23,11 +23,48 @@
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
+ImVec4 yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
+ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+ImVec4 grey = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
+ImVec4 green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
+ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
+
+//Shared
+VulkanHandler vulkanHandler;
+
+bool paused = false;
+bool gui_visible = true;
+bool menu_visible = false;
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
 {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+	{
+		switch (key)
+		{
+		case GLFW_KEY_Q:
+			glfwSetWindowShouldClose(window, 1);
+			break;
+		case GLFW_KEY_F1:
+			gui_visible = !gui_visible;
+			break;
+		case GLFW_KEY_ESCAPE:
+			menu_visible = !menu_visible;
+			break;
+		case GLFW_KEY_P:
+			paused = !paused;
+			break;
+		case GLFW_KEY_R:
+			vulkanHandler.resetFrame();
+			break;
+		}
+	}
 }
 
 // Extra UI
@@ -44,6 +81,136 @@ void renderUI(VulkanHandler& helloVk)
 		ImGui::SliderFloat("Intensity", &helloVk.m_pcRaster.lightIntensity, 0.f, 150.f);
 	}
 }
+
+
+inline static void drawOverlay(std::string& technique_codename, float& render_time)
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+	
+	const float PAD = 10.0f;
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+	ImVec2 work_size = viewport->WorkSize;
+	ImVec2 window_pos, window_pos_pivot;
+	window_pos.x = work_pos.x + PAD;
+	window_pos.y = work_pos.y + PAD;
+	window_pos_pivot.x = 0.0f;
+	window_pos_pivot.y = 0.0f;
+	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+	ImGui::SetNextWindowViewport(viewport->ID);
+	window_flags |= ImGuiWindowFlags_NoMove;
+
+	ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+	if (ImGui::Begin("Overlay", NULL, window_flags))
+	{
+		//Algoritmo
+		ImGui::TextColored(yellow, "Tecnica: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, technique_codename.c_str());
+
+		//Estadisticas
+		ImGui::TextColored(yellow, "Stats: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Render time: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%.3f secs", render_time);
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Render status: ");
+		ImGui::SameLine();
+		if(paused)
+			ImGui::TextColored(red, "paused");
+		else
+			ImGui::TextColored(green, "running");
+
+
+		//Información
+		ImGui::TextColored(grey, "ESC: mostrar menu");
+		ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(grey, "F1: ocultar interfaz");
+
+		ImGui::TextColored(grey, "R: reiniciar");
+		ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(grey, "P: pausar");
+
+		ImGui::TextColored(grey, "Q: cerrar");
+	}
+	ImGui::End();
+}
+
+inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
+	ImGuiH::Panel::Begin();
+	renderUI(vulkanHandler);
+
+	ImGui::Checkbox("Ambient Ligth", &vulkanHandler.m_pcRay.ambientLigth); //enable ambient ligth
+	ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
+	ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+	ImGui::SliderFloat("Shininess", &vulkanHandler.m_pcRay.shininess, 0.f, 700.f);
+	ImGui::SliderFloat("Fuzziness", &vulkanHandler.m_pcRay.fuzziness, 0.f, 1.f);
+
+	if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+		paused = true;
+
+	const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster"};
+	static int item_current_idx = 0; // Here we store our selection data as an index.
+
+	// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
+	const char* combo_preview_value = items[item_current_idx];
+
+	if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
+	{
+		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		{
+			const bool is_selected = (item_current_idx == n);
+			if (ImGui::Selectable(items[n], is_selected))
+				item_current_idx = n;
+
+			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	if (current_technique != (TechniqueType)item_current_idx)
+	{
+		current_technique = (TechniqueType)item_current_idx;
+		if(current_technique != TechniqueType::RASTER)
+			vulkanHandler.changeTechnique(current_technique);
+
+		paused = false;
+		pause_timer_start = std::chrono::high_resolution_clock::now();
+		time_elapsed = 0;
+	}
+
+	if (ImGui::Button("Reset"))
+	{
+		vulkanHandler.resetFrame();
+	}
+
+	if (ImGui::Button("Pause"))
+	{
+		paused = !paused;
+
+		if (!paused)
+		{
+			pause_timer_start = std::chrono::high_resolution_clock::now();
+		}
+	}
+
+	if (!paused) {
+		auto now = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<float> elapsed = now - pause_timer_start;
+		time_elapsed += elapsed.count();
+		pause_timer_start = now;
+	}
+
+	ImGuiH::Panel::End();
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -100,7 +267,6 @@ int main(int argc, char** argv)
 	contextInfo.setVersion(1, 2);                       // Using Vulkan 1.2
 	for (uint32_t ext_id = 0; ext_id < count; ext_id++)  // Adding required extensions (surface, win32, linux, ..)
 		contextInfo.addInstanceExtension(reqExtensions[ext_id]);
-	contextInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor", true);              // FPS in titlebar
 	contextInfo.addInstanceExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, true);  // Allow debug names
 	contextInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);            // Enabling ability to present rendering
 
@@ -119,9 +285,6 @@ int main(int argc, char** argv)
 	assert(!compatibleDevices.empty());
 	// Use a compatible device
 	vkctx.initDevice(compatibleDevices[0], contextInfo);
-
-	// Create example
-	VulkanHandler vulkanHandler;
 
 	// Window need to be opened to get the surface on which to draw
 	const VkSurfaceKHR surface = vulkanHandler.getVkSurface(vkctx.m_instance, window);
@@ -252,21 +415,24 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 
 	vulkanHandler.setupGlfwCallbacks(window);
+	glfwSetKeyCallback(window, &key_cb);
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
 	time_t start = time(0);
 
-	bool pause = false;
 	float time_elapsed = 0;
 	float time_limit = 0;
 	auto pause_timer_start = std::chrono::high_resolution_clock::now();
-	bool cambio = false;
 
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
-		//if (difftime(time(0), start) > 1)
-		   //continue;
+		if (vulkanHandler.m_pcRay.frame <= 0) {
+			paused = false;
+			pause_timer_start = std::chrono::high_resolution_clock::now();
+			time_elapsed = 0;
+		}
+
 		glfwPollEvents();
 		if (vulkanHandler.isMinimized())
 			continue;
@@ -275,82 +441,13 @@ int main(int argc, char** argv)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-
 		// Show UI window.
-		if (vulkanHandler.showGui()) {
-			ImGuiH::Panel::Begin();
-			renderUI(vulkanHandler);
+		if (gui_visible) {
+			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
 
-			ImGui::Checkbox("Ray Tracer mode", &useRaytracer);  // Switch between raster and ray tracing
-			ImGui::Checkbox("Ambient Ligth", &vulkanHandler.m_pcRay.ambientLigth); //enable ambient ligth
-			ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-			ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
-			ImGui::SliderFloat("Shininess", &vulkanHandler.m_pcRay.shininess, 0.f, 700.f);
-			ImGui::SliderFloat("Fuzziness", &vulkanHandler.m_pcRay.fuzziness, 0.f, 1.f);
-
-			if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
-				pause = true;
-
-			const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
-			static int item_current_idx = 0; // Here we store our selection data as an index.
-
-			// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
-			const char* combo_preview_value = items[item_current_idx];
-
-			if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
-			{
-				for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-				{
-					const bool is_selected = (item_current_idx == n);
-					if (ImGui::Selectable(items[n], is_selected))
-						item_current_idx = n;
-
-					// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-					if (is_selected)
-						ImGui::SetItemDefaultFocus();
-				}
-				ImGui::EndCombo();
+			if (menu_visible) {
+				drawConfigWindow(current_technique, pause_timer_start, time_limit, time_elapsed);
 			}
-
-			if (current_technique != (TechniqueType)item_current_idx)
-			{
-				current_technique = (TechniqueType)item_current_idx;
-				vulkanHandler.changeTechnique(current_technique);
-			}
-
-			if (ImGui::Button("CAMBIO"))
-			{
-				cambio = true;
-			}
-
-			if (ImGui::Button("Reset"))
-			{
-				vulkanHandler.resetFrame();
-				pause = false;
-				pause_timer_start = std::chrono::high_resolution_clock::now();
-				time_elapsed = 0;
-			}
-
-			if (ImGui::Button("Pause"))
-			{
-				pause = !pause;
-
-				if (!pause)
-				{
-					pause_timer_start = std::chrono::high_resolution_clock::now();
-				}
-			}
-
-			if (!pause) {
-				auto now = std::chrono::high_resolution_clock::now();
-				std::chrono::duration<float> elapsed = now - pause_timer_start;
-				time_elapsed += elapsed.count();
-				pause_timer_start = now;
-			}
-
-			ImGui::Text("Rendering runtime: %.3f seconds", time_elapsed);
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGuiH::Panel::End();
 		}
 
 		// Start rendering the scene
@@ -382,11 +479,10 @@ int main(int argc, char** argv)
 			offscreenRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
 
 			// Rendering Scene (reuse last frame if program is paused)
-			//Count time when not paused
 
-			if (!pause)
+			if (!paused)
 			{
-				if (useRaytracer)
+				if (current_technique != TechniqueType::RASTER)
 				{
 					vulkanHandler.raytrace(cmdBuf, clearColor);
 				}
@@ -396,6 +492,9 @@ int main(int argc, char** argv)
 					vulkanHandler.rasterize(cmdBuf);
 					vkCmdEndRenderPass(cmdBuf);
 				}
+			}
+			else {
+				vulkanHandler.updateFrame();
 			}
 		}
 
@@ -420,12 +519,6 @@ int main(int argc, char** argv)
 		// Submit for display
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
-
-		if (cambio)
-		{
-			vulkanHandler.changeTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-			cambio = false;
-		}
 	}
 
 	// Cleanup

@@ -14,13 +14,15 @@ enum TechniqueType
 {
 	SIMPLE_PATHTRACER = 0,
 	SHADOWRAY_PATHTRACER = 1,
-	BIDIRECTIONAL_PATHTRACER = 2
+	BIDIRECTIONAL_PATHTRACER = 2,
+    RASTER = 3
 };
 
 class Technique
 {
 public:
     std::string codename;
+    std::string formatted_name;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
     VkPipelineLayout                                  m_rtPipelineLayout;
@@ -36,8 +38,9 @@ public:
 
 	Technique() = default;
 
-    Technique(std::string codename) {
+    Technique(std::string codename, std::string formatted_name) {
         this->codename = codename;
+		this->formatted_name = formatted_name;
     };
 
     void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
@@ -159,6 +162,8 @@ public:
   void resetFrame();
   void updateFrame();
 
+  void onKeyboard(int key, int /*scancode*/, int action, int mods);
+
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
   nvvk::RaytracingBuilderKHR                        m_rtBuilder;
@@ -177,20 +182,20 @@ public:
   void setupTechnique(TechniqueType type) {
       switch (type) {
 	  case SHADOWRAY_PATHTRACER:
-          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer");
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer");
 		  break;
 	  case SIMPLE_PATHTRACER:
-		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer");
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer");
 		  break;
 	  case BIDIRECTIONAL_PATHTRACER:
-		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer");
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer");
 		  break;
       }
   }
 
   void changeTechnique(TechniqueType type) {
       current_technique = m_techniques[type];
-      //resetFrame();
+      resetFrame();
   }
 
 

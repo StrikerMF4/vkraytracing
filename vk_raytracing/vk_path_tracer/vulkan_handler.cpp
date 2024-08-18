@@ -167,6 +167,7 @@ void Technique::createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAll
     m_rgenRegion.deviceAddress = sbtAddress;
     m_missRegion.deviceAddress = sbtAddress + m_rgenRegion.size;
     m_hitRegion.deviceAddress = sbtAddress + m_rgenRegion.size + m_missRegion.size;
+	m_callRegion.deviceAddress = sbtAddress + m_rgenRegion.size + m_missRegion.size + m_hitRegion.size;
 
     // Helper to retrieve the handle data
     auto getHandle = [&](int i) { return handles.data() + i * handleSize; };
@@ -204,7 +205,7 @@ void Technique::raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m
     vkCmdPushConstants(cmdBuf, m_rtPipelineLayout,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
         0, sizeof(PushConstantRayTracer), &m_pcRay);
-
+    
     vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size->width, m_size->height, 1);
 }
 
@@ -654,6 +655,8 @@ void VulkanHandler::onResize(int /*w*/, int /*h*/)
   createOffscreenRender();
   updatePostDescriptorSet();
   updateRtDescriptorSet();
+
+  resetFrame();
 }
 
 
@@ -974,18 +977,28 @@ void VulkanHandler::createRtShaderBindingTable()
 //
 void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor)
 {
-  updateFrame();
+    updateFrame();
 
-  m_debug.beginLabel(cmdBuf, "Ray trace");
-  // Initializing push constant values
-  m_pcRay.clearColor     = clearColor;
-  //m_pcRay
+    m_debug.beginLabel(cmdBuf, "Ray trace");
+    // Initializing push constant values
+    m_pcRay.clearColor     = clearColor;
+    //m_pcRay
 
-  std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
+    std::vector<VkDescriptorSet> descSets{m_rtDescSet, m_descSet};
 
-  current_technique->raytrace(cmdBuf, &m_pcRay, &descSets, &m_size);
+    //TO-DO: Pasaje por referencia no funciona, pero es lo mas prolijo
+    //current_technique->raytrace(cmdBuf, &m_pcRay, &descSets, &m_size);
 
-  m_debug.endLabel(cmdBuf);
+    vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, current_technique->m_rtPipeline);
+    vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, current_technique->m_rtPipelineLayout, 0,
+        (uint32_t)descSets.size(), descSets.data(), 0, nullptr);
+    vkCmdPushConstants(cmdBuf, current_technique->m_rtPipelineLayout,
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
+        0, sizeof(PushConstantRayTracer), &m_pcRay);
+
+    vkCmdTraceRaysKHR(cmdBuf, &current_technique->m_rgenRegion, &current_technique->m_missRegion, &current_technique->m_hitRegion, &current_technique->m_callRegion, m_size.width, m_size.height, 1);
+
+    m_debug.endLabel(cmdBuf);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1017,4 +1030,15 @@ void VulkanHandler::updateFrame()
 void VulkanHandler::resetFrame()
 {
   m_pcRay.frame = -1;
+}
+
+void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
+{
+    const bool pressed = action != GLFW_RELEASE;
+
+
+    if (pressed && key == GLFW_KEY_F1)
+        m_show_gui = !m_show_gui;
+    else if (pressed && key == GLFW_KEY_Q)
+        glfwSetWindowShouldClose(m_window, 1);
 }
