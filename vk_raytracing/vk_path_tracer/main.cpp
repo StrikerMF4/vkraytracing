@@ -25,7 +25,6 @@ std::vector<std::string> defaultSearchPaths;
 
 ImVec4 yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
 ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-ImVec4 grey = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
 ImVec4 green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
 ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
 
@@ -82,7 +81,6 @@ void renderUI(VulkanHandler& helloVk)
 	}
 }
 
-
 inline static void drawOverlay(std::string& technique_codename, float& render_time)
 {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
@@ -100,7 +98,7 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 	ImGui::SetNextWindowViewport(viewport->ID);
 	window_flags |= ImGuiWindowFlags_NoMove;
 
-	ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
 	if (ImGui::Begin("Overlay", NULL, window_flags))
 	{
 		//Algoritmo
@@ -126,87 +124,122 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 		else
 			ImGui::TextColored(green, "running");
 
+		ImGui::NewLine();
 
 		//Información
-		ImGui::TextColored(grey, "ESC: mostrar menu");
-		ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(grey, "F1: ocultar interfaz");
+		ImGui::TextColored(white, "ESC: mostrar menu");
+		//ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(white, "F1: ocultar interfaz");
 
-		ImGui::TextColored(grey, "R: reiniciar");
-		ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(grey, "P: pausar");
+		ImGui::TextColored(white, "R: reiniciar");
+		//ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(white, "P: pausar");
 
-		ImGui::TextColored(grey, "Q: cerrar");
+		ImGui::TextColored(white, "Q: salir");
 	}
 	ImGui::End();
 }
 
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
-	ImGuiH::Panel::Begin();
-	renderUI(vulkanHandler);
+inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {	
+	ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
-	ImGui::Checkbox("Ambient Ligth", &vulkanHandler.m_pcRay.ambientLigth); //enable ambient ligth
-	ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-	ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
-	ImGui::SliderFloat("Shininess", &vulkanHandler.m_pcRay.shininess, 0.f, 700.f);
-	ImGui::SliderFloat("Fuzziness", &vulkanHandler.m_pcRay.fuzziness, 0.f, 1.f);
-
-	if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
-		paused = true;
-
-	const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster"};
-	static int item_current_idx = 0; // Here we store our selection data as an index.
-
-	// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
-	const char* combo_preview_value = items[item_current_idx];
-
-	if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
+	if (ImGui::BeginMenuBar())
 	{
-		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+		if (ImGui::BeginMenu("Archivo"))
 		{
-			const bool is_selected = (item_current_idx == n);
-			if (ImGui::Selectable(items[n], is_selected))
-				item_current_idx = n;
-
-			// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-			if (is_selected)
-				ImGui::SetItemDefaultFocus();
+			//if (ImGui::MenuItem("Close", "Ctrl+W")) { *p_open = false; }
+			ImGui::EndMenu();
 		}
-		ImGui::EndCombo();
+		ImGui::EndMenuBar();
 	}
 
-	if (current_technique != (TechniqueType)item_current_idx)
+	// Content
 	{
-		current_technique = (TechniqueType)item_current_idx;
-		if(current_technique != TechniqueType::RASTER)
-			vulkanHandler.changeTechnique(current_technique);
-
-		paused = false;
-		pause_timer_start = std::chrono::high_resolution_clock::now();
-		time_elapsed = 0;
-	}
-
-	if (ImGui::Button("Reset"))
-	{
-		vulkanHandler.resetFrame();
-	}
-
-	if (ImGui::Button("Pause"))
-	{
-		paused = !paused;
-
-		if (!paused)
+		ImGui::BeginGroup();
+		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
 		{
-			pause_timer_start = std::chrono::high_resolution_clock::now();
+			if (ImGui::BeginTabItem("Algoritmo"))
+			{
+				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster" };
+				static int item_current_idx = 0; // Here we store our selection data as an index.
+
+				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
+				const char* combo_preview_value = items[item_current_idx];
+
+				if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
+				{
+					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+					{
+						const bool is_selected = (item_current_idx == n);
+						if (ImGui::Selectable(items[n], is_selected))
+							item_current_idx = n;
+
+						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+
+				if (current_technique != (TechniqueType)item_current_idx)
+				{
+					current_technique = (TechniqueType)item_current_idx;
+					if (current_technique != TechniqueType::RASTER)
+						vulkanHandler.changeTechnique(current_technique);
+
+					paused = false;
+					pause_timer_start = std::chrono::high_resolution_clock::now();
+					time_elapsed = 0;
+				}
+
+				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+					paused = true;
+
+				if (ImGui::Button("Pause"))
+				{
+					paused = !paused;
+
+					if (!paused)
+					{
+						pause_timer_start = std::chrono::high_resolution_clock::now();
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Reset"))
+				{
+					vulkanHandler.resetFrame();
+				}
+					
+				if (!paused) {
+					auto now = std::chrono::high_resolution_clock::now();
+					std::chrono::duration<float> elapsed = now - pause_timer_start;
+					time_elapsed += elapsed.count();
+					pause_timer_start = now;
+				}
+
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Camara"))
+			{
+				ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
+				ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Legacy"))
+			{
+				renderUI(vulkanHandler);
+
+				ImGui::EndTabItem();
+			}
+			ImGui::EndTabBar();
 		}
+		ImGui::EndChild();
+		ImGui::EndGroup();
 	}
 
-	if (!paused) {
-		auto now = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> elapsed = now - pause_timer_start;
-		time_elapsed += elapsed.count();
-		pause_timer_start = now;
-	}
+	//ImGui::Checkbox("Ambient Ligth", &vulkanHandler.m_pcRay.ambientLigth); //enable ambient ligth
 
 	ImGuiH::Panel::End();
 }
