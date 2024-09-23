@@ -1,0 +1,218 @@
+
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_scalar_block_layout : enable
+
+#include "raycommon.glsl"
+//#include "host_device.h"
+//#include "random.glsl"
+
+// clang-format off
+layout(location = 0) rayPayloadEXT rayPayload payload;
+
+layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions of an object
+layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
+
+layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
+layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
+
+layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
+layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+
+layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
+// clang-format on
+
+struct point_data {
+    vec3 point;
+    vec3 color;
+};
+
+const int NBSAMPLES = 1;
+const uint MAX_DEPTH = 10;
+const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const float tMin     = 0.001;
+const float tMax     = 10000.0;
+
+
+void random_point_in_light(inout vec3 point, inout vec3 emission, inout vec3 surface_normal){
+    // Pick a random light
+    uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
+
+    // Pick a triangle in the light
+    Light light = lights.i[light_index];
+    uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
+
+    // Get buffers for the light object
+    ObjDesc objResource = objDesc.i[light.object_id];
+    Indices    indices     = Indices(objResource.indexAddress);
+    Vertices   vertices    = Vertices(objResource.vertexAddress);
+
+    // Indices of the triangle
+    //ivec3 ind = indices.i[light.first_index + light_triangle_index];
+    // Vertex of the triangle
+    light_triangle_index = (light.first_index + light_triangle_index) * 3;
+    Vertex v0 = vertices.v[light_triangle_index];
+    Vertex v1 = vertices.v[light_triangle_index + 1];
+    Vertex v2 = vertices.v[light_triangle_index + 2];
+
+    //const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+
+    vec3 barycentric = randomBarycentricPointInTriangle(payload.random_seed, v0.pos, v1.pos, v2.pos);
+
+    surface_normal = v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z;
+
+    point = barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
+    emission = light.emission;
+}
+
+void main()
+{
+    payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
+
+    vec3 output_color = vec3(0);
+    uint depth = 0;
+
+    for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++){
+        // gaussian AA
+        vec2 rndvec = randomGaussian(payload.random_seed);
+        float r1 = rndvec.x;
+        float r2 = rndvec.y;
+
+        // square AA
+        //float r1 = rand(payload.random_seed);
+        //float r2 = rand(payload.random_seed);
+
+        // Subpixel jitter: send the ray through a different position inside the pixel
+        // each time, to provide antialiasing.
+        vec2 subpixel_jitter = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+        const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
+        const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+        vec2       d           = inUV * 2.0 - 1.0;
+
+        //defocus blur
+        float Aperture = settings.camAperture;
+        float focus_dist = settings.focusDist;
+        vec2 offset = (Aperture/2) * RandomInUnitDisk(payload.random_seed);
+        vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
+        vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+        vec3 cam_direction = (uni.viewInverse * vec4(normalize(target * focus_dist - vec3(offset, 0)), 0)).xyz;
+
+        // Path Tracing
+        point_data eye_hits[11];
+        point_data light_hits[11];
+
+        uint eye_max_index = 0;
+        uint light_max_index = 0;
+
+        eye_hits[0].point = origin;
+        eye_hits[0].color = vec3(1.0, 1.0, 1.0);
+
+        vec3 light_surface_normal = vec3(0);
+        random_point_in_light(light_hits[0].point, light_hits[0].color, light_surface_normal);
+        vec3 light_direction = RandomInUnitSemiSphere(payload.random_seed, light_surface_normal); //veach
+
+        /* LIGHT */
+        resetPayload(payload, light_hits[0].point, light_direction);
+        vec3 contribution = vec3(1); //precargar con la funcion W_e de Veach (si es necesario)
+        vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
+
+        for(depth = 0; depth < 1 && payload.status == RAY_CONTINUE; depth++) {
+            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+
+            light_hits[depth + 1].point = payload.origin;
+            //light_hits[depth + 1].color = payload.bsdf_sample;
+
+            contribution *= payload.bsdf_sample;
+
+            //hack
+            light_hits[depth + 1].color = contribution;
+
+            origin    = payload.origin;
+            light_direction = payload.direction;
+            normal = payload.surface_normal;
+            light_max_index = depth + 1;
+        }
+
+        /* EYE */
+        contribution = vec3(1.0);
+        origin = eye_hits[0].point;
+        resetPayload(payload, origin, cam_direction);
+
+        for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+
+            eye_hits[depth + 1].point = payload.origin;
+            //eye_hits[depth + 1].color = payload.origin;
+
+            contribution *= payload.bsdf_sample;
+
+            //hack
+            eye_hits[depth + 1].color = contribution;
+
+            origin    = payload.origin;
+            cam_direction = payload.direction;
+            normal = payload.surface_normal;
+
+            for(int i = 0; i < light_max_index; i++){
+                vec3 origin = eye_hits[depth + 1].point;
+                vec3 direction = normalize(light_hits[i].point - eye_hits[depth + 1].point);
+                float dist = distance(light_hits[i].point, eye_hits[depth + 1].point);
+                resetPayload(payload, origin, direction);
+                traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, dist - 0.01f, 0);
+
+                if(payload.status != RAY_MISS)
+                    continue; //Camino obstruído
+
+                output_color += light_hits[i].color * contribution;
+            }
+
+            payload.origin = origin;
+            payload.direction = cam_direction;
+            payload.surface_normal = normal;
+
+            eye_max_index = depth + 1;
+        }
+
+//        if(payload.status == RAY_HIT_LIGHT){
+//            output_color += contribution;
+//            continue;
+//        }
+
+        /* mix */
+//        uint top = min(20u, eye_max_index * light_max_index);
+//        for(int i = 0; i < top; i++){
+//            uint eye_index = pcg_hash(payload.random_seed) % (eye_max_index + 1);
+//            uint light_index = pcg_hash(payload.random_seed) % (light_max_index + 1);
+//
+//            origin = eye_hits[eye_index].point;
+//            direction = normalize(light_hits[light_index].point - eye_hits[eye_index].point);
+//            float dist = distance(light_hits[light_index].point, eye_hits[eye_index].point);
+//            
+//            resetPayload(payload, origin, direction);
+//
+//            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, dist - 0.01f, 0);
+//
+//            if(payload.status != RAY_MISS)
+//                continue; //Camino obstruído
+//
+//            output_color += eye_hits[eye_index].color * light_hits[light_index].color / top;
+//        }
+    }
+    output_color  = output_color / NBSAMPLES;
+
+    if(settings.frame > 0)
+    {   //Accumulation over time
+        float a         = 1.0f / float(settings.frame + 1);
+        vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
+        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
+    }
+    else
+    {   // First frame, replace the value in the buffer
+        imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
+    }
+}

@@ -60,7 +60,11 @@ vec3 RandomInUnitSphere(inout uint seed) {
 	}
 }
 
-vec3 randomPointInTriangle(inout uint seed, vec3 A, vec3 B, vec3 C) {
+vec3 RandomInUnitSemiSphere(inout uint seed, vec3 normal) {
+    return normalize(RandomInUnitSphere(seed) + normal);
+}
+
+vec3 randomBarycentricPointInTriangle(inout uint seed, vec3 A, vec3 B, vec3 C) {
     float r1 = rand(seed);  // Supone que tienes una función rand() que retorna un valor entre 0 y 1
     float r2 = rand(seed);
 
@@ -76,5 +80,7 @@ vec3 randomPointInTriangle(inout uint seed, vec3 A, vec3 B, vec3 C) {
     float c = r2;
 
     // Punto dentro del triángulo
-    return a * A + b * B + c * C;
+    return vec3(a,b,c);
+
+//    return a * A.pos + b * B.pos + c * C.pos;
 }

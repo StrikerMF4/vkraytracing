@@ -126,7 +126,7 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 
 		ImGui::NewLine();
 
-		//Información
+		//Informaciï¿½n
 		ImGui::TextColored(white, "ESC: mostrar menu");
 		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "F1: ocultar interfaz");
@@ -394,9 +394,10 @@ int main(int argc, char** argv)
 	//-----------------------------------------------------------------------------------------------------------------------------------------
 
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
+	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER); 
+	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
-	TechniqueType current_technique = TechniqueType::SIMPLE_PATHTRACER;
+	TechniqueType current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
 
 	vulkanHandler.uploadImplicitObjects();
