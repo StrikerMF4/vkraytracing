@@ -176,7 +176,7 @@ void main()
 
 			if(payload.bsdf_type != BSDF_TRANSMISSION && payload.status != RAY_HIT_LIGHT){
 				//c = (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
-				c = (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample) + Le) * w / prob;
+				c += (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample) + Le) * w / prob;
 			}else{
 				c += Le * w / prob;
 			}

@@ -70,6 +70,31 @@ void random_point_in_light(inout vec3 point, inout vec3 emission, inout vec3 sur
     emission = light.emission;
 }
 
+
+vec3 shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color, point_data light_hits[11], uint light_max_index){
+	float IOR = payload.material.IOR;
+	float roughness = payload.material.roughness;
+	float theta = payload.theta;
+
+	vec3 color = vec3(0);
+	for (uint index = 0; index < light_max_index; index++){
+
+        vec3 L = light_hits[index].point - origin;
+		float lightdist = length(L);
+		L /= lightdist; // Normalize
+
+		resetPayload(payload, origin, L);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
+
+		if (payload.status == RAY_MISS) {
+
+			float bsdf = CT_brdf(L, viewer, N, m, IOR, roughness, theta);
+			color += light_hits[index].color * dot(N, L) * bsdf * point_color;
+		}
+	}
+	return color;
+}
+
 void main()
 {
     payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
@@ -142,9 +167,19 @@ void main()
         contribution = vec3(1.0);
         origin = eye_hits[0].point;
         resetPayload(payload, origin, cam_direction);
+		vec3 c = vec3(0.0);
+        vec3 w = vec3(1.0);
+        float cost = 1.0;
 
         for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+            vec3 viewer = -payload.direction;
+
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+
+            if(payload.status == RAY_MISS){
+				c += settings.clearColor.xyz * w;
+				break;
+			}
 
             eye_hits[depth + 1].point = payload.origin;
             //eye_hits[depth + 1].color = payload.origin;
@@ -154,29 +189,45 @@ void main()
             //hack
             eye_hits[depth + 1].color = contribution;
 
+			vec3 bsdf_sample = payload.bsdf_sample;
+            vec3 Le = payload.Le;
+
             origin    = payload.origin;
             cam_direction = payload.direction;
             normal = payload.surface_normal;
+			uint ray_status = payload.status;
 
-            for(int i = 0; i < light_max_index; i++){
-                vec3 origin = eye_hits[depth + 1].point;
-                vec3 direction = normalize(light_hits[i].point - eye_hits[depth + 1].point);
-                float dist = distance(light_hits[i].point, eye_hits[depth + 1].point);
-                resetPayload(payload, origin, direction);
-                traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, dist - 0.01f, 0);
 
-                if(payload.status != RAY_MISS)
-                    continue; //Camino obstruído
+            if(payload.bsdf_type != BSDF_TRANSMISSION && payload.status != RAY_HIT_LIGHT){
+				c += (shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample, light_hits, light_max_index) + Le) * w;
+			}else{
+				c += Le * w;
+			}
 
-                output_color += light_hits[i].color * contribution;
-            }
+//            for(int i = 0; i < light_max_index; i++){
+//                vec3 origin = eye_hits[depth + 1].point;
+//                vec3 direction = normalize(light_hits[i].point - eye_hits[depth + 1].point);
+//                float dist = distance(light_hits[i].point, eye_hits[depth + 1].point);
+//                resetPayload(payload, origin, direction);
+//                traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, dist - 0.01f, 0);
+//
+//                if(payload.status != RAY_MISS)
+//                    continue; //Camino obstruído
+//
+//                output_color += light_hits[i].color * contribution * (1/(light_max_index * MAX_DEPTH));
+//            }
 
-            payload.origin = origin;
-            payload.direction = cam_direction;
-            payload.surface_normal = normal;
+			cost = abs(dot(cam_direction, normal));
+
+			w *= bsdf_sample * cost;
+			//w *= bsdf_sample;
+			resetPayload(payload, origin, cam_direction);
+			payload.status = ray_status;
 
             eye_max_index = depth + 1;
         }
+
+		output_color += c * int(depth < MAX_DEPTH) + (int(depth >= MAX_DEPTH) * settings.clearColor.xyz * w);
 
 //        if(payload.status == RAY_HIT_LIGHT){
 //            output_color += contribution;
