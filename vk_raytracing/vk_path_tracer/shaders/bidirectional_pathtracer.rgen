@@ -146,8 +146,12 @@ void main()
         vec3 contribution = vec3(1); //precargar con la funcion W_e de Veach (si es necesario)
         vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
 
-        for(depth = 0; depth < 1 && payload.status == RAY_CONTINUE; depth++) {
+        for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+
+            if(payload.status == RAY_MISS){
+				break;
+			}
 
             light_hits[depth + 1].point = payload.origin;
             //light_hits[depth + 1].color = payload.bsdf_sample;
