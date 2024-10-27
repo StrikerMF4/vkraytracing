@@ -10,6 +10,48 @@
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
 
+enum TechniqueType
+{
+	SIMPLE_PATHTRACER = 0,
+	SHADOWRAY_PATHTRACER = 1,
+	BIDIRECTIONAL_PATHTRACER = 2,
+    RASTER = 3
+};
+
+class Technique
+{
+public:
+    std::string codename;
+    std::string formatted_name;
+
+    std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
+    VkPipelineLayout                                  m_rtPipelineLayout;
+    VkPipeline                                        m_rtPipeline;
+
+    nvvk::Buffer                    m_rtSBTBuffer;
+
+    VkStridedDeviceAddressRegionKHR m_rgenRegion{};
+    VkStridedDeviceAddressRegionKHR m_missRegion{};
+    VkStridedDeviceAddressRegionKHR m_hitRegion{};
+    VkStridedDeviceAddressRegionKHR m_callRegion{};
+
+
+	Technique() = default;
+
+    Technique(std::string codename, std::string formatted_name) {
+        this->codename = codename;
+		this->formatted_name = formatted_name;
+    };
+
+    void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
+
+    void createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc, nvvk::DebugUtil* m_debug, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* m_rtProperties);
+
+	void raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m_pcRay, std::vector<VkDescriptorSet>* descSets, VkExtent2D* m_size);
+
+    void destroyResources(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc);
+};
+
 //--------------------------------------------------------------------------------------------------
 // Simple rasterizer of OBJ objects
 // - Each OBJ loaded are stored in an `ObjModel` and referenced by a `ObjInstance`
@@ -17,7 +59,7 @@
 // - Rendering is done in an offscreen framebuffer
 // - The image of the framebuffer is displayed in post-process in a full-screen quad
 //
-class HelloVulkan : public nvvkhl::AppBaseVk
+class VulkanHandler : public nvvkhl::AppBaseVk
 {
 public:
   void setup(const VkInstance& instance, const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t queueFamily) override;
@@ -27,6 +69,7 @@ public:
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
+  void createLightBuffer();
   void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures);
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
@@ -64,6 +107,7 @@ public:
   std::vector<ObjModel>    m_objModel;   // Model on host
   std::vector<ObjDesc>     m_objDesc;    // Model description for device access
   std::vector<ObjInstance> m_instances;  // Scene model instances
+  std::vector<Light>    m_lights;     // Lights in the scene
 
 
   // Graphic pipeline
@@ -76,6 +120,7 @@ public:
 
   nvvk::Buffer m_bGlobals;  // Device-Host of the camera matrices
   nvvk::Buffer m_bObjDesc;  // Device buffer of the OBJ descriptions
+  nvvk::Buffer m_bLights;  // Device buffer of the lights descriptions
 
   std::vector<nvvk::Texture> m_textures;  // vector of all textures of the scene
 
@@ -114,6 +159,10 @@ public:
   void createRtPipeline();
   void createRtShaderBindingTable();
   void raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor);
+  void resetFrame();
+  void updateFrame();
+
+  void onKeyboard(int key, int /*scancode*/, int action, int mods);
 
 
   VkPhysicalDeviceRayTracingPipelinePropertiesKHR m_rtProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
@@ -122,16 +171,32 @@ public:
   VkDescriptorPool                                  m_rtDescPool;
   VkDescriptorSetLayout                             m_rtDescSetLayout;
   VkDescriptorSet                                   m_rtDescSet;
-  std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
-  VkPipelineLayout                                  m_rtPipelineLayout;
-  VkPipeline                                        m_rtPipeline;
-
-  nvvk::Buffer                    m_rtSBTBuffer;
-  VkStridedDeviceAddressRegionKHR m_rgenRegion{};
-  VkStridedDeviceAddressRegionKHR m_missRegion{};
-  VkStridedDeviceAddressRegionKHR m_hitRegion{};
-  VkStridedDeviceAddressRegionKHR m_callRegion{};
 
   // Push constant for ray tracer
-  PushConstantRay m_pcRay{};
+  PushConstantRayTracer m_pcRay{};
+
+  // Techniques
+  std::unordered_map<TechniqueType, Technique*> m_techniques;
+  Technique* current_technique;
+
+  void setupTechnique(TechniqueType type) {
+      switch (type) {
+	  case SHADOWRAY_PATHTRACER:
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer");
+		  break;
+	  case SIMPLE_PATHTRACER:
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer");
+		  break;
+	  case BIDIRECTIONAL_PATHTRACER:
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer");
+		  break;
+      }
+  }
+
+  void changeTechnique(TechniqueType type) {
+      current_technique = m_techniques[type];
+      resetFrame();
+  }
+
+
 };

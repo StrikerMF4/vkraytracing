@@ -14,6 +14,7 @@ if(NOT BASE_DIRECTORY)
     )
 endif()
 
+
 ## Various functions and macros REQUIRED
 if(EXISTS ${BASE_DIRECTORY}/nvpro_core/cmake/setup.cmake)
   include(${BASE_DIRECTORY}/nvpro_core/cmake/setup.cmake)
@@ -41,13 +42,8 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/media DESTINATION ${OUTPUT_PATH})
 
 #--------------------------------------------------------------------------------------------------
 # Sub examples
-add_subdirectory(vk1_launchID)
-add_subdirectory(vk2_primitiveID)
-add_subdirectory(vk3_material)
-add_subdirectory(vk4_rebotes)
-add_subdirectory(vk5_random)
+
 add_subdirectory(vk_path_tracer)
-add_subdirectory(vk_bidirectional_path_tracer)
 
 
 #--------------------------------------------------------------------------------------------------
