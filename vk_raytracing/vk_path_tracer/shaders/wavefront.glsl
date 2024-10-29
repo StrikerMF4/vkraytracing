@@ -137,5 +137,5 @@ float CT_brdf(vec3 w_i, vec3 w_o, vec3 normal, vec3 micro_normal, float refracti
 	float F = F(refraction_index, w_o, halfway_vector);
 	float G = GGX_G(w_i, w_o, micro_normal, normal, alpha);
 
-	return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)));
+	return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)) + 0.000001);
 }

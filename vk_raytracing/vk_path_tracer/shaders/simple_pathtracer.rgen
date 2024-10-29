@@ -91,6 +91,8 @@ void main()
 
 			w *= bsdf_sample;
 		}
+		if(isnan(w.r) || isnan(w.g) || isnan(w.b))
+            w = vec3(0.0);
 		output_color += w * int(depth < MAX_DEPTH) + int(depth >= MAX_DEPTH) * settings.clearColor.xyz;
 	}
 

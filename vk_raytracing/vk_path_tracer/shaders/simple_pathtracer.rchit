@@ -110,38 +110,69 @@ void main() {
         payload.status = RAY_HIT_LIGHT;
     } else {
      
-        payload.material = material;
+        // Retrieve material properties
+        float alpha = material.roughness * material.roughness;
+        float metallic = material.metallic;
+        vec3 albedo = material.color * texture_color; // Base color with texture
 
-        float rnd = rand(payload.random_seed);
-        float absorption = 0;
-
-        float trans_prob = 1 - material.opacity;
-        float refl_prob = trans_prob + material.metallic;
-        float absor_prob = refl_prob + absorption;
-
-        float alpha_ggx = material.roughness;// * material.roughness; //Estaba en nvcore
-        vec3 micro_normal = normalize(ggx_micronormal(payload.surface_normal, alpha_ggx, payload.random_seed, payload.theta)); //vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed)
+        // Sample microfacet normal
+        vec3 micro_normal = ggx_micronormal(payload.surface_normal, alpha, payload.random_seed, payload.theta);
         payload.surface_micronormal = micro_normal;
-        
-        if(rnd < trans_prob) {
-            payload.bsdf_sample = vec3(0);
+        vec3 i_ray = -payload.direction;
+
+        // Compute Fresnel term F
+        float cos_theta_i = dot(i_ray, micro_normal);
+        vec3 F0 = albedo; // Dielectrics have F0 ~ 0.04
+        vec3 F = F0 + (1 - F0) * pow(1 - cos_theta_i, 5);
+
+        float F_average = (F.x + F.y + F.z) / 3;
+            
+        float rnd = rand(payload.random_seed);
+
+        // Decide between reflection and transmission based on Fresnel term
+        // float reflectance = max_component(F);
+        if (rnd <= F_average) {
+            // Reflection
+
+
+            // Compute outgoing direction
+            payload.direction = micro_reflect(i_ray, micro_normal);
+
+            // Compute Geometry term G
+            float G = GGX_G(i_ray, payload.direction, micro_normal, payload.surface_normal, alpha);
+
+            // Compute Normal Distribution Function D
+            // float D = GGX_D(micro_normal, payload.surface_normal, alpha);
+
+            // Compute denominator
+            //float denominator = 4.0 * abs(dot(-payload.direction, payload.surface_normal)) * abs(dot(payload.direction, payload.surface_normal)) + 1e-7;
+            float denominator = abs(dot(micro_normal, payload.surface_normal)) * abs(dot(i_ray, payload.surface_normal));
+
+            // Compute specular BRDF
+            vec3 f_specular = F * ((G * abs(dot(i_ray, micro_normal))) / denominator);
+
+            // Set bsdf_sample and pdf
+            payload.bsdf_sample = f_specular;
+
+            // float pdf_m = D * dot(micro_normal, payload.surface_normal);
+            // payload.pdf = pdf_m / (4.0 * abs(dot(payload.direction, micro_normal)));
+        } else {
+            // Transmision
             payload.direction = transmition(micro_normal, material);
-            payload.bsdf_sample = material.baseColor * texture_color; //specular color?
-        } 
-        else if(rnd < refl_prob) {
-            payload.direction = micro_reflect(-payload.direction, micro_normal);
-            payload.bsdf_sample = vec3(1); //specular color?
-            payload.bsdf_type = BSDF_REFLECTION;
-        }
-        else if(rnd < absor_prob) {
-            payload.status = RAY_ABSORBED;
-        }
-        else {
-            payload.direction = micro_reflect(-payload.direction, micro_normal);
-            payload.bsdf_sample = material.baseColor * texture_color;
-            payload.bsdf_type = BSDF_DIFFUSE;
+
+            float G = GGX_G(i_ray, payload.direction, micro_normal, payload.surface_normal, alpha);
+
+            float denominator = abs(dot(micro_normal, payload.surface_normal)) * abs(dot(i_ray, payload.surface_normal));
+
+            vec3 f_specular = (1 - F) * ((G * abs(dot(i_ray, micro_normal))) / denominator);
+
+            payload.bsdf_sample = f_specular;
         }
 
+
+        // Update payload origin for the next bounce
+        payload.origin = hit_position;
+        payload.status = RAY_CONTINUE;
     }
 }
 
