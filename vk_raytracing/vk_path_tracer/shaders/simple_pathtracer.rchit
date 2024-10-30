@@ -62,6 +62,37 @@ vec3 transmition(vec3 micro_normal, WaveFrontMaterial material) {
 }
 
 
+// Sample hemisphere with cosine weighting
+vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
+    // Generate two random numbers
+    float u1 = rand(seed);
+    float u2 = rand(seed);
+
+    // Transform the random numbers to spherical coordinates
+    float r = sqrt(u1);
+    float theta = 2.0 * PI * u2;
+
+    // Convert spherical coordinates to Cartesian coordinates in tangent space
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    float z = sqrt(1.0 - u1);
+
+    // Construct an orthonormal basis (TBN) from the normal
+    vec3 tangent, bitangent;
+
+    if (abs(normal.x) > abs(normal.z)) {
+        tangent = normalize(vec3(-normal.y, normal.x, 0.0));
+    } else {
+        tangent = normalize(vec3(0.0, -normal.z, normal.y));
+    }
+    bitangent = normalize(cross(normal, tangent));
+
+    // Transform sample vector from tangent space to world space
+    vec3 sample_dir = x * tangent + y * bitangent + z * normal;
+
+    return normalize(sample_dir);
+}
+
 void main() {
     //Object data-------------------------------------------------------------------------------------------
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
@@ -101,78 +132,194 @@ void main() {
     //--------------------------------------------------------------------------------------------------------
 
     
+    vec3 albedo = material.color * texture_color;
 
     payload.origin = hit_position;
     if(length(material.emission) > 0) {
         // TO-DO: Cambiar esto por alguna aproximaci�n al L de Veach
-        payload.bsdf_sample = 3 * material.emission * texture_color.rgb;
-        payload.Le = 3 * material.emission * texture_color.rgb;
+        payload.bsdf_sample = material.emission * albedo;
+        payload.Le = material.emission * albedo;
         payload.status = RAY_HIT_LIGHT;
     } else {
      
-        // Retrieve material properties
-        float alpha = material.roughness * material.roughness;
-        float metallic = material.metallic;
-        vec3 albedo = material.color * texture_color; // Base color with texture
 
-        // Sample microfacet normal
-        vec3 micro_normal = ggx_micronormal(payload.surface_normal, alpha, payload.random_seed, payload.theta);
-        payload.surface_micronormal = micro_normal;
-        vec3 i_ray = -payload.direction;
+        // Initialize variables
+        vec3 w_i = -payload.direction; // Incident direction (towards the surface)
+        float cos_theta_i = dot(payload.surface_normal, w_i);
+        cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
 
-        // Compute Fresnel term F
-        float cos_theta_i = dot(i_ray, micro_normal);
-        vec3 F0 = albedo; // Dielectrics have F0 ~ 0.04
-        vec3 F = F0 + (1 - F0) * pow(1 - cos_theta_i, 5);
+        // Determine if the ray is entering or exiting the material
+        bool entering = cos_theta_i > 0.0;
 
-        float F_average = (F.x + F.y + F.z) / 3;
-            
+        // Adjust normal and cosine for transmission if necessary
+        vec3 n = payload.surface_normal;
+        if (!entering) {
+            n = -payload.surface_normal;
+            cos_theta_i = dot(n, w_i);
+        }
+
+        // Material properties
+        float metallic     = clamp(material.metallic, 0.0, 1.0);
+        float roughness    = clamp(material.roughness, 0.005, 1.0); // Minimum roughness to avoid singularities
+        float alpha        = roughness * roughness;
+        float transmission = 1 - clamp(material.transparent, 0.0, 1.0);
+        float eta_i        = 1.0;           // Index of refraction of the incident medium (air)
+        float eta_t        = material.IOR;  // Index of refraction of the transmitted medium (material)
+        if (!entering) {
+            // Swap indices if exiting the material
+            float temp = eta_i;
+            eta_i = eta_t;
+            eta_t = temp;
+        }
+        float eta = eta_i / eta_t;
+
+        // Fresnel reflectance at normal incidence (F0)
+        vec3 F0;
+        if (metallic > 0.0) {
+            // For metals, F0 is the albedo color
+            F0 = albedo;
+        } else {
+            // For dielectrics, use Schlick's approximation with IOR
+            float r0 = pow((eta_i - eta_t) / (eta_i + eta_t), 2.0);
+            F0 = vec3(r0);
+        }
+
+        // Compute Fresnel reflectance using Schlick's approximation
+        vec3 F = F0 + (vec3(1.0) - F0) * pow(1.0 - abs(cos_theta_i), 5.0);
+
+        // Determine scattering probabilities
+        float P_reflect;
+        float P_transmit = transmission * (1.0 - metallic);
+        float P_diffuse  = (1.0 - metallic) * (1.0 - transmission);
+        if (metallic > 0.0 || transmission > 0.0) {
+            // For metals and transparent materials, use Fresnel reflectance
+            P_reflect = max(max(F.r, F.g), F.b);
+        } else {
+            // For dielectrics, adjust reflectance probability
+            P_reflect = max(max(F.r, F.g), F.b);
+            P_diffuse *= (1.0 - P_reflect);
+        }
+        // Normalize probabilities
+        float sum_probs = P_reflect + P_transmit + P_diffuse;
+        P_reflect  /= sum_probs;
+        P_transmit /= sum_probs;
+        P_diffuse  /= sum_probs;
+
+        // Generate a random number to select the scattering event
         float rnd = rand(payload.random_seed);
 
-        // Decide between reflection and transmission based on Fresnel term
-        // float reflectance = max_component(F);
-        if (rnd <= F_average) {
-            // Reflection
+        if (rnd < P_reflect) {
+            // Specular Reflection
 
+            // Sample microfacet normal using GGX distribution
+            float theta_m, phi_m;
+            vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
 
             // Compute outgoing direction
-            payload.direction = micro_reflect(i_ray, micro_normal);
+            vec3 w_o = micro_reflect(w_i, micro_normal);
 
-            // Compute Geometry term G
-            float G = GGX_G(i_ray, payload.direction, micro_normal, payload.surface_normal, alpha);
+            // Ensure that the outgoing direction is in the same hemisphere
+            if (dot(w_o, n) <= 0.0) {
+                payload.status = RAY_ABSORBED;
+                return;
+            }
 
-            // Compute Normal Distribution Function D
-            // float D = GGX_D(micro_normal, payload.surface_normal, alpha);
+            // Compute BRDF value
+            // float D = GGX_D(micro_normal, n, alpha, theta_m);
+            float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
+            // vec3  f_specular = (F * D * G) / (4.0 * abs(dot(n, w_i)) * abs(dot(n, w_o)) + 1e-7);
 
             // Compute denominator
             //float denominator = 4.0 * abs(dot(-payload.direction, payload.surface_normal)) * abs(dot(payload.direction, payload.surface_normal)) + 1e-7;
-            float denominator = abs(dot(micro_normal, payload.surface_normal)) * abs(dot(i_ray, payload.surface_normal));
+            float denominator = abs(dot(micro_normal, payload.surface_normal)) * abs(dot(w_i, payload.surface_normal));
 
             // Compute specular BRDF
-            vec3 f_specular = F * ((G * abs(dot(i_ray, micro_normal))) / denominator);
+            vec3 f_specular = F * ((G * abs(dot(w_i, micro_normal))) / denominator);
 
             // Set bsdf_sample and pdf
             payload.bsdf_sample = f_specular;
 
-            // float pdf_m = D * dot(micro_normal, payload.surface_normal);
-            // payload.pdf = pdf_m / (4.0 * abs(dot(payload.direction, micro_normal)));
+
+            // Compute PDF
+            // float pdf = D * abs(dot(n, micro_normal)) / (4.0 * abs(dot(w_o, micro_normal)) + 1e-7);
+
+            // Update payload
+            payload.direction    = w_o;
+            payload.bsdf_sample  = F;
+            payload.pdf          = 1;
+            payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
+            payload.status       = RAY_CONTINUE;
+
+        } else if (rnd < P_reflect + P_transmit) {
+            // Transmission (Refraction)
+
+            // Only proceed if the material is transparent
+            if (transmission > 0.0) {
+                // Sample microfacet normal
+                float theta_m, phi_m;
+                vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
+
+                // Compute refracted direction using Snell's Law
+                vec3 w_o = micro_transmit(w_i, micro_normal, n, eta);
+
+                // Check for total internal reflection
+                if (length(w_o) == 0.0) {
+                    // Total internal reflection, treat as reflection
+                    w_o = micro_reflect(w_i, micro_normal);
+                }
+
+                // Compute Fresnel transmittance
+                vec3 T = vec3(1.0) - F;
+
+                // Compute BTDF value
+                float D = GGX_D(micro_normal, n, alpha, theta_m);
+                float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
+                float denom = abs(dot(n, w_i)) * abs(dot(n, w_o)) + 1e-7;
+                vec3 f_transmission = (T * D * G * eta * eta) / denom;
+
+                // Adjust for refracted solid angle
+                f_transmission *= abs(dot(w_i, micro_normal)) * abs(dot(w_o, micro_normal)) / (abs(dot(n, w_i)) * abs(dot(n, w_o)) + 1e-7);
+
+                // Compute PDF
+                float pdf = D * abs(dot(n, micro_normal)) * abs(dot(w_o, micro_normal)) / pow(abs(dot(w_i, micro_normal) + eta * dot(w_o, micro_normal)), 2.0);
+
+                // Update payload
+                payload.direction    = w_o;
+                payload.bsdf_sample  = f_transmission;
+                payload.pdf          = pdf;
+                payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
+                payload.status       = RAY_CONTINUE;
+
+                // Apply Beer's Law for absorption
+                // float distance = 0.0; // You may need to compute the actual distance
+                // vec3 absorption = exp(-material.absorption * distance);
+                // payload.bsdf_sample *= absorption;
+
+            } else {
+                // Material is not transparent, absorb the ray
+                payload.status = RAY_ABSORBED;
+            }
+
         } else {
-            // Transmision
-            payload.direction = transmition(micro_normal, material);
+            // Diffuse Reflection
 
-            float G = GGX_G(i_ray, payload.direction, micro_normal, payload.surface_normal, alpha);
+            // Sample outgoing direction over hemisphere
+            //vec3 w_o = sampleHemisphereCosineWeighted(n, payload.random_seed);
+            vec3 w_o = RandomInUnitSemiSphere(payload.random_seed, n);
 
-            float denominator = abs(dot(micro_normal, payload.surface_normal)) * abs(dot(i_ray, payload.surface_normal));
+            // Compute diffuse BRDF
+            vec3 f_diffuse = albedo / PI;
 
-            vec3 f_specular = (1 - F) * ((G * abs(dot(i_ray, micro_normal))) / denominator);
+            // Compute PDF
+            float pdf = max(dot(n, w_o), 0.0) / PI;
 
-            payload.bsdf_sample = f_specular;
+            // Update payload
+            payload.direction    = w_o;
+            payload.bsdf_sample  = f_diffuse;
+            payload.pdf          = pdf;
+            payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
+            payload.status       = RAY_CONTINUE;
         }
-
-
-        // Update payload origin for the next bounce
-        payload.origin = hit_position;
-        payload.status = RAY_CONTINUE;
     }
 }
 

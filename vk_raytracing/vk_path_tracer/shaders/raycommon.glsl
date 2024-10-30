@@ -24,6 +24,7 @@ struct rayPayload
 	vec3 surface_normal;
 	vec3 surface_micronormal;
 	float theta;
+	float pdf;
 
 	WaveFrontMaterial material;
 
