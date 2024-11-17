@@ -184,8 +184,9 @@ void main() {
             F0 = vec3(r0);
         }
 
+
         // Compute Fresnel reflectance using Schlick's approximation
-        vec3 F = F0 + (vec3(1.0) - F0) * pow(1.0 - abs(cos_theta_i), 5.0);
+        vec3 F = F0 + (vec3(1.0) - F0) * pow(1.0 - max(cos_theta_i, 0.0), 5.0);
 
         // Determine scattering probabilities
         float P_reflect;
@@ -193,10 +194,10 @@ void main() {
         float P_diffuse  = (1.0 - metallic) * (1.0 - transmission);
         if (metallic > 0.0 || transmission > 0.0) {
             // For metals and transparent materials, use Fresnel reflectance
-            P_reflect = max(max(F.r, F.g), F.b);
+            P_reflect = (F.r + F.g + F.b)/3;
         } else {
             // For dielectrics, adjust reflectance probability
-            P_reflect = max(max(F.r, F.g), F.b);
+            P_reflect = (F.r + F.g + F.b)/3;
             P_diffuse *= (1.0 - P_reflect);
         }
         // Normalize probabilities
