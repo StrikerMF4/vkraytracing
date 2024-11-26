@@ -30,6 +30,65 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 // clang-format on
 
 
+float Luminance(vec3 c)
+{
+    return 0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z;
+}
+
+
+void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
+{
+    float lum = Luminance(color);
+    vec3 ctint = lum > 0.0 ? color / lum : vec3(1.0);
+
+    F0 = (1.0 - eta) / (1.0 + eta);
+    F0 *= F0;
+    
+    Cspec0 = F0 * mix(vec3(1.0), ctint, 0/*mat.specularTint*/);
+    Csheen = mix(vec3(1.0), ctint, 0/*mat.sheenTint*/);
+}
+
+float SchlickWeight(float u)
+{
+    float m = clamp(1.0 - u, 0.0, 1.0);
+    float m2 = m * m;
+    return m2 * m2 * m;
+}
+
+
+float DielectricFresnel(float cosThetaI, float eta)
+{
+    float sinThetaTSq = eta * eta * (1.0f - cosThetaI * cosThetaI);
+
+    // Total internal reflection
+    if (sinThetaTSq > 1.0)
+        return 1.0;
+
+    float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
+
+    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI);
+    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT);
+
+    return 0.5f * (rs * rs + rp * rp);
+}
+
+vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, float alpha, float theta_m, vec3 F, out float pdf)
+{
+    pdf = 0.0;
+    float NDotL = dot(n, w_o);
+    float NDotV = dot(n, w_i);
+
+    //float D = GTR2Aniso(H.z, H.x, H.y, mat.ax, mat.ay);
+    float D = GGX_D(micro_normal, n, alpha, theta_m);
+    // float G1 = SmithGAniso(abs(V.z), V.x, V.y, mat.ax, mat.ay); (NDotL = L.z; NDotV = V.z; NDotH = H.z)
+    // float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, mat.ax, mat.ay);
+    float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
+
+    // D * abs(dot(n, micro_normal)) / (4.0 * abs(dot(w_o, micro_normal)) + 1e-7);
+    pdf = abs(dot(n, micro_normal)) * D / (4.0 * NDotV);
+    return F * D * G / (4.0 * NDotL * NDotV);
+}
+
 vec3 transmition(vec3 micro_normal, WaveFrontMaterial material) {
     bool ray_entering = dot(payload.direction, payload.surface_normal) < 0;
     float ni = 1;
@@ -161,7 +220,7 @@ void main() {
         */
 
         // Material properties
-        float metallic     = 0;
+        float metallic     = clamp(material.metallic, 0.0, 1.0);
         float roughness    = clamp(material.roughness, 0.005, 1.0); // Minimum roughness to avoid singularities
         float alpha        = roughness * roughness;
         float transmission = 1 - clamp(material.transparent, 0.0, 1.0);
@@ -175,149 +234,41 @@ void main() {
         }
         float eta = eta_i / eta_t;
 
-        // Fresnel reflectance at normal incidence (F0)
-        vec3 F0;
-        /* if (metallic > 0.0) {
-            // For metals, F0 is the albedo color
-            F0 = albedo;
-        } else {
-            // For dielectrics, use Schlick's approximation with IOR
-            float r0 = pow((eta_i - eta_t) / (eta_i + eta_t), 2.0);
-            F0 = vec3(r0);
-        }
-        */
+        float F0;
+        vec3 Csheen, Cspec0;
+        TintColors(albedo, eta, F0, Csheen, Cspec0); // void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
 
-        F0 = mix(vec3(0.04), albedo, metallic);
+        float NdotV = dot(n,w_i);
 
-        // Compute Fresnel reflectance using Schlick's approximation
-        vec3 F = F0 + (vec3(1.0) - F0) * pow(1.0 - max(cos_theta_i, 0.0), 5.0);
-        // vec3 F = F0;
+        float schlickWt = SchlickWeight(NdotV);
 
-        float reflectance = dot(F, vec3(0.2126, 0.7152, 0.0722));
+        // Model weights
+        float dielectricWt = (1.0 - metallic) * (1.0 - transmission);
+        float glassWt = (1.0 - metallic) * transmission;
 
-        // Determine scattering probabilities
-        float P_reflect = reflectance;
-        float P_diffuse  = (1.0 - metallic) * (1.0 - transmission) * (1.0 - reflectance);
-        float P_transmit = transmission * (1.0 - metallic) * (1.0 - reflectance);
-
-
-
-        /*if (metallic > 0.0 || transmission > 0.0) {
-            // For metals and transparent materials, use Fresnel reflectance
-            P_reflect = dot(F, vec3(0.2126, 0.7152, 0.0722));
-        } else {
-            // For dielectrics, adjust reflectance probability
-            P_reflect = dot(F, vec3(0.2126, 0.7152, 0.0722));
-            P_diffuse *= (1.0 - P_reflect);
-        }
-        */
-
+        float diffPr = dielectricWt * Luminance(albedo);
+        float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+        float metalPr = metallic * Luminance(mix(albedo, vec3(1.0), schlickWt));
+        float glassPr = glassWt;
 
         // Normalize probabilities
-        float sum_probs = P_reflect + P_transmit + P_diffuse;
-        P_reflect  /= sum_probs;
-        P_transmit /= sum_probs;
-        P_diffuse  /= sum_probs;
+        float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr);
+        diffPr *= invTotalWt;
+        dielectricPr *= invTotalWt;
+        metalPr *= invTotalWt;
+        glassPr *= invTotalWt;
 
         // Generate a random number to select the scattering event
         float rnd = rand(payload.random_seed);
 
-        if (rnd < P_reflect) {
-            // Specular Reflection
+        // CDF of the sampling probabilities
+        float cdf[5];
+        cdf[0] = diffPr;
+        cdf[1] = cdf[0] + dielectricPr;
+        cdf[2] = cdf[1] + metalPr;
+        cdf[3] = cdf[2] + glassPr;
 
-            // Sample microfacet normal using GGX distribution
-            float theta_m;
-            vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
-
-            // Compute outgoing direction
-            vec3 w_o = micro_reflect(w_i, micro_normal);
-
-            // Ensure that the outgoing direction is in the same hemisphere
-            if (dot(w_o, n) <= 0.0 || dot(payload.direction, n) > 0.0) {
-                payload.status = RAY_ABSORBED;
-                return;
-            }
-
-            // Compute BRDF value
-            float cos_theta_o = max(dot(n, w_o), 0.0);
-            F = F0 + (vec3(1.0) - F0) * pow(1.0 - max(cos_theta_o, 0.0), 5.0);
-            float D = GGX_D(micro_normal, n, alpha, theta_m);
-            float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
-            float denom = 4.0 * max(cos_theta_i, 0.01) * max(cos_theta_o, 0.01);
-            vec3 f_specular = F * min((D * G) / denom, 1);
-
-            // Compute denominator
-            // float denominator = 4.0 * abs(dot(-payload.direction, payload.surface_normal)) * abs(dot(payload.direction, payload.surface_normal)) + 1e-7;
-            // float denominator = abs(dot(micro_normal, n)) * abs(dot(w_i, n));
-
-            // Compute specular BRDF
-            // vec3 f_specular = F * ((G * abs(dot(w_i, micro_normal))) / denominator);
-
-            // Set bsdf_sample and pdf
-            payload.bsdf_sample = f_specular;
-
-
-            // Compute PDF
-            float pdf = D * abs(dot(n, micro_normal)) / (4.0 * abs(dot(w_o, micro_normal)) + 1e-7);
-
-            // Update payload
-            payload.direction    = w_o;
-            // payload.bsdf_sample  = F;
-            payload.pdf          = pdf;
-            payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
-            payload.status       = RAY_CONTINUE;
-
-        } else if (rnd < 0) {
-            // Transmission (Refraction)
-
-            // Only proceed if the material is transparent
-            if (transmission > 0.0) {
-                // Sample microfacet normal
-                float theta_m, phi_m;
-                vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
-
-                // Compute refracted direction using Snell's Law
-                vec3 w_o = micro_transmit(w_i, micro_normal, n, eta);
-
-                // Check for total internal reflection
-                if (length(w_o) == 0.0) {
-                    // Total internal reflection, treat as reflection
-                    w_o = micro_reflect(w_i, micro_normal);
-                }
-
-                // Compute Fresnel transmittance
-                vec3 T = vec3(1.0) - F;
-
-                // Compute BTDF value
-                float D = GGX_D(micro_normal, n, alpha, theta_m);
-                float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
-                float denom = abs(dot(n, w_i)) * abs(dot(n, w_o)) + 1e-7;
-                vec3 f_transmission = (T * D * G * eta * eta) / denom;
-
-                // Adjust for refracted solid angle
-                f_transmission *= abs(dot(w_i, micro_normal)) * abs(dot(w_o, micro_normal)) / (abs(dot(n, w_i)) * abs(dot(n, w_o)) + 1e-7);
-
-                // Compute PDF
-                float pdf = D * abs(dot(n, micro_normal)) * abs(dot(w_o, micro_normal)) / pow(abs(dot(w_i, micro_normal) + eta * dot(w_o, micro_normal)), 2.0);
-
-                // Update payload
-                payload.direction    = w_o;
-                payload.bsdf_sample  = f_transmission;
-                payload.pdf          = pdf;
-                payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
-                payload.status       = RAY_CONTINUE;
-
-                // Apply Beer's Law for absorption
-                // float distance = 0.0; // You may need to compute the actual distance
-                // vec3 absorption = exp(-material.absorption * distance);
-                // payload.bsdf_sample *= absorption;
-
-            } else {
-                // Material is not transparent, absorb the ray
-                payload.status = RAY_ABSORBED;
-            }
-
-        } else {
+        if (rnd < cdf[0]) {
             // Diffuse Reflection
 
             // Sample outgoing direction over hemisphere
@@ -342,6 +293,42 @@ void main() {
             payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
             payload.status       = RAY_CONTINUE;
         }
+        else if (rnd < cdf[2]) { // Dielectric + Metallic reflection
+
+            // vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
+            float theta_m;
+            vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
+            vec3 w_o = micro_reflect(w_i, micro_normal);
+            
+            // Dielectric Reflection
+            if (rnd < cdf[1]) {
+                // Normalize for interpolating based on Cspec0
+                // float DielectricFresnel(float cosThetaI, float eta)
+                float NDotL = dot(n, w_o);
+                if (NDotL <= 0.0)
+                {
+                    payload.bsdf_sample = vec3(0.0);
+                    payload.status = RAY_ABSORBED;
+                    return;
+                }
+
+                float VDotH = dot(w_i,micro_normal);
+                float F = (DielectricFresnel(VDotH, 1.0 / material.IOR) - F0) / (1.0 - F0);
+                float pdf;
+                vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, mix(Cspec0, vec3(1.0), F), pdf);
+
+                payload.direction    = w_o;
+                payload.bsdf_sample  = f;
+                payload.pdf          = pdf;
+                payload.origin       = hit_position + payload.direction * 1e-4; // Offset to avoid self-intersection
+                payload.status       = RAY_CONTINUE;
+            }
+            else {
+                
+            }
+            
+        }
+        
     }
 }
 
