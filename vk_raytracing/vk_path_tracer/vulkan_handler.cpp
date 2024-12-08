@@ -2,7 +2,6 @@
 
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "obj_loader.h"
 #include "stb_image.h"
 
 #include "vulkan_handler.h"
@@ -353,12 +352,12 @@ void VulkanHandler::createGraphicsPipeline()
   gpb.depthStencilState.depthTestEnable = true;
   gpb.addShader(nvh::loadFile("spv/raster.vert.spv", true, paths, true), VK_SHADER_STAGE_VERTEX_BIT);
   gpb.addShader(nvh::loadFile("spv/raster.frag.spv", true, paths, true), VK_SHADER_STAGE_FRAGMENT_BIT);
-  gpb.addBindingDescription({0, sizeof(VertexObj)});
+  gpb.addBindingDescription({0, sizeof(objl::Vertex)});
   gpb.addAttributeDescriptions({
-      {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, pos))},
-      {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, nrm))},
-      {2, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, color))},
-      {3, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<uint32_t>(offsetof(VertexObj, texCoord))},
+      {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Position))},
+      {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Normal))},
+      {2, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, TextureCoordinate))}
+      //TO-DO: Revisar si no rompe el raster
   });
 
   m_graphicsPipeline = gpb.createPipeline();
@@ -368,82 +367,187 @@ void VulkanHandler::createGraphicsPipeline()
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void VulkanHandler::loadModel(const std::string& filename, glm::mat4 transform)
+void VulkanHandler::loadScene(const Scene& scene)
 {
-  LOGI("Loading File:  %s \n", filename.c_str());
-  ObjLoader loader;
-  loader.loadModel(filename);
+    // Converting from Srgb to linear
+    /*for (auto& m : scene.materials)
+    {
+        m.second.baseColor = glm::pow(m.second.baseColor, glm::vec3(2.2f));
+    }*/
 
-  // Converting from Srgb to linear
-  for(auto& m : loader.m_materials)
-  {
-    m.color  = glm::pow(m.color, glm::vec3(2.2f));
-  }
-  /*for(auto& m : loader.m_materials)
-  {
-    m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
-    m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
-    m.specular = glm::pow(m.specular, glm::vec3(2.2f));
-  }*/
+    VkBufferUsageFlags flag = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    VkBufferUsageFlags rayTracingFlags =  // used also for building acceleration structures
+        flag | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-  // Assign ObjectID
-  for (auto& light : loader.m_lights)
-  {
-      Light result;
+    //Create all textures for the entire scene
+    unsigned int textureOffset;
+    {
+        nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+        VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
+        
+        textureOffset = static_cast<uint32_t>(m_textures.size());
+        createTextureImages(cmdBuf, scene.textures);
+        cmdBufGet.submitAndWait(cmdBuf);
+    }
 
-      result.object_id = m_objDesc.size();
-      result.emission = light.emission;
-      result.first_index = light.first_index / 3;
-      result.last_index = light.last_index / 3;
+    //Upload the materials of the entire scene
+    nvvk::Buffer* material_buffer;
+    {
+        nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+        VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
 
-      m_lights.push_back(result);
-  }
+        m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene.materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
+        material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
 
-  ObjModel model;
-  model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
-  model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
+        m_debug.setObjectName(material_buffer->buffer, (std::string("mat_"+ (int)m_scene_buffers.size())));
+    }
 
-  // Create the buffers on Device and copy vertices, indices and materials
-  nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
-  VkCommandBuffer    cmdBuf          = cmdBufGet.createCommandBuffer();
-  VkBufferUsageFlags flag            = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-  VkBufferUsageFlags rayTracingFlags =  // used also for building acceleration structures
-      flag | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-  model.vertexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
-  model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
-  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
-  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+    // Upload all models from scene to Vulkan
+    for (auto& entity : scene.entities) {
+        //TO-DO: Cuando la entidad sea de otro tipo posiblemente haya que seguir un procedimiento distinto, revisar
 
-  // Creates all textures found and find the offset for this model
-  auto txtOffset = static_cast<uint32_t>(m_textures.size());
-  createTextureImages(cmdBuf, loader.m_textures);
-  cmdBufGet.submitAndWait(cmdBuf);
-  m_alloc.finalizeAndReleaseStaging();
+        Shape* shape = (Shape*)&entity;
 
-  std::string objNb = std::to_string(m_objModel.size());
-  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
-  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
-  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb)));
-  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
+        // Assign ObjectID
+        for (auto& light : shape->model_loader.LoadedLights)
+        {
+            Light result;
 
-  // Keeping transformation matrix of the instance
-  ObjInstance instance;
-  instance.transform = transform;
-  instance.objIndex  = static_cast<uint32_t>(m_objModel.size());
-  m_instances.push_back(instance);
+            result.object_id = m_objDesc.size();
+            result.emission = light.emission;
+            result.first_index = light.first_index;
+            result.last_index = light.last_index;
 
-  // Creating information for device access
-  ObjDesc desc;
-  desc.txtOffset            = txtOffset;
-  desc.vertexAddress        = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
-  desc.indexAddress         = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
-  desc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, model.matColorBuffer.buffer);
-  desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
+            m_lights.push_back(result);
+        }
 
-  // Keeping the obj host model and device description
-  m_objModel.emplace_back(model);
-  m_objDesc.emplace_back(desc);
+        //mesh->
+
+        glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
+        transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
+        transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
+        transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 0.0, 1.0));
+        transform = glm::translate(transform, shape->position);
+
+        ObjModel model;
+        model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());
+        model.nbVertices = static_cast<uint32_t>(shape->model_loader.LoadedVertices.size());
+
+        // Create the buffers on Device and copy vertices, indices and materials
+        nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+        VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
+        model.vertexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
+        model.indexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedIndices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
+        model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedMaterialIndices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+
+        cmdBufGet.submitAndWait(cmdBuf);
+        m_alloc.finalizeAndReleaseStaging();
+
+        std::string objNb = std::to_string(m_objModel.size());
+        m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
+        m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
+        m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
+
+        // Keeping transformation matrix of the instance
+        ObjInstance instance;
+        instance.transform = transform;
+        instance.objIndex = static_cast<uint32_t>(m_objModel.size());
+        m_instances.push_back(instance);
+
+        // Creating information for device access
+        ObjDesc desc;
+        desc.txtOffset = textureOffset;
+        desc.vertexAddress = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
+        desc.indexAddress = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
+        desc.materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
+        desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
+
+        // Keeping the obj host model and device description
+        m_objModel.emplace_back(model);
+        m_objDesc.emplace_back(desc);
+    }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+// Loading the OBJ file and setting up all buffers
+//
+//void VulkanHandler::loadModel(const std::string& filename, glm::mat4 transform)
+//{
+//  LOGI("Loading File:  %s \n", filename.c_str());
+//  ObjLoader loader;
+//  loader.loadModel(filename);
+//
+//  // Converting from Srgb to linear
+//  for(auto& m : loader.m_materials)
+//  {
+//    m.color  = glm::pow(m.color, glm::vec3(2.2f));
+//  }
+//  /*for(auto& m : loader.m_materials)
+//  {
+//    m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
+//    m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
+//    m.specular = glm::pow(m.specular, glm::vec3(2.2f));
+//  }*/
+//
+//  // Assign ObjectID
+//  for (auto& light : loader.m_lights)
+//  {
+//      Light result;
+//
+//      result.object_id = m_objDesc.size();
+//      result.emission = light.emission;
+//      result.first_index = light.first_index / 3;
+//      result.last_index = light.last_index / 3;
+//
+//      m_lights.push_back(result);
+//  }
+//
+//  ObjModel model;
+//  model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
+//  model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
+//
+//  // Create the buffers on Device and copy vertices, indices and materials
+//  nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+//  VkCommandBuffer    cmdBuf          = cmdBufGet.createCommandBuffer();
+//  VkBufferUsageFlags flag            = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+//  VkBufferUsageFlags rayTracingFlags =  // used also for building acceleration structures
+//      flag | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+//  model.vertexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
+//  model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
+//  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+//  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+//
+//  // Creates all textures found and find the offset for this model
+//  auto txtOffset = static_cast<uint32_t>(m_textures.size());
+//  createTextureImages(cmdBuf, loader.m_textures);
+//  cmdBufGet.submitAndWait(cmdBuf);
+//  m_alloc.finalizeAndReleaseStaging();
+//
+//  std::string objNb = std::to_string(m_objModel.size());
+//  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
+//  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
+//  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb)));
+//  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
+//
+//  // Keeping transformation matrix of the instance
+//  ObjInstance instance;
+//  instance.transform = transform;
+//  instance.objIndex  = static_cast<uint32_t>(m_objModel.size());
+//  m_instances.push_back(instance);
+//
+//  // Creating information for device access
+//  ObjDesc desc;
+//  desc.txtOffset            = txtOffset;
+//  desc.vertexAddress        = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
+//  desc.indexAddress         = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
+//  desc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, model.matColorBuffer.buffer);
+//  desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
+//
+//  // Keeping the obj host model and device description
+//  m_objModel.emplace_back(model);
+//  m_objDesc.emplace_back(desc);
+//}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -587,8 +691,12 @@ void VulkanHandler::destroyResources()
   {
     m_alloc.destroy(m.vertexBuffer);
     m_alloc.destroy(m.indexBuffer);
-    m_alloc.destroy(m.matColorBuffer);
     m_alloc.destroy(m.matIndexBuffer);
+  }
+
+  for (int i = 0; i < m_scene_buffers.size(); i++)
+  {
+      m_alloc.destroy(m_scene_buffers[i]);
   }
 
   for(auto& t : m_textures)
@@ -833,7 +941,7 @@ auto VulkanHandler::objectToVkGeometryKHR(const ObjModel& model)
   VkAccelerationStructureGeometryTrianglesDataKHR triangles{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR};
   triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;  // vec3 vertex position data.
   triangles.vertexData.deviceAddress = vertexAddress;
-  triangles.vertexStride             = sizeof(VertexObj);
+  triangles.vertexStride             = sizeof(objl::Vertex);
   // Describe index data (32-bit unsigned int)
   triangles.indexType               = VK_INDEX_TYPE_UINT32;
   triangles.indexData.deviceAddress = indexAddress;

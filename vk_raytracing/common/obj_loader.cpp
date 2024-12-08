@@ -1,162 +1,697 @@
-/*
- * Copyright (c) 2021-2023, NVIDIA CORPORATION.  All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- * SPDX-FileCopyrightText: Copyright (c) 2014-2021 NVIDIA CORPORATION
- * SPDX-License-Identifier: Apache-2.0
- */
 
- // This file exist only to do the implementation of tiny obj loader
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "obj_loader.h"
-#include "nvh/nvprint.hpp"
+#include <obj_loader.h>
 
+using namespace objl;
 
-void ObjLoader::loadModel(const std::string& filename)
+float math::MagnitudeV3(const glm::vec3 in)
 {
-	tinyobj::ObjReader reader;
-	reader.ParseFromFile(filename);
-	if (!reader.Valid())
+	return (sqrtf(powf(in.x, 2) + powf(in.y, 2) + powf(in.z, 2)));
+}
+
+float math::AngleBetweenV3(const glm::vec3 a, const glm::vec3 b)
+{
+	float angle = glm::dot(a, b);
+	angle /= (MagnitudeV3(a) * MagnitudeV3(b));
+	return angle = acosf(angle);
+}
+
+glm::vec3 math::ProjV3(const glm::vec3 a, const glm::vec3 b)
+{
+	glm::vec3 bn = b / math::MagnitudeV3(b);
+	return bn * glm::dot(a, bn);
+}
+
+
+// A test to see if P1 is on the same side as P2 of a line segment ab
+bool algorithm::SameSide(glm::vec3 p1, glm::vec3 p2, glm::vec3 a, glm::vec3 b)
+{
+	glm::vec3 cp1 = glm::cross(b - a, p1 - a);
+	glm::vec3 cp2 = glm::cross(b - a, p2 - a);
+
+	if (glm::dot(cp1, cp2) >= 0)
+		return true;
+	else
+		return false;
+}
+
+// Generate a cross produect normal for a triangle
+glm::vec3 algorithm::GenTriNormal(glm::vec3 t1, glm::vec3 t2, glm::vec3 t3)
+{
+	glm::vec3 u = t2 - t1;
+	glm::vec3 v = t3 - t1;
+
+	glm::vec3 normal = glm::cross(u, v);
+
+	return normal;
+}
+
+// Check to see if a glm::vec3 Point is within a 3 glm::vec3 Triangle
+bool algorithm::inTriangle(glm::vec3 point, glm::vec3 tri1, glm::vec3 tri2, glm::vec3 tri3)
+{
+	// Test to see if it is within an infinite prism that the triangle outlines.
+	bool within_tri_prisim = SameSide(point, tri1, tri2, tri3) && SameSide(point, tri2, tri1, tri3)
+		&& SameSide(point, tri3, tri1, tri2);
+
+	// If it isn't it will never be on the triangle
+	if (!within_tri_prisim)
+		return false;
+
+	// Calulate Triangle's Normal
+	glm::vec3 n = GenTriNormal(tri1, tri2, tri3);
+
+	// Project the point onto this normal
+	glm::vec3 proj = math::ProjV3(point, n);
+
+	// If the distance from the triangle to the point is 0
+	//	it lies on the triangle
+	if (math::MagnitudeV3(proj) == 0)
+		return true;
+	else
+		return false;
+}
+
+// Split a String into a string array at a given token
+inline void algorithm::split(const std::string& in,
+	std::vector<std::string>& out,
+	std::string token)
+{
+	out.clear();
+
+	std::string temp;
+
+	for (int i = 0; i < int(in.size()); i++)
 	{
-		LOGE("Cannot load %s: %s", filename.c_str(), reader.Error().c_str());
-		assert(reader.Valid());
-	}
+		std::string test = in.substr(i, token.size());
 
-	std::vector<int> lights_materials_indexes;
-
-	// Collecting the material in the scene
-	int i = 0;
-	for (const auto& material : reader.GetMaterials())
-	{
-		MaterialObj m;
-
-		m.color = glm::vec3(material.diffuse[0], material.diffuse[1], material.diffuse[2]);
-
-		m.IOR = material.ior;
-		m.roughness = material.roughness;
-		m.metallic = material.metallic;
-		m.emittance = glm::vec3(material.emission[0], material.emission[1], material.emission[2]);
-		m.transparent = material.dissolve;
-
-		if (!material.diffuse_texname.empty())
+		if (test == token)
 		{
-			m_textures.push_back(material.diffuse_texname);
-			m.textureID = static_cast<int>(m_textures.size()) - 1;
+			if (!temp.empty())
+			{
+				out.push_back(temp);
+				temp.clear();
+				i += (int)token.size() - 1;
+			}
+			else
+			{
+				out.push_back("");
+			}
 		}
-
-		//Record the materials that emit light
-		if (abs(m.emittance.x) + abs(m.emittance.y) + abs(m.emittance.z) > 0)
-			lights_materials_indexes.push_back(i);
-
-		m_materials.emplace_back(m);
-		i++;
-	}
-
-	// If there were none, add a default
-	if (m_materials.empty())
-		m_materials.emplace_back(MaterialObj());
-
-	const tinyobj::attrib_t& attrib = reader.GetAttrib();
-
-	for (const auto& shape : reader.GetShapes())
-	{
-		m_vertices.reserve(shape.mesh.indices.size() + m_vertices.size());
-		m_indices.reserve(shape.mesh.indices.size() + m_indices.size());
-		m_matIndx.insert(m_matIndx.end(), shape.mesh.material_ids.begin(), shape.mesh.material_ids.end());
-
-		unsigned int light_first_index;
-		unsigned int light_last_index;
-
-		int last_material = -1;
-		bool last_material_is_light = false;
-
-		int i = 0;
-		for (const auto& index : shape.mesh.indices)
+		else if (i + token.size() >= in.size())
 		{
-			VertexObj    vertex = {};
-			const float* vp = &attrib.vertices[3 * index.vertex_index];
-			vertex.pos = { *(vp + 0), *(vp + 1), *(vp + 2) };
+			temp += in.substr(i, token.size());
+			out.push_back(temp);
+			break;
+		}
+		else
+		{
+			temp += in[i];
+		}
+	}
+}
 
-			if (!attrib.normals.empty() && index.normal_index >= 0)
+// Get tail of string after first token and possibly following spaces
+inline std::string algorithm::tail(const std::string& in)
+{
+	size_t token_start = in.find_first_not_of(" \t");
+	size_t space_start = in.find_first_of(" \t", token_start);
+	size_t tail_start = in.find_first_not_of(" \t", space_start);
+	size_t tail_end = in.find_last_not_of(" \t");
+	if (tail_start != std::string::npos && tail_end != std::string::npos)
+	{
+		return in.substr(tail_start, tail_end - tail_start + 1);
+	}
+	else if (tail_start != std::string::npos)
+	{
+		return in.substr(tail_start);
+	}
+	return "";
+}
+
+// Get first token of string
+inline std::string algorithm::firstToken(const std::string& in)
+{
+	if (!in.empty())
+	{
+		size_t token_start = in.find_first_not_of(" \t");
+		size_t token_end = in.find_first_of(" \t", token_start);
+		if (token_start != std::string::npos && token_end != std::string::npos)
+		{
+			return in.substr(token_start, token_end - token_start);
+		}
+		else if (token_start != std::string::npos)
+		{
+			return in.substr(token_start);
+		}
+	}
+	return "";
+}
+
+// Get element at given index position
+template <class T>
+inline const T& algorithm::getElement(const std::vector<T>& elements, std::string& index)
+{
+	int idx = std::stoi(index);
+	if (idx < 0)
+		idx = int(elements.size()) + idx;
+	else
+		idx--;
+	return elements[idx];
+}
+
+
+
+
+bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material*>* materials, objl::Material* default_material)
+{
+	// If the file is not an .obj file return false
+	if (Path.substr(Path.size() - 4, 4) != ".obj")
+		return false;
+
+
+	std::ifstream file(Path);
+
+	if (!file.is_open())
+		return false;
+
+	LoadedMeshes.clear();
+	LoadedVertices.clear();
+	LoadedIndices.clear();
+	LoadedMaterialIndices.clear();
+	LoadedLights.clear();
+
+	std::vector<glm::vec3> Positions;
+	std::vector<glm::vec2> TCoords;
+	std::vector<glm::vec3> Normals;
+
+	std::vector<Vertex> Vertices;
+	std::vector<unsigned int> Indices;
+
+	bool listening = false;
+	std::string meshname;
+
+	Mesh tempMesh;
+	//TO-DO Se asume que siempre me vienen caras con material, se puede definir un material por defecto
+	Material* tempMaterial = default_material;
+
+
+#ifdef OBJL_CONSOLE_OUTPUT
+	const unsigned int outputEveryNth = 1000;
+	unsigned int outputIndicator = outputEveryNth;
+#endif
+
+	std::string curline;
+	while (std::getline(file, curline))
+	{
+#ifdef OBJL_CONSOLE_OUTPUT
+		if ((outputIndicator = ((outputIndicator + 1) % outputEveryNth)) == 1)
+		{
+			if (!meshname.empty())
 			{
-				const float* np = &attrib.normals[3 * index.normal_index];
-				vertex.nrm = { *(np + 0), *(np + 1), *(np + 2) };
+				std::cout
+					<< "\r- " << meshname
+					<< "\t| vertices > " << Positions.size()
+					<< "\t| texcoords > " << TCoords.size()
+					<< "\t| normals > " << Normals.size()
+					<< "\t| triangles > " << (Vertices.size() / 3);
+			}
+		}
+#endif
+
+		// Generate a Mesh Object or Prepare for an object to be created
+		if (algorithm::firstToken(curline) == "o" || algorithm::firstToken(curline) == "g" || curline[0] == 'g')
+		{
+			if (!listening)
+			{
+				listening = true;
+
+				if (algorithm::firstToken(curline) == "o" || algorithm::firstToken(curline) == "g")
+				{
+					meshname = algorithm::tail(curline);
+				}
+				else
+				{
+					meshname = "unnamed";
+				}
+			}
+			else
+			{
+				// Generate the mesh to put into the array
+
+				if (!Indices.empty() && !Vertices.empty())
+				{
+					// Create Mesh
+					tempMesh = Mesh(Vertices, Indices);
+					tempMesh.MeshName = meshname;
+					tempMesh.MeshMaterial = tempMaterial; //El material anterior, a partir de este momento va a ser otro para el siguiente mesh
+
+					if (abs(tempMesh.MeshMaterial->emission.x) + abs(tempMesh.MeshMaterial->emission.y) + abs(tempMesh.MeshMaterial->emission.z) > 0) {
+						Light light;
+
+						light.emission = tempMesh.MeshMaterial->emission;
+						//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
+						light.first_index = LoadedIndices.size() - Indices.size();
+						light.last_index = LoadedIndices.size() - 1;
+
+						LoadedLights.push_back(light);
+					}
+
+					// Insert Mesh
+					LoadedMeshes.push_back(tempMesh);
+					LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
+
+					tempMaterial = default_material;
+
+					// Cleanup
+					Vertices.clear();
+					Indices.clear();
+					meshname.clear();
+
+					meshname = algorithm::tail(curline);
+				}
+				else
+				{
+					if (algorithm::firstToken(curline) == "o" || algorithm::firstToken(curline) == "g")
+					{
+						meshname = algorithm::tail(curline);
+					}
+					else
+					{
+						meshname = "unnamed";
+					}
+				}
+			}
+#ifdef OBJL_CONSOLE_OUTPUT
+			std::cout << std::endl;
+			outputIndicator = 0;
+#endif
+		}
+		// Generate a Vertex Position
+		if (algorithm::firstToken(curline) == "v")
+		{
+			std::vector<std::string> spos;
+			algorithm::split(algorithm::tail(curline), spos, " ");
+			glm::vec3 vpos(std::stof(spos[0]), std::stof(spos[1]), std::stof(spos[2]));
+
+			Positions.push_back(vpos);
+		}
+		// Generate a Vertex Texture Coordinate
+		if (algorithm::firstToken(curline) == "vt")
+		{
+			std::vector<std::string> stex;
+			algorithm::split(algorithm::tail(curline), stex, " ");
+			glm::vec2 vtex(std::stof(stex[0]), std::stof(stex[1]));
+
+			TCoords.push_back(vtex);
+		}
+		// Generate a Vertex Normal;
+		if (algorithm::firstToken(curline) == "vn")
+		{
+			std::vector<std::string> snor;
+			algorithm::split(algorithm::tail(curline), snor, " ");
+			glm::vec3 vnor(std::stof(snor[0]), std::stof(snor[1]), std::stof(snor[2]));
+
+			Normals.push_back(vnor);
+		}
+		// Generate a Face (vertices & indices)
+		if (algorithm::firstToken(curline) == "f")
+		{
+			// Generate the vertices
+			std::vector<Vertex> vVerts;
+			GenVerticesFromRawOBJ(vVerts, Positions, TCoords, Normals, curline);
+
+			// Add Vertices
+			for (int i = 0; i < int(vVerts.size()); i++)
+			{
+				Vertices.push_back(vVerts[i]);
+
+				LoadedVertices.push_back(vVerts[i]);
 			}
 
-			if (!attrib.texcoords.empty() && index.texcoord_index >= 0)
+			std::vector<unsigned int> iIndices;
+
+			VertexTriangluation(iIndices, vVerts);
+
+			// Add Indices
+			for (int i = 0; i < int(iIndices.size()); i++)
 			{
-				const float* tp = &attrib.texcoords[2 * index.texcoord_index + 0];
-				vertex.texCoord = { *tp, 1.0f - *(tp + 1) };
-			}
+				unsigned int indnum = (unsigned int)((Vertices.size()) - vVerts.size()) + iIndices[i];
+				Indices.push_back(indnum);
 
-			if (!attrib.colors.empty())
+				indnum = (unsigned int)((LoadedVertices.size()) - vVerts.size()) + iIndices[i];
+				LoadedIndices.push_back(indnum);
+
+			}
+		}
+		// Get Mesh Material Name
+		if (algorithm::firstToken(curline) == "usemtl")
+		{
+			// Create new Mesh, if Material changes within a group
+			if (!Indices.empty() && !Vertices.empty())
 			{
-				const float* vc = &attrib.colors[3 * index.vertex_index];
-				vertex.color = { *(vc + 0), *(vc + 1), *(vc + 2) };
-			}
+				// Create Mesh
+				tempMesh = Mesh(Vertices, Indices);
+				tempMesh.MeshName = meshname;
+				tempMesh.MeshMaterial = tempMaterial; //El material anterior, a partir de este momento va a ser otro para el siguiente mesh
+				int i = 2;
+				while (1) {
+					tempMesh.MeshName = meshname + "_" + std::to_string(i);
 
-			int material_id = shape.mesh.material_ids[i++ / 3];
-
-			if (material_id != last_material) {
-				if (last_material_is_light) {
-					m_lights.push_back(LightObj{ m_materials[material_id].emittance, light_first_index, light_last_index });
+					for (auto& m : LoadedMeshes)
+						if (m.MeshName == tempMesh.MeshName)
+							continue;
+					break;
 				}
 
-				last_material = material_id;
-				last_material_is_light = count(lights_materials_indexes.begin(), lights_materials_indexes.end(), material_id) > 0;
+				if (abs(tempMesh.MeshMaterial->emission.x) + abs(tempMesh.MeshMaterial->emission.y) + abs(tempMesh.MeshMaterial->emission.z) > 0) {
+					Light light;
 
-				if (last_material_is_light) {
-					int current_index = m_indices.size();
-					light_first_index = current_index;
-					light_last_index = current_index;
+					light.emission = tempMesh.MeshMaterial->emission;
+					//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
+					light.first_index = LoadedIndices.size() - Indices.size();
+					light.last_index = LoadedIndices.size() - 1;
+
+					LoadedLights.push_back(light);
+				}
+
+				// Insert Mesh
+				LoadedMeshes.push_back(tempMesh);
+				LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
+
+				// Cleanup
+				Vertices.clear();
+				Indices.clear();
+			}
+
+			tempMaterial = (*materials)[algorithm::tail(curline)];
+
+#ifdef OBJL_CONSOLE_OUTPUT
+			outputIndicator = 0;
+#endif
+		}
+	}
+
+#ifdef OBJL_CONSOLE_OUTPUT
+	std::cout << std::endl;
+#endif
+
+	// Deal with last mesh
+
+	if (!Indices.empty() && !Vertices.empty())
+	{
+		// Create Mesh
+		tempMesh = Mesh(Vertices, Indices);
+		tempMesh.MeshName = meshname;
+
+		// Insert Mesh
+		LoadedMeshes.push_back(tempMesh);
+	}
+
+	file.close();
+
+	if (LoadedMeshes.empty() && LoadedVertices.empty() && LoadedIndices.empty())
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
+	const std::vector<glm::vec3>& iPositions,
+	const std::vector<glm::vec2>& iTCoords,
+	const std::vector<glm::vec3>& iNormals,
+	std::string icurline)
+{
+	std::vector<std::string> sface, svert;
+	Vertex vVert{};
+	algorithm::split(algorithm::tail(icurline), sface, " ");
+
+	bool noNormal = false;
+
+	// For every given vertex do this
+	for (int i = 0; i < int(sface.size()); i++)
+	{
+		// See What type the vertex is.
+		int vtype = 0;
+
+		algorithm::split(sface[i], svert, "/");
+
+		// Check for just position - v1
+		if (svert.size() == 1)
+		{
+			// Only position
+			vtype = 1;
+		}
+
+		// Check for position & texture - v1/vt1
+		if (svert.size() == 2)
+		{
+			// Position & Texture
+			vtype = 2;
+		}
+
+		// Check for Position, Texture and Normal - v1/vt1/vn1
+		// or if Position and Normal - v1//vn1
+		if (svert.size() == 3)
+		{
+			if (svert[1] != "")
+			{
+				// Position, Texture, and Normal
+				vtype = 4;
+			}
+			else
+			{
+				// Position & Normal
+				vtype = 3;
+			}
+		}
+
+		// Calculate and store the vertex
+		switch (vtype)
+		{
+		case 1: // P
+		{
+			vVert.Position = algorithm::getElement(iPositions, svert[0]);
+			vVert.TextureCoordinate = glm::vec2(0, 0);
+			noNormal = true;
+			oVerts.push_back(vVert);
+			break;
+		}
+		case 2: // P/T
+		{
+			vVert.Position = algorithm::getElement(iPositions, svert[0]);
+			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
+			noNormal = true;
+			oVerts.push_back(vVert);
+			break;
+		}
+		case 3: // P//N
+		{
+			vVert.Position = algorithm::getElement(iPositions, svert[0]);
+			vVert.TextureCoordinate = glm::vec2(0, 0);
+			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			oVerts.push_back(vVert);
+			break;
+		}
+		case 4: // P/T/N
+		{
+			vVert.Position = algorithm::getElement(iPositions, svert[0]);
+			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
+			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			oVerts.push_back(vVert);
+			break;
+		}
+		default:
+		{
+			break;
+		}
+		}
+	}
+
+	// take care of missing normals
+	// these may not be truly acurate but it is the 
+	// best they get for not compiling a mesh with normals	
+	if (noNormal)
+	{
+		glm::vec3 A = oVerts[0].Position - oVerts[1].Position;
+		glm::vec3 B = oVerts[2].Position - oVerts[1].Position;
+
+		glm::vec3 normal = glm::cross(A, B);
+
+		for (int i = 0; i < int(oVerts.size()); i++)
+		{
+			oVerts[i].Normal = normal;
+		}
+	}
+}
+
+// Triangulate a list of vertices into a face by printing
+//	inducies corresponding with triangles within it
+void Loader::VertexTriangluation(std::vector<unsigned int>& oIndices,
+	const std::vector<Vertex>& iVerts)
+{
+	// If there are 2 or less verts,
+	// no triangle can be created,
+	// so exit
+	if (iVerts.size() < 3)
+	{
+		return;
+	}
+	// If it is a triangle no need to calculate it
+	if (iVerts.size() == 3)
+	{
+		oIndices.push_back(0);
+		oIndices.push_back(1);
+		oIndices.push_back(2);
+		return;
+	}
+
+	// Create a list of vertices
+	std::vector<Vertex> tVerts = iVerts;
+
+	while (true)
+	{
+		// For every vertex
+		for (int i = 0; i < int(tVerts.size()); i++)
+		{
+			// pPrev = the previous vertex in the list
+			Vertex pPrev;
+			if (i == 0)
+			{
+				pPrev = tVerts[tVerts.size() - 1];
+			}
+			else
+			{
+				pPrev = tVerts[i - 1];
+			}
+
+			// pCur = the current vertex;
+			Vertex pCur = tVerts[i];
+
+			// pNext = the next vertex in the list
+			Vertex pNext;
+			if (i == tVerts.size() - 1)
+			{
+				pNext = tVerts[0];
+			}
+			else
+			{
+				pNext = tVerts[i + 1];
+			}
+
+			// Check to see if there are only 3 verts left
+			// if so this is the last triangle
+			if (tVerts.size() == 3)
+			{
+				// Create a triangle from pCur, pPrev, pNext
+				for (int j = 0; j < int(tVerts.size()); j++)
+				{
+					if (iVerts[j].Position == pCur.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == pPrev.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == pNext.Position)
+						oIndices.push_back(j);
+				}
+
+				tVerts.clear();
+				break;
+			}
+			if (tVerts.size() == 4)
+			{
+				// Create a triangle from pCur, pPrev, pNext
+				for (int j = 0; j < int(iVerts.size()); j++)
+				{
+					if (iVerts[j].Position == pCur.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == pPrev.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == pNext.Position)
+						oIndices.push_back(j);
+				}
+
+				glm::vec3 tempVec;
+				for (int j = 0; j < int(tVerts.size()); j++)
+				{
+					if (tVerts[j].Position != pCur.Position
+						&& tVerts[j].Position != pPrev.Position
+						&& tVerts[j].Position != pNext.Position)
+					{
+						tempVec = tVerts[j].Position;
+						break;
+					}
+				}
+
+				// Create a triangle from pCur, pPrev, pNext
+				for (int j = 0; j < int(iVerts.size()); j++)
+				{
+					if (iVerts[j].Position == pPrev.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == pNext.Position)
+						oIndices.push_back(j);
+					if (iVerts[j].Position == tempVec)
+						oIndices.push_back(j);
+				}
+
+				tVerts.clear();
+				break;
+			}
+
+			// If Vertex is not an interior vertex
+			float angle = math::AngleBetweenV3(pPrev.Position - pCur.Position, pNext.Position - pCur.Position) * (180 / 3.14159265359f);
+			if (angle <= 0 && angle >= 180)
+				continue;
+
+			// If any vertices are within this triangle
+			bool inTri = false;
+			for (int j = 0; j < int(iVerts.size()); j++)
+			{
+				if (algorithm::inTriangle(iVerts[j].Position, pPrev.Position, pCur.Position, pNext.Position)
+					&& iVerts[j].Position != pPrev.Position
+					&& iVerts[j].Position != pCur.Position
+					&& iVerts[j].Position != pNext.Position)
+				{
+					inTri = true;
+					break;
 				}
 			}
-			else if (last_material_is_light) {
-				light_last_index = m_indices.size();
+			if (inTri)
+				continue;
+
+			// Create a triangle from pCur, pPrev, pNext
+			for (int j = 0; j < int(iVerts.size()); j++)
+			{
+				if (iVerts[j].Position == pCur.Position)
+					oIndices.push_back(j);
+				if (iVerts[j].Position == pPrev.Position)
+					oIndices.push_back(j);
+				if (iVerts[j].Position == pNext.Position)
+					oIndices.push_back(j);
 			}
 
-			m_vertices.push_back(vertex);
-			m_indices.push_back(static_cast<int>(m_indices.size()));
+			// Delete pCur from the list
+			for (int j = 0; j < int(tVerts.size()); j++)
+			{
+				if (tVerts[j].Position == pCur.Position)
+				{
+					tVerts.erase(tVerts.begin() + j);
+					break;
+				}
+			}
+
+			// reset i to the start
+			// -1 since loop will add 1 to it
+			i = -1;
 		}
 
-		if (last_material_is_light) {
-			int material_id = shape.mesh.material_ids[(i - 1) / 3];
-			m_lights.push_back(LightObj{ m_materials[material_id].emittance, light_first_index, light_last_index });
-		}
-	}
+		// if no triangles were created
+		if (oIndices.size() == 0)
+			break;
 
-	// Fixing material indices
-	for (auto& mi : m_matIndx)
-	{
-		if (mi < 0 || mi > m_materials.size())
-			mi = 0;
-	}
-
-
-	// Compute normal when no normal were provided.
-	if (attrib.normals.empty())
-	{
-		for (size_t i = 0; i < m_indices.size(); i += 3)
-		{
-			VertexObj& v0 = m_vertices[m_indices[i + 0]];
-			VertexObj& v1 = m_vertices[m_indices[i + 1]];
-			VertexObj& v2 = m_vertices[m_indices[i + 2]];
-
-			glm::vec3 n = glm::normalize(glm::cross((v1.pos - v0.pos), (v2.pos - v0.pos)));
-			v0.nrm = n;
-			v1.nrm = n;
-			v2.nrm = n;
-		}
+		// if no more vertices
+		if (tVerts.size() == 0)
+			break;
 	}
 }

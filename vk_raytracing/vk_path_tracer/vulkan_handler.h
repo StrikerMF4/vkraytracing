@@ -9,6 +9,7 @@
 
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
+#include <scene_loader.h>
 
 enum TechniqueType
 {
@@ -66,6 +67,7 @@ public:
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
   void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
+  void loadScene(const Scene& scene);
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
@@ -105,6 +107,7 @@ public:
 
   // Array of objects and instances in the scene
   std::vector<ObjModel>    m_objModel;   // Model on host
+  std::vector<nvvk::Buffer> m_scene_buffers;
   std::vector<ObjDesc>     m_objDesc;    // Model description for device access
   std::vector<ObjInstance> m_instances;  // Scene model instances
   std::vector<Light>    m_lights;     // Lights in the scene

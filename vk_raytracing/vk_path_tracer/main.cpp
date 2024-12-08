@@ -4,7 +4,8 @@
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
-#include "imgui/imgui_helper.h"
+#include <imgui_helper.h>
+#include <scene_loader.h>
 
 #include "vulkan_handler.h"
 #include "imgui/imgui_camera_widget.h"
@@ -14,7 +15,6 @@
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
 #include <time.h>
-
 
 //////////////////////////////////////////////////////////////////////////
 #define UNUSED(x) (void)(x)
@@ -67,17 +67,17 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 }
 
 // Extra UI
-void renderUI(VulkanHandler& helloVk)
+void renderUI(VulkanHandler& vulkanHandler)
 {
 	if (ImGui::CollapsingHeader("Extra widget"))
 	{
 		ImGuiH::CameraWidget();
-		ImGui::RadioButton("Point", &helloVk.m_pcRaster.lightType, 0);
+		ImGui::RadioButton("Point", &vulkanHandler.m_pcRaster.lightType, 0);
 		ImGui::SameLine();
-		ImGui::RadioButton("Infinite", &helloVk.m_pcRaster.lightType, 1);
+		ImGui::RadioButton("Infinite", &vulkanHandler.m_pcRaster.lightType, 1);
 
-		ImGui::SliderFloat3("Position", &helloVk.m_pcRaster.lightPosition.x, -20.f, 20.f);
-		ImGui::SliderFloat("Intensity", &helloVk.m_pcRaster.lightIntensity, 0.f, 150.f);
+		ImGui::SliderFloat3("Position", &vulkanHandler.m_pcRaster.lightPosition.x, -20.f, 20.f);
+		ImGui::SliderFloat("Intensity", &vulkanHandler.m_pcRaster.lightIntensity, 0.f, 150.f);
 	}
 }
 
@@ -268,11 +268,6 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	GLFWwindow* window = glfwCreateWindow(SAMPLE_WIDTH, SAMPLE_HEIGHT, PROJECT_NAME, nullptr, nullptr);
 
-
-	// Setup camera
-	CameraManip.setWindowSize(SAMPLE_WIDTH, SAMPLE_HEIGHT);
-	CameraManip.setLookat(glm::vec3(0, 0.7, 2.2), glm::vec3(0, 0.7, 0), glm::vec3(0, 1, 0));
-
 	// Setup Vulkan
 	if (!glfwVulkanSupported())
 	{
@@ -332,80 +327,88 @@ int main(int argc, char** argv)
 	// Setup Imgui
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
+	// Load Scene
+	// Setup camera - TODO, estaba mas arriba, funciona?
+	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
+	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
+	CameraManip.setFov(scene.camera_fov);
+
+	vulkanHandler.loadScene(scene);
+
 	// Creation of the example-----------------------------------------------------------------------------------------------------------------
 
 	//CornellBox Spheres
-	//helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
 
 	//
-	//helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
 	//
-	//helloVk.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
 
-	vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
 
 	{  //Minecraft floor
-		/*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
-		helloVk.loadModel(nvh::findFile("media/scenes/vokselia_spawn.obj", defaultSearchPaths, true),
+		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
+		vulkanHandler.loadModel(nvh::findFile("media/scenes/vokselia_spawn.obj", defaultSearchPaths, true),
 						 glm::scale(glm::translate(glm::mat4(1.0f), vec3(0, 0.1, 0.1)), vec3(0.5)));*/
 	}
 
 	{  //cornell dragon
-		/*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-		helloVk.loadModel(nvh::findFile("media/scenes/dragon.obj", defaultSearchPaths, true),
+		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
+		vulkanHandler.loadModel(nvh::findFile("media/scenes/dragon.obj", defaultSearchPaths, true),
 						  glm::translate(
 						  glm::rotate(
 						  glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
 	}
 
-	//helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
-	//helloVk.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
 
 	//Lego
 	{
-		//helloVk.loadModel(nvh::findFile("media/scenes/lego.obj", defaultSearchPaths, true));
+		//vulkanHandler.loadModel(nvh::findFile("media/scenes/lego.obj", defaultSearchPaths, true));
 	}
 
 	{ //cornell bunny
-		/*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths, true));
-		helloVk.loadModel(nvh::findFile("media/scenes/bunny.obj", defaultSearchPaths, true));*/
+		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths, true));
+		vulkanHandler.loadModel(nvh::findFile("media/scenes/bunny.obj", defaultSearchPaths, true));*/
 	}
 
 	{  //cornell lucy
-		/*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-	  helloVk.loadModel(nvh::findFile("media/scenes/lucy.obj", defaultSearchPaths, true),
+		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
+	  vulkanHandler.loadModel(nvh::findFile("media/scenes/lucy.obj", defaultSearchPaths, true),
 						glm::scale(glm::rotate(glm::mat4(1.0f), (float)1.5, vec3(0, 1, 0)), vec3(0.0023)));*/
 	}
 
 	//Sponza
-	//helloVk.loadModel(nvh::findFile("media/scenes/sponza.obj", defaultSearchPaths, true));
+	//vulkanHandler.loadModel(nvh::findFile("media/scenes/sponza.obj", defaultSearchPaths, true));
 
 	{  //cornell bubble
-	   /*helloVk.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
+	   /*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
 
-	   helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.5, 1.2, -0.5)), vec3(0.4)));
-	   helloVk.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.5, 1.2, -0.5)), vec3(0.39)));
 
-	   helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.5, 1.2, 0)), vec3(0.2)));
-	   helloVk.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.5, 1.2, 0)), vec3(0.19)));
 
-	   helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.45, 0.8, -0.1)), vec3(0.1)));
-	   helloVk.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.45, 0.8, -0.1)), vec3(0.095)));
 
-	   helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.3, 0.4, 0.2)), vec3(0.3)));
-	   helloVk.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.3, 0.4, 0.2)), vec3(0.29)));
 
-	   helloVk.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.1, 0.55, 0.4)), vec3(0.2)));
-	   helloVk.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
+	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
 		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.1, 0.55, 0.4)), vec3(0.19)));*/
 	}
 
