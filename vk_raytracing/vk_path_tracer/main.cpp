@@ -328,6 +328,9 @@ int main(int argc, char** argv)
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
 	// Load Scene
+	const std::string scene_path = "media/scenes/test.scn";
+	Scene scene(scene_path);
+
 	// Setup camera - TODO, estaba mas arriba, funciona?
 	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
 	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
