@@ -328,7 +328,7 @@ int main(int argc, char** argv)
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
 	// Load Scene
-	const std::string scene_path = "media/scenes/test.scn";
+	const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
 	Scene scene(scene_path);
 
 	// Setup camera - TODO, estaba mas arriba, funciona?
