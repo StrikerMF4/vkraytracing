@@ -93,7 +93,7 @@ inline void algorithm::split(const std::string& in,
 			}
 			else
 			{
-				out.push_back("");
+				//out.push_back("");
 			}
 		}
 		else if (i + token.size() >= in.size())
@@ -401,9 +401,22 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material*>* 
 		// Create Mesh
 		tempMesh = Mesh(Vertices, Indices);
 		tempMesh.MeshName = meshname;
+		tempMesh.MeshMaterial = tempMaterial;
+
+		if (abs(tempMesh.MeshMaterial->emission.x) + abs(tempMesh.MeshMaterial->emission.y) + abs(tempMesh.MeshMaterial->emission.z) > 0) {
+			Light light;
+
+			light.emission = tempMesh.MeshMaterial->emission;
+			//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
+			light.first_index = LoadedIndices.size() - Indices.size();
+			light.last_index = LoadedIndices.size() - 1;
+
+			LoadedLights.push_back(light);
+		}
 
 		// Insert Mesh
 		LoadedMeshes.push_back(tempMesh);
+		LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
 	}
 
 	file.close();

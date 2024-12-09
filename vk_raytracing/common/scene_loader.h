@@ -27,9 +27,18 @@ public:
 
 
 class Scene {
-
-
 public:
+	Scene()
+	{
+
+	}
+	~Scene()
+	{
+		for (int i = 0; i < entities.size(); i++) {
+			delete entities[i];
+		}
+	}
+
 	//Rendering parameters
 	unsigned int resolution_x = DEFAULT_RESOLUTION_WIDTH;
 	unsigned int resolution_y = DEFAULT_RESOLUTION_HEIGHT;
@@ -40,7 +49,7 @@ public:
 	unsigned int camera_fov = 45;
 
 	//Models in scene
-	std::vector<Entity> entities;
+	std::vector<Entity*> entities;
 	std::vector<objl::Material> materials;
 	std::vector<std::string> textures;
 

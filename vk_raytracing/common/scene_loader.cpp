@@ -3,8 +3,14 @@
 
 using json = nlohmann::json;
 
-Scene::Scene(const std::string& filename) {
-	std::ifstream f(filename);
+Scene::Scene(const std::string& filepath) {
+
+	std::filesystem::path path = filepath;
+
+	// Get the parent directory of the file
+	std::filesystem::path parentDir = path.parent_path();
+
+	std::ifstream f(filepath);
 	json data = json::parse(f);
 
 	std::map<std::string, objl::Material*> materials_map;
@@ -80,7 +86,10 @@ Scene::Scene(const std::string& filename) {
 		objl::Material default_material;
 
 		default_material.ID = materials.size();
+		default_material.name = "default_material";
+
 		materials.push_back(default_material);
+		materials_map["default_material"] = &materials[materials.size() - 1];
 	}
 
 
@@ -92,7 +101,8 @@ Scene::Scene(const std::string& filename) {
 			if (!(*it).contains("file"))
 				continue;
 
-			std::string path = (*it)["file"].template get<std::string>();
+			std::filesystem::path model_name = (*it)["file"].template get<std::string>();
+			std::filesystem::path path = parentDir / model_name;
 
 			objl::Material* default_material = nullptr;
 			if ((*it).contains("default_material"))
@@ -100,10 +110,10 @@ Scene::Scene(const std::string& filename) {
 			else
 				default_material = materials_map["default_material"];
 
-			entities.push_back(Shape());
-			Shape* shape = (Shape*)&entities[entities.size() - 1];
+			Shape* shape = new Shape();
+			entities.push_back(shape);
 
-			shape->model_loader.LoadFile(path, &materials_map, default_material);
+			shape->model_loader.LoadFile(path.string(), &materials_map, default_material);
 		}
 	}
 }
