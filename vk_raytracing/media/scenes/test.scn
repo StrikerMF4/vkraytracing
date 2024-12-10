@@ -11,23 +11,28 @@
     },
     "materials": [
         {
-            "name": "cube_instance_material",
+            "name": "floor",
 			"color": [0.2, 0.5, 0.6],
             "roughness": 0.5,
             "metallic": 0.1
         },
         {
-            "name": "ceiling",
-            "color": [0.2, 0.5, 0.6],
-            "roughness": 0.75,
-            "metallic": 0.1
+            "name": "light",
+            "emission": [50.0, 50.0, 50.0]
         }
     ],
     "entities": [
         {
+			"default_material": "floor",
             "type": "mesh",
             "file": "models/plane.obj",
-            "position": [10.0, 10.2, 30.4]
+            "position": [0, 0, 0]
+        },
+		{
+			"default_material": "light",
+            "type": "mesh",
+            "file": "models/plane.obj",
+            "position": [0, 5, 0]
         }
     ]
 }

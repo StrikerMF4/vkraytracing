@@ -161,7 +161,7 @@ inline const T& algorithm::getElement(const std::vector<T>& elements, std::strin
 
 
 
-bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material*>* materials, objl::Material* default_material)
+bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material)
 {
 	// If the file is not an .obj file return false
 	if (Path.substr(Path.size() - 4, 4) != ".obj")
@@ -382,7 +382,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material*>* 
 				Indices.clear();
 			}
 
-			tempMaterial = (*materials)[algorithm::tail(curline)];
+			tempMaterial = &(*materials)[algorithm::tail(curline)];
 
 #ifdef OBJL_CONSOLE_OUTPUT
 			outputIndicator = 0;

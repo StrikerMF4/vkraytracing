@@ -13,7 +13,7 @@ Scene::Scene(const std::string& filepath) {
 	std::ifstream f(filepath);
 	json data = json::parse(f);
 
-	std::map<std::string, objl::Material*> materials_map;
+	std::map<std::string, objl::Material> materials_map;
 
 	if (data.contains("resolution")) {
 		resolution_x = data["resolution"][0].template get<unsigned int>();
@@ -51,34 +51,42 @@ Scene::Scene(const std::string& filepath) {
 			if (name == "default_material")
 				defines_default_material = true;
 
-			material.baseColor = glm::vec3(
-				(*it)["color"][0].template get<double>(),
-				(*it)["color"][1].template get<double>(),
-				(*it)["color"][2].template get<double>()
-			);
+			if ((*it).contains("color"))
+				material.baseColor = glm::vec3(
+					(*it)["color"][0].template get<double>(),
+					(*it)["color"][1].template get<double>(),
+					(*it)["color"][2].template get<double>()
+				);
 
+			if ((*it).contains("emission"))
+				material.emission = glm::vec3(
+					(*it)["emission"][0].template get<double>(),
+					(*it)["emission"][1].template get<double>(),
+					(*it)["emission"][2].template get<double>()
+				);
+
+			if ((*it).contains("albedotexture")) {
+				material.albedoTextureID = textures.size();
+				textures.push_back((*it)["albedotexture"].template get<std::string>());
+			}
+			if ((*it).contains("metallicroughnesstexture")) {
+				material.metallicRoughnessTextureID = textures.size();
+				textures.push_back((*it)["metallicroughnesstexture"].template get<std::string>());
+			}
+			if ((*it).contains("normaltexture")) {
+				material.normalTextureID = textures.size();
+				textures.push_back((*it)["normaltexture"].template get<std::string>());
+			}
+			if ((*it).contains("emissiontexture")) {
+				material.emissionTextureID = textures.size();
+				textures.push_back((*it)["emissiontexture"].template get<std::string>());
+			}
+
+			//Save the material
 			material.ID = materials.size();
 			materials.push_back(material);
-			
-			materials_map.insert({ name, &materials[material.ID] });
 
-			if (data.contains("albedotexture")) {
-				material.albedoTextureID = textures.size();
-				textures.push_back(data["albedotexture"].template get<std::string>());
-			}
-			if (data.contains("metallicroughnesstexture")) {
-				material.metallicRoughnessTextureID = textures.size();
-				textures.push_back(data["metallicroughnesstexture"].template get<std::string>());
-			}
-			if (data.contains("normaltexture")) {
-				material.normalTextureID = textures.size();
-				textures.push_back(data["normaltexture"].template get<std::string>());
-			}
-			if (data.contains("emissiontexture")) {
-				material.emissionTextureID = textures.size();
-				textures.push_back(data["emissiontexture"].template get<std::string>());
-			}
-
+			materials_map.insert({ name, material });
 		}
 	}
 
@@ -88,7 +96,7 @@ Scene::Scene(const std::string& filepath) {
 		default_material.ID = materials.size();
 
 		materials.push_back(default_material);
-		materials_map["default_material"] = &materials[materials.size() - 1];
+		materials_map["default_material"] = default_material;
 	}
 
 
@@ -103,11 +111,13 @@ Scene::Scene(const std::string& filepath) {
 			std::filesystem::path model_name = (*it)["file"].template get<std::string>();
 			std::filesystem::path path = parentDir / model_name;
 
+
+			//TO-DO: Agregar opción para sobreescribir el material con uno fijo
 			objl::Material* default_material = nullptr;
 			if ((*it).contains("default_material"))
-				default_material = materials_map[(*it)["default_material"].template get<std::string>()];
+				default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
 			else
-				default_material = materials_map["default_material"];
+				default_material = &materials_map["default_material"];
 
 			Shape* shape = new Shape();
 			entities.push_back(shape);
