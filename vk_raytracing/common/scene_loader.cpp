@@ -46,9 +46,9 @@ Scene::Scene(const std::string& filepath) {
 		for (json::iterator it = materials_data.begin(); it != materials_data.end(); ++it) {
 			objl::Material material;
 
-			material.name = (*it)["name"].template get<std::string>();
+			std::string name = (*it)["name"].template get<std::string>();
 
-			if (material.name == "default_material")
+			if (name == "default_material")
 				defines_default_material = true;
 
 			material.baseColor = glm::vec3(
@@ -60,7 +60,7 @@ Scene::Scene(const std::string& filepath) {
 			material.ID = materials.size();
 			materials.push_back(material);
 			
-			materials_map.insert({ material.name, &materials[material.ID] });
+			materials_map.insert({ name, &materials[material.ID] });
 
 			if (data.contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
@@ -86,7 +86,6 @@ Scene::Scene(const std::string& filepath) {
 		objl::Material default_material;
 
 		default_material.ID = materials.size();
-		default_material.name = "default_material";
 
 		materials.push_back(default_material);
 		materials_map["default_material"] = &materials[materials.size() - 1];

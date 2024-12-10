@@ -89,13 +89,34 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 
 struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compressed for device
 {
-	vec3  color;
-	float IOR;
-	float roughness;
+	uint ID;
+
+	vec3 baseColor;
+
+	vec3 emission;
+
 	float metallic;
-	vec3  emittance;
-	float transparent;
-	int   textureId;
+	float roughness;
+	float subsurface;
+	float specularTint;
+	float anisotropic;
+
+	float sheen;
+	float sheenTint;
+	float clearcoat;
+	float clearcoatGloss;
+
+	float specTrans;
+	float ior;
+
+	int albedoTextureID;
+	int metallicRoughnessTextureID;
+	int normalTextureID;
+	int emissionTextureID;
+
+	float opacity;
+	float alphaMode;
+	float alphaCutoff;
 };
 
 struct Light {

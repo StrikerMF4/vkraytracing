@@ -8,7 +8,7 @@ vec3 computeDiffuse(WaveFrontMaterial mat, vec3 lightDir, vec3 normal)
 {
   // Lambertian
   float dotNL = max(dot(normal, lightDir), 0.0);
-  vec3  c     = mat.color * dotNL;
+  vec3  c     = mat.baseColor * dotNL;
   return c;
 }
 

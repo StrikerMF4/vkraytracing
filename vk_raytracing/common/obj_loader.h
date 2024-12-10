@@ -48,8 +48,6 @@ namespace objl
 	{
 		Material()
 		{
-			name;
-
 			ID = 0;
 			baseColor = glm::vec3(0.0);
 			emission = glm::vec3(0.0);
@@ -74,9 +72,6 @@ namespace objl
 		}
 
 		unsigned int ID;
-
-		// Material Name
-		std::string name;
 
 		glm::vec3 baseColor;
 

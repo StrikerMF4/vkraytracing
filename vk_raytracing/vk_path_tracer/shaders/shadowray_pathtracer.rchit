@@ -33,7 +33,7 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 vec3 transmition(vec3 micro_normal, WaveFrontMaterial material) {
     bool ray_entering = dot(payload.direction, payload.surface_normal) < 0;
     float ni = 1;
-    float nt = payload.material.IOR;
+    float nt = payload.material.ior;
     if (!ray_entering) {
         ni = nt;
         nt = 1;
@@ -91,8 +91,8 @@ void main() {
     WaveFrontMaterial material    = materials.m[matIdx];
     // Texture
     vec3 texture_color = vec3(1);
-    if(material.textureId >= 0) {
-        uint txtId    = material.textureId + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+    if(material.albedoTextureID >= 0) {
+        uint txtId    = material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
         vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
     }
@@ -101,10 +101,10 @@ void main() {
     
 
     payload.origin = hit_position;
-    if(length(material.emittance) > 0) {
+    if(length(material.emission) > 0) {
         // TO-DO: Cambiar esto por alguna aproximaci�n al L de Veach
-        payload.bsdf_sample = 3 * material.emittance * texture_color.rgb;
-        payload.Le = 3 * material.emittance * texture_color.rgb;
+        payload.bsdf_sample = 3 * material.emission * texture_color.rgb;
+        payload.Le = 3 * material.emission * texture_color.rgb;
         payload.status = RAY_HIT_LIGHT;
     } else {
      
@@ -113,7 +113,7 @@ void main() {
         float rnd = rand(payload.random_seed);
         float absorption = 0;
 
-        float trans_prob = 1 - material.transparent;
+        float trans_prob = 1 - material.opacity;
         float refl_prob = trans_prob + material.metallic;
         float absor_prob = refl_prob + absorption;
 
@@ -124,7 +124,7 @@ void main() {
         if(rnd < trans_prob) {
             payload.bsdf_sample = vec3(0);
             payload.direction = transmition(micro_normal, material);
-            payload.bsdf_sample = material.color * texture_color; //specular color?
+            payload.bsdf_sample = material.baseColor * texture_color; //specular color?
         } 
         else if(rnd < refl_prob) {
             payload.direction = micro_reflect(-payload.direction, micro_normal);
@@ -136,7 +136,7 @@ void main() {
         }
         else {
             payload.direction = micro_reflect(-payload.direction, micro_normal);
-            payload.bsdf_sample = material.color * texture_color;
+            payload.bsdf_sample = material.baseColor * texture_color;
             payload.bsdf_type = BSDF_DIFFUSE;
         }
 
