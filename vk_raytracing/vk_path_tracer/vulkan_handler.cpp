@@ -396,10 +396,16 @@ void VulkanHandler::loadScene(Scene* scene)
         nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
 
-        m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene->materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
-        nvvk::Buffer* material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
+        std::string material_id = std::to_string(m_scene_buffers.size());
+        void* data = scene->materials.data();
 
-        m_debug.setObjectName(material_buffer->buffer, (std::string("mat_"+ (int)m_scene_buffers.size())));
+        m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene->materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
+
+        cmdBufGet.submitAndWait(cmdBuf);
+        m_alloc.finalizeAndReleaseStaging();
+
+        nvvk::Buffer* material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
+        m_debug.setObjectName(material_buffer->buffer, (std::string("mat_"+ material_id)));
 
         materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
     }

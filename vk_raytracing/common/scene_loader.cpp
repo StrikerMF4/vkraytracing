@@ -66,6 +66,9 @@ Scene::Scene(const std::string& filepath) {
 					(*it)["emission"][2].template get<double>()
 				);
 
+			if ((*it).contains("roughness"))
+				material.roughness = (*it)["roughness"].template get<double>();
+
 			if ((*it).contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
 				textures.push_back((*it)["albedotexture"].template get<std::string>());
