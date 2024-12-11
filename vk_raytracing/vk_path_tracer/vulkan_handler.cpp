@@ -367,7 +367,7 @@ void VulkanHandler::createGraphicsPipeline()
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void VulkanHandler::loadScene(const Scene& scene)
+void VulkanHandler::loadScene(Scene* scene)
 {
     // Converting from Srgb to linear
     /*for (auto& m : scene.materials)
@@ -386,7 +386,7 @@ void VulkanHandler::loadScene(const Scene& scene)
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
         
         textureOffset = static_cast<uint32_t>(m_textures.size());
-        createTextureImages(cmdBuf, scene.textures);
+        createTextureImages(cmdBuf, scene->textures);
         cmdBufGet.submitAndWait(cmdBuf);
     }
 
@@ -396,17 +396,17 @@ void VulkanHandler::loadScene(const Scene& scene)
         nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
 
-        m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene.materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
+        m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene->materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
         material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
 
         m_debug.setObjectName(material_buffer->buffer, (std::string("mat_"+ (int)m_scene_buffers.size())));
     }
 
     // Upload all models from scene to Vulkan
-    for (auto& entity : scene.entities) {
+    for (int i = 0; i < scene->entities.size(); i++) {
         //TO-DO: Cuando la entidad sea de otro tipo posiblemente haya que seguir un procedimiento distinto, revisar
 
-        Shape* shape = (Shape*)&entity;
+        Shape* shape = (Shape*)scene->entities[i];
 
         // Assign ObjectID
         for (auto& light : shape->model_loader.LoadedLights)

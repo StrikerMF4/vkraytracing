@@ -67,7 +67,7 @@ public:
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
   void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
-  void loadScene(const Scene& scene);
+  void loadScene(Scene* scene);
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();

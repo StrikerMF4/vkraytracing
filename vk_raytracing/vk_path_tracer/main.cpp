@@ -336,7 +336,7 @@ int main(int argc, char** argv)
 	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene.camera_fov);
 
-	vulkanHandler.loadScene(scene);
+	vulkanHandler.loadScene(&scene);
 
 	// Creation of the example-----------------------------------------------------------------------------------------------------------------
 
