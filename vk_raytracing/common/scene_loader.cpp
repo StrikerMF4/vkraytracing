@@ -1,5 +1,6 @@
 
 #include "scene_loader.h"
+#include <nvh/nvprint.hpp>
 
 using json = nlohmann::json;
 
@@ -104,25 +105,57 @@ Scene::Scene(const std::string& filepath) {
 		json entities_data = data["entities"];
 
 		for (json::iterator it = entities_data.begin(); it != entities_data.end(); ++it) {
-			//Entity entity;
-			if (!(*it).contains("file"))
-				continue;
+			Entity* entity;
 
-			std::filesystem::path model_name = (*it)["file"].template get<std::string>();
-			std::filesystem::path path = parentDir / model_name;
+			std::string entity_type = (*it)["type"].template get<std::string>();
+
+			if (entity_type == "mesh") {
+				if (!(*it).contains("file"))
+					continue;
+
+				std::filesystem::path model_name = (*it)["file"].template get<std::string>();
+				std::filesystem::path path = parentDir / model_name;
 
 
-			//TO-DO: Agregar opción para sobreescribir el material con uno fijo
-			objl::Material* default_material = nullptr;
-			if ((*it).contains("default_material"))
-				default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
-			else
-				default_material = &materials_map["default_material"];
+				//TO-DO: Agregar opción para sobreescribir el material con uno fijo
+				objl::Material* default_material = nullptr;
+				if ((*it).contains("default_material"))
+					default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
+				else
+					default_material = &materials_map["default_material"];
 
-			Shape* shape = new Shape();
-			entities.push_back(shape);
+				Shape* shape = new Shape();
 
-			shape->model_loader.LoadFile(path.string(), &materials_map, default_material);
+				shape->model_loader.LoadFile(path.string(), &materials_map, default_material);
+
+				entity = shape;
+			}
+			else {
+				LOGI("SCENE_LOADER::UNRECOGNISED_ENTITY_TYPE:: received type: ",entity_type);
+			}
+
+			if ((*it).contains("position"))
+				entity->position = glm::vec3(
+					(*it)["position"][0].template get<double>(),
+					(*it)["position"][1].template get<double>(),
+					(*it)["position"][2].template get<double>()
+				);
+
+			if ((*it).contains("rotation"))
+				entity->rotation = glm::vec3(
+					(*it)["rotation"][0].template get<double>(),
+					(*it)["rotation"][1].template get<double>(),
+					(*it)["rotation"][2].template get<double>()
+				);
+
+			if ((*it).contains("scale"))
+				entity->scale = glm::vec3(
+					(*it)["scale"][0].template get<double>(),
+					(*it)["scale"][1].template get<double>(),
+					(*it)["scale"][2].template get<double>()
+				);
+
+			entities.push_back(entity);
 		}
 	}
 }
