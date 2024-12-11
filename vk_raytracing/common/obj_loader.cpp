@@ -257,7 +257,6 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 					// Insert Mesh
 					LoadedMeshes.push_back(tempMesh);
-					LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
 
 					tempMaterial = default_material;
 
@@ -341,6 +340,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 				LoadedIndices.push_back(indnum);
 
 			}
+
+			LoadedMaterialIndices.push_back(tempMaterial->ID);
 		}
 		// Get Mesh Material Name
 		if (algorithm::firstToken(curline) == "usemtl")
@@ -375,7 +376,6 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 				// Insert Mesh
 				LoadedMeshes.push_back(tempMesh);
-				LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
 
 				// Cleanup
 				Vertices.clear();
@@ -416,7 +416,6 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 		// Insert Mesh
 		LoadedMeshes.push_back(tempMesh);
-		LoadedMaterialIndices.push_back(tempMesh.MeshMaterial->ID);
 	}
 
 	file.close();
