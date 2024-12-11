@@ -391,15 +391,17 @@ void VulkanHandler::loadScene(Scene* scene)
     }
 
     //Upload the materials of the entire scene
-    nvvk::Buffer* material_buffer;
+    uint64_t materialAddress;
     {
         nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
 
         m_scene_buffers.push_back(m_alloc.createBuffer(cmdBuf, scene->materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag));
-        material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
+        nvvk::Buffer* material_buffer = &m_scene_buffers[m_scene_buffers.size() - 1];
 
         m_debug.setObjectName(material_buffer->buffer, (std::string("mat_"+ (int)m_scene_buffers.size())));
+
+        materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
     }
 
     // Upload all models from scene to Vulkan
@@ -459,7 +461,7 @@ void VulkanHandler::loadScene(Scene* scene)
         desc.txtOffset = textureOffset;
         desc.vertexAddress = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
         desc.indexAddress = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
-        desc.materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
+        desc.materialAddress = materialAddress;
         desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
 
         // Keeping the obj host model and device description
