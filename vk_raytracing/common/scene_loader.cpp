@@ -4,6 +4,8 @@
 
 using json = nlohmann::json;
 
+using namespace SceneLoader;
+
 Scene::Scene(const std::string& filepath) {
 
 	std::filesystem::path path = filepath;
@@ -139,11 +141,12 @@ Scene::Scene(const std::string& filepath) {
 				std::filesystem::path model_name = (*it)["file"].template get<std::string>();
 				std::filesystem::path path = parentDir / model_name;
 
-
-				//TO-DO: Agregar opción para sobreescribir el material con uno fijo
 				objl::Material* default_material = nullptr;
 				if ((*it).contains("default_material"))
 					default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
+				//TO-DO: Esta opción debería sobreescribir el material con uno fijo
+				else if ((*it).contains("material"))
+					default_material = &materials_map[(*it)["material"].template get<std::string>()];
 				else
 					default_material = &materials_map["default_material"];
 
@@ -153,7 +156,14 @@ Scene::Scene(const std::string& filepath) {
 
 				entity = shape;
 			}
-			else {
+			else if (entity_type == "sphere") {
+				Sphere* sphere = new Sphere();
+
+				sphere->radius = (*it)["sheen"].template get<double>();
+				sphere->material_idx = materials_map[(*it)["material"].template get<std::string>()].ID;
+
+				entity = sphere;
+			} else {
 				LOGI("SCENE_LOADER::UNRECOGNISED_ENTITY_TYPE:: received type: ",entity_type);
 			}
 

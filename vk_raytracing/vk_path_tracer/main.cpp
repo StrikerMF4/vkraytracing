@@ -423,6 +423,7 @@ int main(int argc, char** argv)
 	TechniqueType current_technique = TechniqueType::SIMPLE_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
 
+	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
 	vulkanHandler.createDescriptorSetLayout();
 	vulkanHandler.createGraphicsPipeline();

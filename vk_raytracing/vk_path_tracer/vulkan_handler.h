@@ -67,7 +67,8 @@ public:
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
   void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
-  void loadScene(Scene* scene);
+  void loadScene(SceneLoader::Scene* scene);
+  void uploadImplicitObjects();
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
@@ -111,7 +112,15 @@ public:
   std::vector<ObjDesc>     m_objDesc;    // Model description for device access
   std::vector<ObjInstance> m_instances;  // Scene model instances
   std::vector<Light>    m_lights;     // Lights in the scene
-
+  
+  //Sphere-specific arrays
+  std::vector<Sphere> m_spheres;
+  std::vector<objl::Material> m_sphere_materials;
+  std::vector<unsigned int> m_sphere_mat_idx;
+  nvvk::Buffer m_spheresBuffer;
+  nvvk::Buffer m_spheresAABBBuffer;
+  nvvk::Buffer m_spheresMatBuffer;
+  nvvk::Buffer m_spheresMatIndexBuffer;
 
   // Graphic pipeline
   VkPipelineLayout            m_pipelineLayout;
@@ -155,6 +164,7 @@ public:
   // #VKRay
   void initRayTracing();
   auto objectToVkGeometryKHR(const ObjModel& model);
+  auto sphereToVkGeometryKHR();
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();

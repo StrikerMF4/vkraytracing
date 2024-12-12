@@ -27,6 +27,8 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
         eMiss,
         eAnyHit,
         eClosestHit,
+        eClosestHitParametric,
+        eIntersectionParametric,
         eShaderGroupCount
     };
 
@@ -50,6 +52,14 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
     stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/" + codename + ".rchit.spv", true, defaultSearchPaths, true));
     stage.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
     stages[eClosestHit] = stage;
+    // Closest hit - Parametric
+    stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/" + codename + "_parametric.rchit.spv", true, defaultSearchPaths, true));
+    stage.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    stages[eClosestHitParametric] = stage;
+    // Intersection
+    stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/pathtracer_parametric.rint.spv", true, defaultSearchPaths, true));
+    stage.stage = VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+    stages[eIntersectionParametric] = stage;
 
 
     // Shader groups
@@ -80,6 +90,14 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
     group.generalShader = VK_SHADER_UNUSED_KHR;
     group.closestHitShader = eClosestHit;
+    m_rtShaderGroups.push_back(group);
+
+
+    // closest hit shader + Intersection (Hit group 2) - Formas parametricas
+    group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+    group.closestHitShader = VK_SHADER_UNUSED_KHR;
+    group.closestHitShader = eClosestHitParametric;
+    group.intersectionShader = eIntersectionParametric;
     m_rtShaderGroups.push_back(group);
 
     // Push constant: we want to be able to update constants used by the shaders
@@ -294,6 +312,11 @@ void VulkanHandler::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
       VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
+  // Storing spheres
+  m_descSetLayoutBind.addBinding(eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
+
+
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
   m_descPool      = m_descSetLayoutBind.createPool(m_device, 1);
@@ -324,6 +347,9 @@ void VulkanHandler::updateDescriptorSet()
 
   VkDescriptorBufferInfo dbiLights{ m_bLights.buffer, 0, VK_WHOLE_SIZE };
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eLights, &dbiLights));
+
+  VkDescriptorBufferInfo dbiSpheres{ m_spheresBuffer.buffer, 0, VK_WHOLE_SIZE };
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicit, &dbiSpheres));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -367,7 +393,7 @@ void VulkanHandler::createGraphicsPipeline()
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void VulkanHandler::loadScene(Scene* scene)
+void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 {
     // Converting from Srgb to linear
     /*for (auto& m : scene.materials)
@@ -410,72 +436,151 @@ void VulkanHandler::loadScene(Scene* scene)
         materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
     }
 
-    // Upload all models from scene to Vulkan
+
+    // Upload all entities from scene to Vulkan
     for (int i = 0; i < scene->entities.size(); i++) {
         //TO-DO: Cuando la entidad sea de otro tipo posiblemente haya que seguir un procedimiento distinto, revisar
 
-        Shape* shape = (Shape*)scene->entities[i];
+        SceneLoader::Entity* entity = scene->entities[i];
 
-        // Assign ObjectID
-        for (auto& light : shape->model_loader.LoadedLights)
+        if (dynamic_cast<SceneLoader::Sphere*>(entity) == nullptr)
         {
-            Light result;
+            /* SPHERE */
 
-            result.object_id = m_objDesc.size();
-            result.emission = light.emission;
-            result.first_index = light.first_index;
-            result.last_index = light.last_index;
+            SceneLoader::Sphere* sphere = (SceneLoader::Sphere*)entity;
 
-            m_lights.push_back(result);
+            Sphere sphere_obj;
+
+            sphere_obj.center = sphere->position;
+            sphere_obj.radius = sphere->radius;
+
+            m_spheres.push_back(sphere_obj);
+            int material_index = -1;
+            for (int i = 0; i < scene->materials.size(); i++) {
+
+                if (scene->materials[i].ID == sphere->material_idx) {
+                    material_index = i;
+                    break;
+                }
+            }
+
+            if (i == -1) {
+                material_index = m_sphere_materials.size();
+                m_sphere_materials.push_back(scene->materials[sphere->material_idx]);
+            }
+
+            m_sphere_mat_idx.push_back(material_index);
         }
+        else if (dynamic_cast<SceneLoader::Shape*>(entity) == nullptr)
+        {
+            /* MESH */
 
-        //mesh->
+            SceneLoader::Shape* shape = (SceneLoader::Shape*)entity;
 
-        glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
-        transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 0.0, 1.0));
-        transform = glm::translate(transform, shape->position);
+            // Assign ObjectID
+            for (auto& light : shape->model_loader.LoadedLights)
+            {
+                Light result;
 
-        ObjModel model;
-        model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());
-        model.nbVertices = static_cast<uint32_t>(shape->model_loader.LoadedVertices.size());
+                result.object_id = m_objDesc.size();
+                result.emission = light.emission;
+                result.first_index = light.first_index;
+                result.last_index = light.last_index;
 
-        // Create the buffers on Device and copy vertices, indices and materials
-        nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
-        VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
-        model.vertexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
-        model.indexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedIndices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
-        model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedMaterialIndices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
+                m_lights.push_back(result);
+            }
 
-        cmdBufGet.submitAndWait(cmdBuf);
-        m_alloc.finalizeAndReleaseStaging();
+            glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
+            transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
+            transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
+            transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 0.0, 1.0));
+            transform = glm::translate(transform, shape->position);
 
-        std::string objNb = std::to_string(m_objModel.size());
-        m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
-        m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
-        m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
+            ObjModel model;
+            model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());
+            model.nbVertices = static_cast<uint32_t>(shape->model_loader.LoadedVertices.size());
 
-        // Keeping transformation matrix of the instance
-        ObjInstance instance;
-        instance.transform = transform;
-        instance.objIndex = static_cast<uint32_t>(m_objModel.size());
-        m_instances.push_back(instance);
+            // Create the buffers on Device and copy vertices, indices and materials
+            nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+            VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
+            model.vertexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedVertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
+            model.indexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedIndices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
+            model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, shape->model_loader.LoadedMaterialIndices, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
 
-        // Creating information for device access
-        ObjDesc desc;
-        desc.txtOffset = textureOffset;
-        desc.vertexAddress = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
-        desc.indexAddress = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
-        desc.materialAddress = materialAddress;
-        desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
+            cmdBufGet.submitAndWait(cmdBuf);
+            m_alloc.finalizeAndReleaseStaging();
 
-        // Keeping the obj host model and device description
-        m_objModel.emplace_back(model);
-        m_objDesc.emplace_back(desc);
+            std::string objNb = std::to_string(m_objModel.size());
+            m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
+            m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
+            m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
+
+            // Keeping transformation matrix of the instance
+            ObjInstance instance;
+            instance.transform = transform;
+            instance.objIndex = static_cast<uint32_t>(m_objModel.size());
+            m_instances.push_back(instance);
+
+            // Creating information for device access
+            ObjDesc desc;
+            desc.txtOffset = textureOffset;
+            desc.vertexAddress = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
+            desc.indexAddress = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
+            desc.materialAddress = materialAddress;
+            desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
+
+            // Keeping the obj host model and device description
+            m_objModel.emplace_back(model);
+            m_objDesc.emplace_back(desc);
+        }
     }
 }
 
+
+void VulkanHandler::uploadImplicitObjects() {
+    uint32_t spheres_count = m_spheres.size();
+
+    // Axis aligned bounding box of each sphere
+    std::vector<AABB> aabbs;
+    aabbs.reserve(spheres_count);
+    for (const auto& s : m_spheres)
+    {
+        AABB aabb;
+        aabb.minimum = s.center - glm::vec3(s.radius);
+        aabb.maximum = s.center + glm::vec3(s.radius);
+        aabbs.emplace_back(aabb);
+    }
+
+    // Creating all buffers
+    using vkBU = VkBufferUsageFlagBits;
+    nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
+    auto              cmdBuf = genCmdBuf.createCommandBuffer();
+    m_spheresBuffer = m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_spheresAABBBuffer = m_alloc.createBuffer(cmdBuf, aabbs,
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
+    m_spheresMatIndexBuffer =
+        m_alloc.createBuffer(cmdBuf, m_sphere_mat_idx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    m_spheresMatBuffer =
+        m_alloc.createBuffer(cmdBuf, m_sphere_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    genCmdBuf.submitAndWait(cmdBuf);
+
+    // Debug information
+    m_debug.setObjectName(m_spheresBuffer.buffer, "spheres");
+    m_debug.setObjectName(m_spheresAABBBuffer.buffer, "spheresAabb");
+    m_debug.setObjectName(m_spheresMatBuffer.buffer, "spheresMat");
+    m_debug.setObjectName(m_spheresMatIndexBuffer.buffer, "spheresMatIdx");
+
+    // Adding an extra instance to get access to the material buffers
+    ObjDesc objDesc{};
+    objDesc.materialAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresMatBuffer.buffer);
+    objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresMatIndexBuffer.buffer);
+    m_objDesc.emplace_back(objDesc);
+
+    ObjInstance instance{};
+    instance.objIndex = static_cast<uint32_t>(m_objModel.size());
+    m_instances.emplace_back(instance);
+}
 
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
@@ -706,6 +811,11 @@ void VulkanHandler::destroyResources()
   {
       m_alloc.destroy(m_scene_buffers[i]);
   }
+
+  m_alloc.destroy(m_spheresBuffer);
+  m_alloc.destroy(m_spheresAABBBuffer);
+  m_alloc.destroy(m_spheresMatBuffer);
+  m_alloc.destroy(m_spheresMatIndexBuffer);
 
   for(auto& t : m_textures)
   {
@@ -979,6 +1089,34 @@ auto VulkanHandler::objectToVkGeometryKHR(const ObjModel& model)
 }
 
 //--------------------------------------------------------------------------------------------------
+// Convert all spheres into the ray tracing geometry used to build the BLAS
+//
+auto VulkanHandler::sphereToVkGeometryKHR() {
+    VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresAABBBuffer.buffer);
+
+    VkAccelerationStructureGeometryAabbsDataKHR aabbs{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR };
+    aabbs.data.deviceAddress = dataAddress;
+    aabbs.stride = sizeof(AABB);
+
+    // Setting up the build info of the acceleration (C version, c++ gives wrong type)
+    VkAccelerationStructureGeometryKHR asGeom{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
+    asGeom.geometryType = VK_GEOMETRY_TYPE_AABBS_KHR;
+    asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    asGeom.geometry.aabbs = aabbs;
+
+    VkAccelerationStructureBuildRangeInfoKHR offset{};
+    offset.firstVertex = 0;
+    offset.primitiveCount = (uint32_t)m_spheres.size();  // Nb aabb
+    offset.primitiveOffset = 0;
+    offset.transformOffset = 0;
+
+    nvvk::RaytracingBuilderKHR::BlasInput input;
+    input.asGeometry.emplace_back(asGeom);
+    input.asBuildOffsetInfo.emplace_back(offset);
+    return input;
+}
+
+//--------------------------------------------------------------------------------------------------
 //
 //
 void VulkanHandler::createBottomLevelAS()
@@ -993,6 +1131,13 @@ void VulkanHandler::createBottomLevelAS()
     // We could add more geometry in each BLAS, but we add only one for now
     allBlas.emplace_back(blas);
   }
+
+  //Esferas
+  {
+      auto blas = sphereToVkGeometryKHR();
+      allBlas.emplace_back(blas);
+  }
+
   m_rtBuilder.buildBlas(allBlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 }
 
@@ -1002,9 +1147,12 @@ void VulkanHandler::createBottomLevelAS()
 void VulkanHandler::createTopLevelAS()
 {
   std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  tlas.reserve(m_instances.size());
-  for(const VulkanHandler::ObjInstance& inst : m_instances)
+  uint32_t size = m_instances.size() - 1;
+  tlas.reserve(size);
+  for(uint32_t i = 0; i < size; i++)
   {
+    const VulkanHandler::ObjInstance& inst = m_instances[i];
+
     VkAccelerationStructureInstanceKHR rayInst{};
     rayInst.transform                      = nvvk::toTransformMatrixKHR(inst.transform);  // Position of the instance
     rayInst.instanceCustomIndex            = inst.objIndex;                               // gl_InstanceCustomIndexEXT
@@ -1013,6 +1161,17 @@ void VulkanHandler::createTopLevelAS()
     rayInst.mask                           = 0xFF;       //  Only be hit if rayMask & instance.mask != 0
     rayInst.instanceShaderBindingTableRecordOffset = 0;  // We will use the same hit group for all objects
     tlas.emplace_back(rayInst);
+  }
+  // Add the blas containing all implicit objects
+  {
+      VkAccelerationStructureInstanceKHR rayInst{};
+      rayInst.transform = nvvk::toTransformMatrixKHR(glm::mat4(1));  // Position of the instance (identity)
+      rayInst.instanceCustomIndex = size;                            // nbObj == last object == implicit
+      rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
+      rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
+      rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+      rayInst.mask = 0xFF;  //  Only be hit if rayMask & instance.mask != 0
+      tlas.emplace_back(rayInst);
   }
   m_rtBuilder.buildTlas(tlas, VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR);
 }

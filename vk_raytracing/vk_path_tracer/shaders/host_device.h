@@ -25,7 +25,8 @@ START_BINDING(SceneBindings)
 eGlobals = 0,  // Global uniform containing camera matrices
 eObjDescs = 1,  // Access to the object descriptions
 eTextures = 2,  // Access to textures
-eLights = 3
+eLights = 3,
+eImplicit = 4
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -34,6 +35,8 @@ eOutImage = 1   // Ray tracer output image
 END_BINDING();
 // clang-format on
 
+#define KIND_SPHERE 0
+#define KIND_CUBE 1
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc
@@ -86,6 +89,17 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 	vec3 color;
 	vec2 texCoord;
 };
+
+struct Sphere {
+	vec3 center;
+	float radius;
+};
+
+struct AABB {
+	vec3 minimum;
+	vec3 maximum;
+};
+
 
 struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compressed for device
 {
