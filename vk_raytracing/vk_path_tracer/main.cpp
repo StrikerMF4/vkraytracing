@@ -329,7 +329,7 @@ int main(int argc, char** argv)
 
 	// Load Scene
 	const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
-	Scene scene(scene_path);
+	SceneLoader::Scene scene(scene_path);
 
 	// Setup camera - TODO, estaba mas arriba, funciona?
 	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
