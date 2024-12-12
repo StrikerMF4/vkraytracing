@@ -25,6 +25,7 @@ layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID f
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
+layout(set = 1, binding = eImplicit, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
@@ -82,8 +83,12 @@ void main() {
     // Texture
     vec3 texture_color = vec3(1);
     if(material.albedoTextureID >= 0) {
+        vec2 texCoord = vec2(
+            atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
+            payload.surface_normal.y * 0.5 + 0.5
+        );
+
         uint txtId    = material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
     }
     //--------------------------------------------------------------------------------------------------------

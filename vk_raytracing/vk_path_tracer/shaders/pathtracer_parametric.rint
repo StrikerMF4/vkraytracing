@@ -7,12 +7,12 @@
 #extension GL_EXT_buffer_reference2 : require
 
 #include "raycommon.glsl"
-#include "wavefront.glsl"
-
-layout(binding = 4, set = eImplicit, scalar) buffer allSpheres_
-{
-  Sphere allSpheres[];
-};
+//#include "wavefront.glsl"
+//layout(binding = 4, set = eImplicit, scalar) buffer allSpheres_
+//{
+//  Sphere allSpheres[];
+//};
+layout(set = 1, binding = eImplicit, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
 struct Ray
 {
@@ -37,7 +37,7 @@ float hitSphere(const Sphere s, const Ray r)
 }
 
 // Ray-AABB intersection
-float hitAabb(const Aabb aabb, const Ray r)
+float hitAabb(const AABB aabb, const Ray r)
 {
     vec3  invDir = 1.0 / r.direction;
     vec3  tbot   = invDir * (aabb.minimum - r.origin);
@@ -69,7 +69,7 @@ void main()
     else
     {
         // AABB intersection
-        Aabb aabb;
+        AABB aabb;
         aabb.minimum = sphere.center - vec3(sphere.radius);
         aabb.maximum = sphere.center + vec3(sphere.radius);
         tHit         = hitAabb(aabb, ray);
