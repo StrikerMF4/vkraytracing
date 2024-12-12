@@ -66,8 +66,28 @@ Scene::Scene(const std::string& filepath) {
 					(*it)["emission"][2].template get<double>()
 				);
 
+			if ((*it).contains("opacity"))
+				material.opacity = (*it)["opacity"].template get<double>();
+			if ((*it).contains("metallic"))
+				material.metallic = (*it)["metallic"].template get<double>();
 			if ((*it).contains("roughness"))
 				material.roughness = (*it)["roughness"].template get<double>();
+			if ((*it).contains("subsurface"))
+				material.subsurface = (*it)["subsurface"].template get<double>();
+			if ((*it).contains("speculartint"))
+				material.specularTint = (*it)["speculartint"].template get<double>();
+			if ((*it).contains("anisotropic"))
+				material.anisotropic = (*it)["anisotropic"].template get<double>();
+			if ((*it).contains("sheen"))
+				material.sheen = (*it)["sheen"].template get<double>();
+			if ((*it).contains("sheentint"))
+				material.sheenTint = (*it)["sheentint"].template get<double>();
+			if ((*it).contains("clearcoat"))
+				material.clearcoat = (*it)["clearcoat"].template get<double>();
+			if ((*it).contains("clearcoatgloss"))
+				material.clearcoatGloss = (*it)["clearcoatgloss"].template get<double>();
+			if ((*it).contains("ior"))
+				material.ior = (*it)["ior"].template get<double>();
 
 			if ((*it).contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
