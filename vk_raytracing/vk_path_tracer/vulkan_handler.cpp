@@ -443,7 +443,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 
         SceneLoader::Entity* entity = scene->entities[i];
 
-        if (dynamic_cast<SceneLoader::Sphere*>(entity) == nullptr)
+        if (dynamic_cast<SceneLoader::Sphere*>(entity) != nullptr)
         {
             /* SPHERE */
 
@@ -471,7 +471,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 
             m_sphere_mat_idx.push_back(material_index);
         }
-        else if (dynamic_cast<SceneLoader::Shape*>(entity) == nullptr)
+        else if (dynamic_cast<SceneLoader::Shape*>(entity) != nullptr)
         {
             /* MESH */
 
