@@ -463,7 +463,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
                 }
             }
 
-            if (i == -1) {
+            if (material_index == -1) {
                 material_index = m_sphere_materials.size();
                 m_sphere_materials.push_back(scene->materials[sphere->material_idx]);
             }
