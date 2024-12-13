@@ -456,9 +456,8 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 
             m_spheres.push_back(sphere_obj);
             int material_index = -1;
-            for (int i = 0; i < scene->materials.size(); i++) {
-
-                if (scene->materials[i].ID == sphere->material_idx) {
+            for (int i = 0; i < m_sphere_materials.size(); i++) {
+                if (m_sphere_materials[i].ID == sphere->material_idx) {
                     material_index = i;
                     break;
                 }
