@@ -701,9 +701,26 @@ void VulkanHandler::createLightBuffer()
     nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
 
     auto cmdBuf = cmdGen.createCommandBuffer();
-    m_bLights = m_alloc.createBuffer(cmdBuf, m_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    cmdGen.submitAndWait(cmdBuf);
-    m_alloc.finalizeAndReleaseStaging();
+
+    //Vulkan doesn't like zero-sized buffers, so we send a fake light to vulkan
+    //This wouldn't be used, as the amount of light in the scene is zero (we send
+    //the actual count in the PushConstantRayTracer)
+    if (m_lights.size() == 0) {
+        std::vector<Light> vector_data;
+        vector_data.resize(1);
+        
+        m_bLights = m_alloc.createBuffer(cmdBuf, vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        cmdGen.submitAndWait(cmdBuf);
+
+        m_alloc.finalizeAndReleaseStaging();
+        m_debug.setObjectName(m_bLights.buffer, "Lights");
+    }
+    else {
+        m_bLights = m_alloc.createBuffer(cmdBuf, m_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        cmdGen.submitAndWait(cmdBuf);
+
+        m_alloc.finalizeAndReleaseStaging();
+    }
     m_debug.setObjectName(m_bLights.buffer, "Lights");
 }
 
