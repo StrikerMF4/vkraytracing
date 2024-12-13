@@ -159,7 +159,7 @@ Scene::Scene(const std::string& filepath) {
 			else if (entity_type == "sphere") {
 				Sphere* sphere = new Sphere();
 
-				sphere->radius = (*it)["sheen"].template get<double>();
+				sphere->radius = (*it)["radius"].template get<double>();
 				sphere->material_idx = materials_map[(*it)["material"].template get<std::string>()].ID;
 
 				entity = sphere;
