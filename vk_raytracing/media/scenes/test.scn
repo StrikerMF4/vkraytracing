@@ -22,23 +22,11 @@
         }
     ],
     "entities": [
-        {
-			"default_material": "floor",
-            "type": "mesh",
-            "file": "models/plane.obj",
-            "position": [0, 0, 0]
-        },
 		{
 			"material": "floor",
             "type": "sphere",
             "position": [5, 0, 0],
 			"radius": 2.0
-        },
-		{
-			"material": "light",
-            "type": "mesh",
-            "file": "models/plane.obj",
-            "position": [0, 5, 0]
         }
     ]
 }
