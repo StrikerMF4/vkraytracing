@@ -36,7 +36,7 @@ Scene::Scene(const std::string& filepath) {
 				camera_data["position"][1].template get<double>(),
 				camera_data["position"][2].template get<double>());
 		if (data.contains("lookat"))
-			camera_position = glm::vec3(
+			camera_lookat = glm::vec3(
 				camera_data["lookat"][0].template get<double>(),
 				camera_data["lookat"][1].template get<double>(),
 				camera_data["lookat"][2].template get<double>());

@@ -49,11 +49,11 @@ namespace objl
 		Material()
 		{
 			ID = 0;
-			baseColor = glm::vec3(0.0);
+			baseColor = glm::vec3(1.0);
 			emission = glm::vec3(0.0);
 			anisotropic = 0.0f;
 			metallic = 0.0f;
-			roughness = 0.0f;
+			roughness = 0.00001f;
 			subsurface = 0.0f;
 			specularTint = 0.0f;
 			sheen = 0.0f;
@@ -61,12 +61,12 @@ namespace objl
 			clearcoat = 0.0f;
 			clearcoatGloss = 0.0f;
 			specTrans = 0.0f;
-			ior = 0.0f;
+			ior = 1.0f;
 			albedoTextureID = -1;
 			metallicRoughnessTextureID = -1;
 			normalTextureID = -1;
 			emissionTextureID = -1;
-			opacity = 0.0f;
+			opacity = 1.0f;
 			alphaMode = 0.0f;
 			alphaCutoff = 0.0f;
 		}
