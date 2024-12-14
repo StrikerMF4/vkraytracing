@@ -342,8 +342,11 @@ void VulkanHandler::updateDescriptorSet()
   VkDescriptorBufferInfo dbiLights{ m_bLights.buffer, 0, VK_WHOLE_SIZE };
   writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eLights, &dbiLights));
 
+  VkDescriptorBufferInfo dbiImplicitObjs{ m_implicitObjBuffer.buffer, 0, VK_WHOLE_SIZE };
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicit, &dbiImplicitObjs));
+
   VkDescriptorBufferInfo dbiSpheres{ m_spheresBuffer.buffer, 0, VK_WHOLE_SIZE };
-  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicit, &dbiSpheres));
+  writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicitSpheres, &dbiSpheres));
 
   // Writing the information
   vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
@@ -448,21 +451,27 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
             sphere_obj.center = sphere->position;
             sphere_obj.radius = sphere->radius;
 
-            m_spheres.push_back(sphere_obj);
+            ImplicitObj obj;
+
+            obj.kind = KIND_SPHERE;
+            obj.kind_id = m_spheres.size();
+
             int material_index = -1;
-            for (int i = 0; i < m_sphere_materials.size(); i++) {
-                if (m_sphere_materials[i].ID == sphere->material_idx) {
+            for (int i = 0; i < m_implicitObj_materials.size(); i++) {
+                if (m_implicitObj_materials[i].ID == sphere->material_idx) {
                     material_index = i;
                     break;
                 }
             }
 
             if (material_index == -1) {
-                material_index = m_sphere_materials.size();
-                m_sphere_materials.push_back(scene->materials[sphere->material_idx]);
+                material_index = m_implicitObj_materials.size();
+                m_implicitObj_materials.push_back(scene->materials[sphere->material_idx]);
             }
 
-            m_sphere_mat_idx.push_back(material_index);
+            m_implicitObj_materials_idx.push_back(material_index);
+            m_spheres.push_back(sphere_obj);
+            m_implicitObj.push_back(obj);
         }
         else if (dynamic_cast<SceneLoader::Shape*>(entity) != nullptr)
         {
@@ -531,32 +540,45 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 
 
 void VulkanHandler::uploadImplicitObjects() {
-    uint32_t spheres_count = m_spheres.size();
+    uint32_t implicitObj_count = m_implicitObj.size();
 
-    if (spheres_count == 0) {
+    if (implicitObj_count == 0) {
         nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
         auto cmdBuf = cmdGen.createCommandBuffer();
 
-        std::vector<Sphere> vector_data;
-        vector_data.resize(1);
+        std::vector<ImplicitObj> implicit_vector_data;
+        implicit_vector_data.resize(1);
+        std::vector<Sphere> sphere_vector_data;
+        sphere_vector_data.resize(1);
 
-        m_spheresBuffer = m_alloc.createBuffer(cmdBuf, vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        m_implicitObjBuffer = m_alloc.createBuffer(cmdBuf, implicit_vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        m_spheresBuffer = m_alloc.createBuffer(cmdBuf, sphere_vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
         cmdGen.submitAndWait(cmdBuf);
 
         m_alloc.finalizeAndReleaseStaging();
-        m_debug.setObjectName(m_spheresBuffer.buffer, "spheres");
+        m_debug.setObjectName(m_implicitObjBuffer.buffer, "ImplicitObjs");
 
         return;
     }
 
     // Axis aligned bounding box of each sphere
     std::vector<AABB> aabbs;
-    aabbs.reserve(spheres_count);
-    for (const auto& s : m_spheres)
+    aabbs.reserve(implicitObj_count);
+    for (const auto& obj : m_implicitObj)
     {
         AABB aabb;
-        aabb.minimum = s.center - glm::vec3(s.radius);
-        aabb.maximum = s.center + glm::vec3(s.radius);
+
+        if (obj.kind == KIND_SPHERE) {
+            const auto& s = m_spheres[obj.kind_id];
+
+            aabb.minimum = s.center - glm::vec3(s.radius);
+            aabb.maximum = s.center + glm::vec3(s.radius);
+        }
+        else {
+            LOGI("One object of unknown kind detected!");
+        }
+
         aabbs.emplace_back(aabb);
     }
 
@@ -564,26 +586,38 @@ void VulkanHandler::uploadImplicitObjects() {
     using vkBU = VkBufferUsageFlagBits;
     nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
     auto              cmdBuf = genCmdBuf.createCommandBuffer();
-    m_spheresBuffer = m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_spheresAABBBuffer = m_alloc.createBuffer(cmdBuf, aabbs,
+    m_implicitObjBuffer = m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_implicitObj_AABBBuffer = m_alloc.createBuffer(cmdBuf, aabbs,
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
-    m_spheresMatIndexBuffer =
-        m_alloc.createBuffer(cmdBuf, m_sphere_mat_idx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    m_spheresMatBuffer =
-        m_alloc.createBuffer(cmdBuf, m_sphere_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    m_implicitObj_MatIndexBuffer =
+        m_alloc.createBuffer(cmdBuf, m_implicitObj_materials_idx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    m_implicitObj_MatBuffer =
+        m_alloc.createBuffer(cmdBuf, m_implicitObj_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+
+    if (m_spheres.size() == 0)
+        m_spheresBuffer =
+            m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    else {
+        std::vector<Sphere> sphere_vector_data;
+        sphere_vector_data.resize(1);
+
+        m_spheresBuffer = m_alloc.createBuffer(cmdBuf, sphere_vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    }
+
     genCmdBuf.submitAndWait(cmdBuf);
 
     // Debug information
+    m_debug.setObjectName(m_implicitObj_MatIndexBuffer.buffer, "spheresMatIdx");
+    m_debug.setObjectName(m_implicitObjBuffer.buffer, "implicitobjs");
+    m_debug.setObjectName(m_implicitObj_AABBBuffer.buffer, "spheresAabb");
+    m_debug.setObjectName(m_implicitObj_MatBuffer.buffer, "spheresMat");
     m_debug.setObjectName(m_spheresBuffer.buffer, "spheres");
-    m_debug.setObjectName(m_spheresAABBBuffer.buffer, "spheresAabb");
-    m_debug.setObjectName(m_spheresMatBuffer.buffer, "spheresMat");
-    m_debug.setObjectName(m_spheresMatIndexBuffer.buffer, "spheresMatIdx");
 
     // Adding an extra instance to get access to the material buffers
     ObjDesc objDesc{};
-    objDesc.materialAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresMatBuffer.buffer);
-    objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresMatIndexBuffer.buffer);
+    objDesc.materialAddress = nvvk::getBufferDeviceAddress(m_device, m_implicitObj_MatBuffer.buffer);
+    objDesc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, m_implicitObj_MatIndexBuffer.buffer);
     m_objDesc.emplace_back(objDesc);
 
     ObjInstance instance{};
@@ -849,10 +883,11 @@ void VulkanHandler::destroyResources()
       m_alloc.destroy(m_scene_buffers[i]);
   }
 
+  m_alloc.destroy(m_implicitObjBuffer);
+  m_alloc.destroy(m_implicitObj_AABBBuffer);
+  m_alloc.destroy(m_implicitObj_MatBuffer);
+  m_alloc.destroy(m_implicitObj_MatIndexBuffer);
   m_alloc.destroy(m_spheresBuffer);
-  m_alloc.destroy(m_spheresAABBBuffer);
-  m_alloc.destroy(m_spheresMatBuffer);
-  m_alloc.destroy(m_spheresMatIndexBuffer);
 
   for(auto& t : m_textures)
   {
@@ -1129,7 +1164,7 @@ auto VulkanHandler::objectToVkGeometryKHR(const ObjModel& model)
 // Convert all spheres into the ray tracing geometry used to build the BLAS
 //
 auto VulkanHandler::sphereToVkGeometryKHR() {
-    VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_spheresAABBBuffer.buffer);
+    VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_implicitObj_AABBBuffer.buffer);
 
     VkAccelerationStructureGeometryAabbsDataKHR aabbs{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR };
     aabbs.data.deviceAddress = dataAddress;

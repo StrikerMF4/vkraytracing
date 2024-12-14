@@ -25,7 +25,8 @@ layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID f
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
-layout(set = 1, binding = eImplicit, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
+layout(set = 1, binding = eImplicit, scalar) buffer implicitObjs_ { ImplicitObj i[]; } implicitObjs;
+layout(set = 1, binding = eImplicitSpheres, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
@@ -71,10 +72,12 @@ void main() {
     
     vec3 hit_position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
+    ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
+
     // Computing the normal at hit position
     if(gl_HitKindEXT == KIND_SPHERE) 
     {
-        Sphere instance = allSpheres.i[gl_PrimitiveID];
+        Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
     }

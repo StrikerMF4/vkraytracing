@@ -26,7 +26,8 @@ eGlobals = 0,  // Global uniform containing camera matrices
 eObjDescs = 1,  // Access to the object descriptions
 eTextures = 2,  // Access to textures
 eLights = 3,
-eImplicit = 4
+eImplicit = 4,
+eImplicitSpheres = 5
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -88,6 +89,11 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 	vec3 nrm;
 	vec3 color;
 	vec2 texCoord;
+};
+
+struct ImplicitObj {
+	uint kind; //type of implicit geometry
+	uint kind_id; //index in the corresponding array
 };
 
 struct Sphere {

@@ -112,15 +112,17 @@ public:
   std::vector<ObjDesc>     m_objDesc;    // Model description for device access
   std::vector<ObjInstance> m_instances;  // Scene model instances
   std::vector<Light>    m_lights;     // Lights in the scene
+  std::vector<ImplicitObj> m_implicitObj; //Implicits objects in the scene
   
-  //Sphere-specific arrays
+  //implicit objects arrays/buffers
+  std::vector<unsigned int> m_implicitObj_materials_idx;
+  std::vector<objl::Material> m_implicitObj_materials;
   std::vector<Sphere> m_spheres;
-  std::vector<objl::Material> m_sphere_materials;
-  std::vector<unsigned int> m_sphere_mat_idx;
+  nvvk::Buffer m_implicitObjBuffer;
+  nvvk::Buffer m_implicitObj_AABBBuffer;
+  nvvk::Buffer m_implicitObj_MatBuffer;
+  nvvk::Buffer m_implicitObj_MatIndexBuffer;
   nvvk::Buffer m_spheresBuffer;
-  nvvk::Buffer m_spheresAABBBuffer;
-  nvvk::Buffer m_spheresMatBuffer;
-  nvvk::Buffer m_spheresMatIndexBuffer;
 
   // Graphic pipeline
   VkPipelineLayout            m_pipelineLayout;
