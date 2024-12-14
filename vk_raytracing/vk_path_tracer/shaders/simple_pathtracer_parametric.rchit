@@ -71,15 +71,18 @@ void main() {
     
     vec3 hit_position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 
-    Sphere instance = allSpheres.i[gl_PrimitiveID];
-
     // Computing the normal at hit position
-    payload.surface_normal = normalize(hit_position - instance.center);
+    if(gl_HitKindEXT == KIND_SPHERE) 
+    {
+        Sphere instance = allSpheres.i[gl_PrimitiveID];
 
-    
+        payload.surface_normal = normalize(hit_position - instance.center);
+    }
+
     // Material of the object
     int               matIdx = matIndices.i[gl_PrimitiveID];
     WaveFrontMaterial material    = materials.m[matIdx];
+
     // Texture
     vec3 texture_color = vec3(1);
     if(material.albedoTextureID >= 0) {

@@ -60,20 +60,25 @@ void main()
     Sphere sphere = allSpheres.i[gl_PrimitiveID];
 
     float tHit    = -1;
-    int   hitKind = gl_PrimitiveID % 2 == 0 ? KIND_SPHERE : KIND_CUBE;
+    //Aqui se pueden agregar mas tipos, en base a algún parámetro registrado en un nuevo buffer.
+    //Esta variable se puede acceder en el closest_hit shader para calcular la normal, etc.
+    //En dicho caso se usaría gl_PrimitiveID para acceder a dicho buffer, y dentro del mismo
+    // habrían índices para los arreglos de los tipos correspondientes
+    int hitKind = KIND_SPHERE;
+
     if(hitKind == KIND_SPHERE)
     {
         // Sphere intersection
         tHit = hitSphere(sphere, ray);
     }
-    else
-    {
-        // AABB intersection
-        AABB aabb;
-        aabb.minimum = sphere.center - vec3(sphere.radius);
-        aabb.maximum = sphere.center + vec3(sphere.radius);
-        tHit         = hitAabb(aabb, ray);
-    }
+    //else
+    //{
+    //    // AABB intersection
+    //    AABB aabb;
+    //    aabb.minimum = sphere.center - vec3(sphere.radius);
+    //    aabb.maximum = sphere.center + vec3(sphere.radius);
+    //    tHit         = hitAabb(aabb, ray);
+    //}
 
     
     // Report hit point

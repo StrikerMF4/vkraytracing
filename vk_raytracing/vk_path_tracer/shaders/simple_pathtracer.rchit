@@ -88,7 +88,9 @@ void main() {
     
     // Material of the object
     int               matIdx = matIndices.i[gl_PrimitiveID];
+
     WaveFrontMaterial material    = materials.m[matIdx];
+
     // Texture
     vec3 texture_color = vec3(1);
     if(material.albedoTextureID >= 0) {

@@ -79,22 +79,17 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
     group.generalShader = eMiss;
     m_rtShaderGroups.push_back(group);
 
-    // Any Hit
-    group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
-    group.generalShader = VK_SHADER_UNUSED_KHR;
-    group.anyHitShader = eAnyHit;
-    m_rtShaderGroups.push_back(group);
-    group.anyHitShader = VK_SHADER_UNUSED_KHR;
-
     // closest hit shader
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
     group.generalShader = VK_SHADER_UNUSED_KHR;
     group.closestHitShader = eClosestHit;
+    group.anyHitShader = eAnyHit;
     m_rtShaderGroups.push_back(group);
 
     //TO-DO: probablemente haya que marcar el anyhit de nuevo?
     // closest hit shader + Intersection (Hit group 2) - Formas parametricas
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+    group.anyHitShader = eAnyHit;
     group.closestHitShader = eClosestHitParametric;
     group.intersectionShader = eIntersectionParametric;
     m_rtShaderGroups.push_back(group);
@@ -149,7 +144,7 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
 void Technique::createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc, nvvk::DebugUtil* m_debug, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* m_rtProperties)
 {
     uint32_t missCount{ 1 };
-    uint32_t hitCount{ 3 };
+    uint32_t hitCount{ 2 };
     auto     handleCount = 1 + missCount + hitCount;
     uint32_t handleSize = m_rtProperties->shaderGroupHandleSize;
 
