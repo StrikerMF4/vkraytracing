@@ -595,7 +595,7 @@ void VulkanHandler::uploadImplicitObjects() {
     m_implicitObj_MatBuffer =
         m_alloc.createBuffer(cmdBuf, m_implicitObj_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
-    if (m_spheres.size() == 0)
+    if (m_spheres.size() != 0)
         m_spheresBuffer =
             m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     else {
