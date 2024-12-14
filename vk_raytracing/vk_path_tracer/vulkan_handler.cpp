@@ -456,6 +456,9 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
             obj.kind = KIND_SPHERE;
             obj.kind_id = m_spheres.size();
 
+            m_spheres.push_back(sphere_obj);
+            m_implicitObj.push_back(obj);
+
             int material_index = -1;
             for (int i = 0; i < m_implicitObj_materials.size(); i++) {
                 if (m_implicitObj_materials[i].ID == sphere->material_idx) {
@@ -470,8 +473,6 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
             }
 
             m_implicitObj_materials_idx.push_back(material_index);
-            m_spheres.push_back(sphere_obj);
-            m_implicitObj.push_back(obj);
         }
         else if (dynamic_cast<SceneLoader::Shape*>(entity) != nullptr)
         {
@@ -586,7 +587,7 @@ void VulkanHandler::uploadImplicitObjects() {
     using vkBU = VkBufferUsageFlagBits;
     nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
     auto              cmdBuf = genCmdBuf.createCommandBuffer();
-    m_implicitObjBuffer = m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_implicitObjBuffer = m_alloc.createBuffer(cmdBuf, m_implicitObj, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_implicitObj_AABBBuffer = m_alloc.createBuffer(cmdBuf, aabbs,
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
         | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
@@ -1163,7 +1164,7 @@ auto VulkanHandler::objectToVkGeometryKHR(const ObjModel& model)
 //--------------------------------------------------------------------------------------------------
 // Convert all spheres into the ray tracing geometry used to build the BLAS
 //
-auto VulkanHandler::sphereToVkGeometryKHR() {
+auto VulkanHandler::implicitObjToVkGeometryKHR() {
     VkDeviceAddress dataAddress = nvvk::getBufferDeviceAddress(m_device, m_implicitObj_AABBBuffer.buffer);
 
     VkAccelerationStructureGeometryAabbsDataKHR aabbs{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR };
@@ -1178,7 +1179,7 @@ auto VulkanHandler::sphereToVkGeometryKHR() {
 
     VkAccelerationStructureBuildRangeInfoKHR offset{};
     offset.firstVertex = 0;
-    offset.primitiveCount = (uint32_t)m_spheres.size();  // Nb aabb
+    offset.primitiveCount = (uint32_t)m_implicitObj.size();  // Nb aabb
     offset.primitiveOffset = 0;
     offset.transformOffset = 0;
 
@@ -1206,7 +1207,7 @@ void VulkanHandler::createBottomLevelAS()
 
   //Esferas
   {
-      auto blas = sphereToVkGeometryKHR();
+      auto blas = implicitObjToVkGeometryKHR();
       allBlas.emplace_back(blas);
   }
 
@@ -1219,7 +1220,7 @@ void VulkanHandler::createBottomLevelAS()
 void VulkanHandler::createTopLevelAS()
 {
   std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  uint32_t size = m_spheres.size() != 0 ? m_instances.size() - 1 : m_instances.size();
+  uint32_t size = m_implicitObj.size() != 0 ? m_instances.size() - 1 : m_instances.size();
   tlas.reserve(size);
   for(uint32_t i = 0; i < size; i++)
   {
@@ -1235,7 +1236,7 @@ void VulkanHandler::createTopLevelAS()
     tlas.emplace_back(rayInst);
   }
   // Add the blas containing all implicit objects
-  if(m_spheres.size() != 0)
+  if(m_implicitObj.size() != 0)
   {
       VkAccelerationStructureInstanceKHR rayInst{};
       rayInst.transform = nvvk::toTransformMatrixKHR(glm::mat4(1));  // Position of the instance (identity)

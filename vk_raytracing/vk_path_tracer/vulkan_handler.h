@@ -166,7 +166,7 @@ public:
   // #VKRay
   void initRayTracing();
   auto objectToVkGeometryKHR(const ObjModel& model);
-  auto sphereToVkGeometryKHR();
+  auto implicitObjToVkGeometryKHR();
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();
