@@ -559,6 +559,7 @@ void VulkanHandler::uploadImplicitObjects() {
 
         m_alloc.finalizeAndReleaseStaging();
         m_debug.setObjectName(m_implicitObjBuffer.buffer, "ImplicitObjs");
+        m_debug.setObjectName(m_spheresBuffer.buffer, "Spheres");
 
         return;
     }
@@ -598,7 +599,7 @@ void VulkanHandler::uploadImplicitObjects() {
 
     if (m_spheres.size() != 0)
         m_spheresBuffer =
-            m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+            m_alloc.createBuffer(cmdBuf, m_spheres, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     else {
         std::vector<Sphere> sphere_vector_data;
         sphere_vector_data.resize(1);
