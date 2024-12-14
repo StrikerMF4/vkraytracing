@@ -533,6 +533,22 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
 void VulkanHandler::uploadImplicitObjects() {
     uint32_t spheres_count = m_spheres.size();
 
+    if (spheres_count == 0) {
+        nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+        auto cmdBuf = cmdGen.createCommandBuffer();
+
+        std::vector<Sphere> vector_data;
+        vector_data.resize(1);
+
+        m_spheresBuffer = m_alloc.createBuffer(cmdBuf, vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        cmdGen.submitAndWait(cmdBuf);
+
+        m_alloc.finalizeAndReleaseStaging();
+        m_debug.setObjectName(m_spheresBuffer.buffer, "spheres");
+
+        return;
+    }
+
     // Axis aligned bounding box of each sphere
     std::vector<AABB> aabbs;
     aabbs.reserve(spheres_count);
@@ -675,13 +691,25 @@ void VulkanHandler::createUniformBuffer()
 //
 void VulkanHandler::createObjDescriptionBuffer()
 {
-  nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+    nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+    auto cmdBuf = cmdGen.createCommandBuffer();
 
-  auto cmdBuf = cmdGen.createCommandBuffer();
-  m_bObjDesc  = m_alloc.createBuffer(cmdBuf, m_objDesc, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-  cmdGen.submitAndWait(cmdBuf);
-  m_alloc.finalizeAndReleaseStaging();
-  m_debug.setObjectName(m_bObjDesc.buffer, "ObjDescs");
+    if (m_objDesc.size() == 0) {
+        std::vector<ObjDesc> vector_data;
+        vector_data.resize(1);
+
+        m_bObjDesc = m_alloc.createBuffer(cmdBuf, vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        cmdGen.submitAndWait(cmdBuf);
+
+        m_alloc.finalizeAndReleaseStaging();
+    }
+    else {
+        m_bObjDesc = m_alloc.createBuffer(cmdBuf, m_objDesc, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+        cmdGen.submitAndWait(cmdBuf);
+
+        m_alloc.finalizeAndReleaseStaging();
+    }
+    m_debug.setObjectName(m_bObjDesc.buffer, "ObjDescs");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -707,7 +735,6 @@ void VulkanHandler::createLightBuffer()
         cmdGen.submitAndWait(cmdBuf);
 
         m_alloc.finalizeAndReleaseStaging();
-        m_debug.setObjectName(m_bLights.buffer, "Lights");
     }
     else {
         m_bLights = m_alloc.createBuffer(cmdBuf, m_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -1157,7 +1184,7 @@ void VulkanHandler::createBottomLevelAS()
 void VulkanHandler::createTopLevelAS()
 {
   std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  uint32_t size = m_instances.size() - 1;
+  uint32_t size = m_spheres.size() != 0 ? m_instances.size() - 1 : m_instances.size();
   tlas.reserve(size);
   for(uint32_t i = 0; i < size; i++)
   {
@@ -1173,6 +1200,7 @@ void VulkanHandler::createTopLevelAS()
     tlas.emplace_back(rayInst);
   }
   // Add the blas containing all implicit objects
+  if(m_spheres.size() != 0)
   {
       VkAccelerationStructureInstanceKHR rayInst{};
       rayInst.transform = nvvk::toTransformMatrixKHR(glm::mat4(1));  // Position of the instance (identity)
