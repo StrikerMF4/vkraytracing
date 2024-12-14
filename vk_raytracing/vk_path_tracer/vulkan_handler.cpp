@@ -79,7 +79,7 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
     group.generalShader = eMiss;
     m_rtShaderGroups.push_back(group);
 
-    // closest hit shader
+    // Closest hit shader
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
     group.generalShader = VK_SHADER_UNUSED_KHR;
     group.closestHitShader = eClosestHit;
@@ -87,7 +87,7 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
     m_rtShaderGroups.push_back(group);
 
     //TO-DO: probablemente haya que marcar el anyhit de nuevo?
-    // closest hit shader + Intersection (Hit group 2) - Formas parametricas
+    // Closest hit shader + Intersection (Hit group 2) - Formas parametricas
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
     group.anyHitShader = eAnyHit;
     group.closestHitShader = eClosestHitParametric;
