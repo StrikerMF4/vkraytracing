@@ -306,10 +306,12 @@ void VulkanHandler::createDescriptorSetLayout()
   m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
       VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
-  // Storing spheres
+  // Storing implicit objects
   m_descSetLayoutBind.addBinding(eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 
+  m_descSetLayoutBind.addBinding(eImplicitSpheres, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_INTERSECTION_BIT_KHR);
 
 
   m_descSetLayout = m_descSetLayoutBind.createLayout(m_device);
