@@ -1184,7 +1184,7 @@ void VulkanHandler::createBottomLevelAS()
 void VulkanHandler::createTopLevelAS()
 {
   std::vector<VkAccelerationStructureInstanceKHR> tlas;
-  uint32_t size = m_instances.size() > 0 ? m_instances.size() - 1 : 0;
+  uint32_t size = m_spheres.size() != 0 ? m_instances.size() - 1 : m_instances.size();
   tlas.reserve(size);
   for(uint32_t i = 0; i < size; i++)
   {
@@ -1200,6 +1200,7 @@ void VulkanHandler::createTopLevelAS()
     tlas.emplace_back(rayInst);
   }
   // Add the blas containing all implicit objects
+  if(m_spheres.size() != 0)
   {
       VkAccelerationStructureInstanceKHR rayInst{};
       rayInst.transform = nvvk::toTransformMatrixKHR(glm::mat4(1));  // Position of the instance (identity)
