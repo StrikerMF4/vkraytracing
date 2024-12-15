@@ -1,0 +1,106 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.7, 2.2],
+        "lookat": [0.0, 0.7, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "leftWall",
+			"color": [0.953, 0.357, 0.212],
+        },
+        {
+            "name": "rightWall",
+			"color": [0.486, 0.631, 0.663],
+        },
+        {
+            "name": "floor",
+			"color": [0.725, 0.71, 0.68],
+        },
+        {
+            "name": "ceiling",
+			"color": [0.725, 0.71, 0.68],
+        },
+        {
+            "name": "backWall",
+			"color": [0.725, 0.71, 0.68],
+        },
+        {
+            "name": "light",
+            "emission": [10.0, 10.0, 10.0]
+        },
+        {
+            "name": "sphere",
+            "opacity": 0.0,
+            "ior": 2.5
+        }
+    ],
+    "entities": [
+		{
+            "type": "mesh",
+            "file": "models/CornellBox-Empty-CO.obj",
+        },
+	    {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.5, 1.2, -0.5],
+			"radius": 0.4
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.5, 1.2, -0.5],
+			"radius": 0.39
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [-0.5, 1.2, 0.0],
+			"radius": 0.2
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [-0.5, 1.2, 0.0],
+			"radius": 0.19
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [-0.45, 0.8, -0.1],
+			"radius": 0.1
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [-0.45, 0.8, -0.1],
+			"radius": 0.095
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.3, 0.4, 0.2],
+			"radius": 0.3
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.3, 0.4, 0.2],
+			"radius": 0.29
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.1, 0.55, 0.4],
+			"radius": 0.2
+        },
+        {
+            "type": "sphere",
+			"material": "sphere",
+            "position": [0.1, 0.55, 0.4],
+			"radius": 0.19
+        }
+    ]
+}
