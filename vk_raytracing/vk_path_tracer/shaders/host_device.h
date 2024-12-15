@@ -87,7 +87,6 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 {
 	vec3 pos;
 	vec3 nrm;
-	vec3 color;
 	vec2 texCoord;
 };
 
