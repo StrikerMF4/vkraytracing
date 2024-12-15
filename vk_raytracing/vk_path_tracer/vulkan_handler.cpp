@@ -415,7 +415,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
         
         textureOffset = static_cast<uint32_t>(m_textures.size());
-        createTextureImages(cmdBuf, scene->textures, texture_path.string());
+        createTextureImages(cmdBuf, scene->textures, texture_path.string() + "/");
         cmdBufGet.submitAndWait(cmdBuf);
     }
 
