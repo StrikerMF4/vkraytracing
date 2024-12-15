@@ -91,9 +91,9 @@ inline void algorithm::split(const std::string& in,
 				temp.clear();
 				i += (int)token.size() - 1;
 			}
-			else
+			else if(token != " ")
 			{
-				//out.push_back("");
+				out.push_back("");
 			}
 		}
 		else if (i + token.size() >= in.size())
