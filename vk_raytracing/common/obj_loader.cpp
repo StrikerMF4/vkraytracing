@@ -341,7 +341,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 			}
 
-			LoadedMaterialIndices.push_back(tempMaterial->ID);
+			for(int i = 0; i < iIndices.size() / 3; i++)
+				LoadedMaterialIndices.push_back(tempMaterial->ID);
 		}
 		// Get Mesh Material Name
 		if (algorithm::firstToken(curline) == "usemtl")
