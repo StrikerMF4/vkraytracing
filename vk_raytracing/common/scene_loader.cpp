@@ -73,7 +73,7 @@ Scene::Scene(const std::string& filepath) {
 			if ((*it).contains("metallic"))
 				material.metallic = (*it)["metallic"].template get<double>();
 			if ((*it).contains("roughness"))
-				material.roughness = (*it)["roughness"].template get<double>();
+				material.roughness = fminf((*it)["roughness"].template get<double>(), 0.0001f);
 			if ((*it).contains("subsurface"))
 				material.subsurface = (*it)["subsurface"].template get<double>();
 			if ((*it).contains("speculartint"))

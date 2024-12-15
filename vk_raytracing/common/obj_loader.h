@@ -53,7 +53,7 @@ namespace objl
 			emission = glm::vec3(0.0);
 			anisotropic = 0.0f;
 			metallic = 0.0f;
-			roughness = 0.00001f;
+			roughness = 1.0f;
 			subsurface = 0.0f;
 			specularTint = 0.0f;
 			sheen = 0.0f;

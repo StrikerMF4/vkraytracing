@@ -335,6 +335,8 @@ int main(int argc, char** argv)
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
 
+	//otras
+	//const std::string scene_path = nvh::findFile("media/scenes/CornellBubble.scn", defaultSearchPaths, true);
 
 
 	SceneLoader::Scene scene(scene_path);

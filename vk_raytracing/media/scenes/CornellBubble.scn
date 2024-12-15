@@ -34,13 +34,14 @@
         {
             "name": "sphere",
             "opacity": 0.0,
+            "roughness": 0.0,
             "ior": 2.5
         }
     ],
     "entities": [
 		{
             "type": "mesh",
-            "file": "models/CornellBox-Empty-CO.obj"
+            "file": "models/CornellBox-Empty.obj"
         },
 	    {
             "type": "sphere",
