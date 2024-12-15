@@ -2,8 +2,8 @@
     "resolution": [1280, 720],
     "maxdepth": 5,
     "camera": {
-        "position": [0.7, 2.2, 0.0],
-        "lookat": [0.0, 0.7, 0.0],
+        "position": [0.5, 1.5, 1.5],
+        "lookat": [0.0, 0.0, 0.0],
         "fov": 60
     },
     "materials": [

@@ -26,16 +26,16 @@ Scene::Scene(const std::string& filepath) {
 		maxdepth = data["maxdepth"].template get<unsigned int>();
 
 	if (data.contains("camera")) {
-		json camera_data = data["parameters"];
+		json camera_data = data["camera"];
 
-		if (data.contains("fov"))
+		if (camera_data.contains("fov"))
 			camera_fov = camera_data["fov"].template get<unsigned int>();
-		if (data.contains("position"))
+		if (camera_data.contains("position"))
 			camera_position = glm::vec3(
 				camera_data["position"][0].template get<double>(),
 				camera_data["position"][1].template get<double>(),
 				camera_data["position"][2].template get<double>());
-		if (data.contains("lookat"))
+		if (camera_data.contains("lookat"))
 			camera_lookat = glm::vec3(
 				camera_data["lookat"][0].template get<double>(),
 				camera_data["lookat"][1].template get<double>(),
