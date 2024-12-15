@@ -9,23 +9,23 @@
     "materials": [
         {
             "name": "leftWall",
-			"color": [0.953, 0.357, 0.212],
+			"color": [0.953, 0.357, 0.212]
         },
         {
             "name": "rightWall",
-			"color": [0.486, 0.631, 0.663],
+			"color": [0.486, 0.631, 0.663]
         },
         {
             "name": "floor",
-			"color": [0.725, 0.71, 0.68],
+			"color": [0.725, 0.71, 0.68]
         },
         {
             "name": "ceiling",
-			"color": [0.725, 0.71, 0.68],
+			"color": [0.725, 0.71, 0.68]
         },
         {
             "name": "backWall",
-			"color": [0.725, 0.71, 0.68],
+			"color": [0.725, 0.71, 0.68]
         },
         {
             "name": "light",
@@ -40,7 +40,7 @@
     "entities": [
 		{
             "type": "mesh",
-            "file": "models/CornellBox-Empty-CO.obj",
+            "file": "models/CornellBox-Empty-CO.obj"
         },
 	    {
             "type": "sphere",
