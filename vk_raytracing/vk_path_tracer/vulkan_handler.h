@@ -67,13 +67,13 @@ public:
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
   void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
-  void loadScene(SceneLoader::Scene* scene);
+  void loadScene(SceneLoader::Scene* scene, std::string scene_path);
   void uploadImplicitObjects();
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
   void createLightBuffer();
-  void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures);
+  void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/");
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();

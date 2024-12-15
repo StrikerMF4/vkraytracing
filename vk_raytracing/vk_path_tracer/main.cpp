@@ -329,6 +329,14 @@ int main(int argc, char** argv)
 
 	// Load Scene
 	const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
+
+	//Escenas Walter
+	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronConductor.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
+
+
+
 	SceneLoader::Scene scene(scene_path);
 
 	// Setup camera - TODO, estaba mas arriba, funciona?
@@ -336,19 +344,12 @@ int main(int argc, char** argv)
 	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene.camera_fov);
 
-	vulkanHandler.loadScene(&scene);
+	vulkanHandler.loadScene(&scene, scene_path);
 
 	// Creation of the example-----------------------------------------------------------------------------------------------------------------
 
 	//CornellBox Spheres
 	//vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
-
-	//
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronConductor.obj", defaultSearchPaths, true));
-	//
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.obj", defaultSearchPaths, true));
-
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/RoughnessTests/WalterGlass.obj", defaultSearchPaths, true));
 
 	{  //Minecraft floor
 		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));

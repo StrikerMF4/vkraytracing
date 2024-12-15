@@ -392,7 +392,7 @@ void VulkanHandler::createGraphicsPipeline()
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
-void VulkanHandler::loadScene(SceneLoader::Scene* scene)
+void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 {
     // Converting from Srgb to linear
     /*for (auto& m : scene.materials)
@@ -407,11 +407,15 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene)
     //Create all textures for the entire scene
     unsigned int textureOffset;
     {
+        std::filesystem::path texture_path = scene_path;
+
+        texture_path = texture_path.parent_path();
+
         nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
         VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
         
         textureOffset = static_cast<uint32_t>(m_textures.size());
-        createTextureImages(cmdBuf, scene->textures);
+        createTextureImages(cmdBuf, scene->textures, texture_path.string());
         cmdBufGet.submitAndWait(cmdBuf);
     }
 
@@ -786,7 +790,7 @@ void VulkanHandler::createLightBuffer()
 //--------------------------------------------------------------------------------------------------
 // Creating all textures and samplers
 //
-void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures)
+void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/")
 {
   VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
   samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
@@ -822,7 +826,7 @@ void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std
     {
       std::stringstream o;
       int               texWidth, texHeight, texChannels;
-      o << "media/textures/" << texture;
+      o << base_dir << texture;
       std::string txtFile = nvh::findFile(o.str(), defaultSearchPaths, true);
 
       stbi_uc* stbi_pixels = stbi_load(txtFile.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);

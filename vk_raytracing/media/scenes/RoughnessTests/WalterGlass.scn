@@ -12,7 +12,7 @@
             "color": [1.0, 1.0, 1.0],
             "roughness": 1.0,
             "opacity": 0.0,
-            "albedotexture": "micro_test.png"
+            "albedotexture": "textures/micro_test.png"
         },
         {
             "name": "Glass",
