@@ -161,6 +161,8 @@ Scene::Scene(const std::string& filepath) {
 
 				sphere->radius = (*it)["radius"].template get<double>();
 				sphere->material_idx = materials_map[(*it)["material"].template get<std::string>()].ID;
+				if ((*it).contains("inverted_normal"))
+					sphere->inverted_normal = (*it)["inverted_normal"].template get<bool>();
 
 				entity = sphere;
 			} else {

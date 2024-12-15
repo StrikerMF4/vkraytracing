@@ -74,12 +74,19 @@ void main() {
 
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
-    // Computing the normal at hit position
+    // Computing the normal and uv at hit position
+    vec2 texCoord;
     if(gl_HitKindEXT == KIND_SPHERE) 
     {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
+        payload.surface_normal *= 2 * int(instance.inverted_normal) - 1;
+
+        texCoord = vec2(
+            atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
+            payload.surface_normal.y * 0.5 + 0.5
+        );
     }
 
     // Material of the object
@@ -89,11 +96,6 @@ void main() {
     // Texture
     vec3 texture_color = vec3(1);
     if(material.albedoTextureID >= 0) {
-        vec2 texCoord = vec2(
-            atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
-            payload.surface_normal.y * 0.5 + 0.5
-        );
-
         uint txtId    = material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
     }

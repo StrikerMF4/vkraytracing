@@ -456,6 +456,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
             sphere_obj.center = sphere->position;
             sphere_obj.radius = sphere->radius;
+            sphere_obj.inverted_normal = sphere->inverted_normal;
 
             ImplicitObj obj;
 
@@ -502,7 +503,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
             glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
             transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
             transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
-            transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 0.0, 1.0));
+            transform = glm::rotate(transform, shape->rotation.z, glm::vec3(0.0, 0.0, 1.0));
             transform = glm::translate(transform, shape->position);
 
             ObjModel model;

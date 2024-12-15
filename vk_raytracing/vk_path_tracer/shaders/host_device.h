@@ -98,6 +98,7 @@ struct ImplicitObj {
 struct Sphere {
 	vec3 center;
 	float radius;
+	bool inverted_normal;
 };
 
 struct AABB {

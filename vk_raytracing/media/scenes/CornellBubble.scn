@@ -53,6 +53,7 @@
             "type": "sphere",
 			"material": "sphere",
             "position": [0.5, 1.2, -0.5],
+            "inverted_normal": true,
 			"radius": 0.39
         },
         {
@@ -65,6 +66,7 @@
             "type": "sphere",
 			"material": "sphere",
             "position": [-0.5, 1.2, 0.0],
+            "inverted_normal": true,
 			"radius": 0.19
         },
         {
@@ -77,6 +79,7 @@
             "type": "sphere",
 			"material": "sphere",
             "position": [-0.45, 0.8, -0.1],
+            "inverted_normal": true,
 			"radius": 0.095
         },
         {
@@ -89,6 +92,7 @@
             "type": "sphere",
 			"material": "sphere",
             "position": [0.3, 0.4, 0.2],
+            "inverted_normal": true,
 			"radius": 0.29
         },
         {
@@ -101,6 +105,7 @@
             "type": "sphere",
 			"material": "sphere",
             "position": [0.1, 0.55, 0.4],
+            "inverted_normal": true,
 			"radius": 0.19
         }
     ]
