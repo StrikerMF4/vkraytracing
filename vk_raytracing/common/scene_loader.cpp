@@ -142,17 +142,20 @@ Scene::Scene(const std::string& filepath) {
 				std::filesystem::path path = parentDir / model_name;
 
 				objl::Material* default_material = nullptr;
-				if ((*it).contains("default_material"))
-					default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
-				//TO-DO: Esta opción debería sobreescribir el material con uno fijo
-				else if ((*it).contains("material"))
+
+				bool replace_materials = false;
+				if ((*it).contains("material")) {
 					default_material = &materials_map[(*it)["material"].template get<std::string>()];
+					replace_materials = true;
+				}
+				else if ((*it).contains("default_material"))
+					default_material = &materials_map[(*it)["default_material"].template get<std::string>()];
 				else
 					default_material = &materials_map["default_material"];
 
 				Shape* shape = new Shape();
 
-				shape->model_loader.LoadFile(path.string(), &materials_map, default_material);
+				shape->model_loader.LoadFile(path.string(), &materials_map, default_material, replace_materials);
 
 				entity = shape;
 			}

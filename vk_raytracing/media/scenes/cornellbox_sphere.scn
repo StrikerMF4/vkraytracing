@@ -1,0 +1,66 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.7, 2.2],
+        "lookat": [0.0, 0.7, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "leftWall",
+			"color": [0.63, 0.065, 0.05]
+        },
+        {
+            "name": "rightWall",
+			"color": [0.14, 0.45, 0.091]
+        },
+        {
+            "name": "floor",
+			"color": [0.725, 0.71, 0.68]
+        },
+        {
+            "name": "ceiling",
+			"color": [0.725, 0.71, 0.68]
+        },
+        {
+            "name": "backWall",
+			"color": [0.725, 0.71, 0.68]
+        },
+		{
+            "name": "leftSphere",
+			"color": [0.725, 0.71, 0.68],
+			"roughness": 0.01,
+            "metallic": 1.0
+        },
+		{
+            "name": "rightSphere",
+			"color": [0.725, 0.71, 0.68],
+			"roughness": 0.1,
+			"opacity": 0.0,
+            "ior": 2.5
+        },
+        {
+            "name": "light",
+            "emission": [10.0, 10.0, 10.0]
+        }
+    ],
+    "entities": [
+		{
+            "type": "mesh",
+            "file": "models/CornellBox-Empty.obj"
+        },
+		{
+            "type": "sphere",
+            "position": [-0.42, 0.33, -0.28],
+			"material": "leftSphere",
+			"radius": 0.66
+        },
+		{
+            "type": "sphere",
+            "position": [0.44, 0.33, 0.38],
+			"material": "rightSphere",
+			"radius": 0.66
+        }
+    ]
+}

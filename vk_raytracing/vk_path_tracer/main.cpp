@@ -335,8 +335,15 @@ int main(int argc, char** argv)
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
 
+	//Bidirectional
+	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/PatronDielectrico.scn", defaultSearchPaths, true);
+
 	//otras
-	//const std::string scene_path = nvh::findFile("media/scenes/CornellBubble.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
 
 
 	SceneLoader::Scene scene(scene_path);
@@ -350,9 +357,7 @@ int main(int argc, char** argv)
 
 	// Creation of the example-----------------------------------------------------------------------------------------------------------------
 
-	//CornellBox Spheres
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
-
+	//TO-DO: borrar esto, dejar solo escenas en formato escena
 	{  //Minecraft floor
 		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
 		vulkanHandler.loadModel(nvh::findFile("media/scenes/vokselia_spawn.obj", defaultSearchPaths, true),
@@ -366,9 +371,6 @@ int main(int argc, char** argv)
 						  glm::rotate(
 						  glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
 	}
-
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Water.obj", defaultSearchPaths, true));
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/veach_bidi.obj", defaultSearchPaths, true));
 
 	//Lego
 	{
@@ -388,35 +390,6 @@ int main(int argc, char** argv)
 
 	//Sponza
 	//vulkanHandler.loadModel(nvh::findFile("media/scenes/sponza.obj", defaultSearchPaths, true));
-
-	{  //cornell bubble
-	   /*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.5, 1.2, -0.5)), vec3(0.4)));
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.5, 1.2, -0.5)), vec3(0.39)));
-
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.5, 1.2, 0)), vec3(0.2)));
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.5, 1.2, 0)), vec3(0.19)));
-
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.45, 0.8, -0.1)), vec3(0.1)));
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(-0.45, 0.8, -0.1)), vec3(0.095)));
-
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.3, 0.4, 0.2)), vec3(0.3)));
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.3, 0.4, 0.2)), vec3(0.29)));
-
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/sphere.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.1, 0.55, 0.4)), vec3(0.2)));
-	   vulkanHandler.loadModel(nvh::findFile("media/scenes/SphereInv.obj", defaultSearchPaths, true),
-		   glm::scale(glm::translate(glm::mat4(1.0f), vec3(0.1, 0.55, 0.4)), vec3(0.19)));*/
-	}
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------
 

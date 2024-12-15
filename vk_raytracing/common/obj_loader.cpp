@@ -161,7 +161,7 @@ inline const T& algorithm::getElement(const std::vector<T>& elements, std::strin
 
 
 
-bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material)
+bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials)
 {
 	// If the file is not an .obj file return false
 	if (Path.substr(Path.size() - 4, 4) != ".obj")
@@ -190,7 +190,6 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 	std::string meshname;
 
 	Mesh tempMesh;
-	//TO-DO Se asume que siempre me vienen caras con material, se puede definir un material por defecto
 	Material* tempMaterial = default_material;
 
 
@@ -242,7 +241,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 					// Create Mesh
 					tempMesh = Mesh(Vertices, Indices);
 					tempMesh.MeshName = meshname;
-					tempMesh.MeshMaterial = tempMaterial; //El material anterior, a partir de este momento va a ser otro para el siguiente mesh
+					tempMesh.MeshMaterial = tempMaterial; //El material anterior
 
 					if (abs(tempMesh.MeshMaterial->emission.x) + abs(tempMesh.MeshMaterial->emission.y) + abs(tempMesh.MeshMaterial->emission.z) > 0) {
 						Light light;
@@ -383,7 +382,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 				Indices.clear();
 			}
 
-			tempMaterial = &(*materials)[algorithm::tail(curline)];
+			if(!replace_materials)
+				tempMaterial = &(*materials)[algorithm::tail(curline)];
 
 #ifdef OBJL_CONSOLE_OUTPUT
 			outputIndicator = 0;

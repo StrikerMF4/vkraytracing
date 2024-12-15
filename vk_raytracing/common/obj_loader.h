@@ -216,7 +216,7 @@ namespace objl
 		//
 		// If the file is unable to be found
 		// or unable to be loaded return false
-		bool LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material);
+		bool LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials = false);
 
 		// Loaded Mesh Objects
 		std::vector<Mesh> LoadedMeshes;
