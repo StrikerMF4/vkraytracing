@@ -790,7 +790,7 @@ void VulkanHandler::createLightBuffer()
 //--------------------------------------------------------------------------------------------------
 // Creating all textures and samplers
 //
-void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/")
+void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir)
 {
   VkSamplerCreateInfo samplerCreateInfo{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
   samplerCreateInfo.minFilter  = VK_FILTER_LINEAR;
