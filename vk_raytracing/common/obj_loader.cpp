@@ -298,7 +298,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 		{
 			std::vector<std::string> stex;
 			algorithm::split(algorithm::tail(curline), stex, " ");
-			glm::vec2 vtex(std::stof(stex[0]), std::stof(stex[1]));
+			glm::vec2 vtex(std::stof(stex[0]), 1.0 - std::stof(stex[1]));
 
 			TCoords.push_back(vtex);
 		}

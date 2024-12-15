@@ -381,7 +381,7 @@ void VulkanHandler::createGraphicsPipeline()
   gpb.addAttributeDescriptions({
       {0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Position))},
       {1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Normal))},
-      {2, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, TextureCoordinate))}
+      {2, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, TextureCoordinate))}
       //TO-DO: Revisar si no rompe el raster
   });
 
