@@ -18,7 +18,7 @@
  */
 
 #define GLFW_INCLUDE_NONE
-#include "imgui/imgui_helper.h"
+#include <imgui_helper.h>
 #include <backends/imgui_impl_glfw.h>
 #include <GLFW/glfw3.h>
 #include <math.h>

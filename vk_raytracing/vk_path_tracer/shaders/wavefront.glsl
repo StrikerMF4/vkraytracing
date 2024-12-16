@@ -6,25 +6,25 @@ const float PI = 3.14159265;
 
 vec3 computeDiffuse(WaveFrontMaterial mat, vec3 lightDir, vec3 normal)
 {
-  // Lambertian
-  float dotNL = max(dot(normal, lightDir), 0.0);
-  vec3  c     = mat.baseColor * dotNL;
-  return c;
+    // Lambertian
+    float dotNL = max(dot(normal, lightDir), 0.0);
+    vec3  c = mat.baseColor * dotNL;
+    return c;
 }
 
 vec3 computeSpecular(WaveFrontMaterial mat, vec3 viewDir, vec3 lightDir, vec3 normal)
 {
-  // Compute specular only if not in shadow
-  const float kPi        = 3.14159265;
-  const float kShininess = 4.0;
+    // Compute specular only if not in shadow
+    const float kPi = 3.14159265;
+    const float kShininess = 4.0;
 
-  // Specular
-  const float kEnergyConservation = (2.0 + kShininess) / (2.0 * kPi);
-  vec3        V                   = normalize(-viewDir);
-  vec3        R                   = reflect(-lightDir, normal);
-  float       specular            = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
+    // Specular
+    const float kEnergyConservation = (2.0 + kShininess) / (2.0 * kPi);
+    vec3        V = normalize(-viewDir);
+    vec3        R = reflect(-lightDir, normal);
+    float       specular = kEnergyConservation * pow(max(dot(V, R), 0.0), kShininess);
 
-  return vec3(4.0 * specular);
+    return vec3(4.0 * specular);
 }
 
 
@@ -34,80 +34,81 @@ vec3 computeSpecular(WaveFrontMaterial mat, vec3 viewDir, vec3 lightDir, vec3 no
 // Polynomial approximation by Christophe Schlick
 float Schlick(const float cosine, const float refractionIndex)
 {
-	float r0 = (1 - refractionIndex) / (1 + refractionIndex);
-	r0 *= r0;
-	return r0 + (1 - r0) * pow(1 - cosine, 5);
+    float r0 = (1 - refractionIndex) / (1 + refractionIndex);
+    r0 *= r0;
+    return r0 + (1 - r0) * pow(1 - cosine, 5);
 }
 
 vec3 from_tangent_to_local(vec3 normal, vec3 vector)
 {
-	float sgn = normal.z > 0.0F ? 1.0F : -1.0F;
-	float a   = -1.0F / (sgn + normal.z);
-	float b   = normal.x * normal.y * a;
+    float sgn = normal.z > 0.0F ? 1.0F : -1.0F;
+    float a = -1.0F / (sgn + normal.z);
+    float b = normal.x * normal.y * a;
 
-	vec3 tangent   = vec3(1.0f + sgn * normal.x * normal.x * a, sgn * b, -sgn * normal.x);
-	vec3 bitangent = vec3(b, sgn + normal.y * normal.y * a, -normal.y);
+    vec3 tangent = vec3(1.0f + sgn * normal.x * normal.x * a, sgn * b, -sgn * normal.x);
+    vec3 bitangent = vec3(b, sgn + normal.y * normal.y * a, -normal.y);
 
     return vector.x * tangent + vector.y * bitangent + vector.z * normal;
 }
 
 vec3 ggx_micronormal(vec3 normal, float alpha, inout uint seed, inout float theta)
 {
-	if (alpha == 0) return normal;
+    if (alpha == 0) return normal;
 
-	float e1 = rand(seed);
-	float e2 = rand(seed);
-	theta = atan(alpha * sqrt(e1) / sqrt(1.0 - e1));
-	float phi = 2 * PI * e2;
+    float e1 = rand(seed);
+    float e2 = rand(seed);
+    theta = atan(alpha * sqrt(e1) / sqrt(1.0 - e1));
+    float phi = 2 * PI * e2;
 
-	float x = sin(theta) * cos(phi);
+    float x = sin(theta) * cos(phi);
     float y = sin(theta) * sin(phi);
     float z = cos(theta);
-	vec3 micro_normal = vec3(x, y, z);
+    vec3 micro_normal = vec3(x, y, z);
 
-	return from_tangent_to_local(normal, micro_normal);
+    return from_tangent_to_local(normal, micro_normal);
 }
 
 vec3 micro_reflect(vec3 i_ray, vec3 micro_normal)
 {
-	return normalize(2 * abs(dot(i_ray, micro_normal)) * micro_normal - i_ray);
+    return normalize(2 * abs(dot(i_ray, micro_normal)) * micro_normal - i_ray);
 }
 
 
 vec3 micro_transmit(vec3 i_ray, vec3 micro_normal, vec3 normal, float n)
 {
-	float c =  dot(i_ray,micro_normal);
-	float ndoti = sign(dot(i_ray,normal));
-	float nc = n*c;
-	float nsqr =  n * n;
-	float csqr = c * c;
+    float c = dot(i_ray, micro_normal);
+    float ndoti = sign(dot(i_ray, normal));
+    float nc = n * c;
+    float nsqr = n * n;
+    float csqr = c * c;
 
-	return normalize((n*c - sign(dot(i_ray,normal)) * sqrt(abs((1 + n * n * ( c * c - 1))))) * micro_normal - n * i_ray);
+    return normalize((n * c - sign(dot(i_ray, normal)) * sqrt(abs((1 + n * n * (c * c - 1))))) * micro_normal - n * i_ray);
 }
 
 
-float F(float refraction_index, vec3 viewer, vec3 halfway_vector){
-	return Schlick(dot(viewer, halfway_vector), refraction_index);
+float F(float refraction_index, vec3 viewer, vec3 halfway_vector) {
+    return Schlick(dot(viewer, halfway_vector), refraction_index);
 }
 
 
 float GGX_G1(vec3 v, vec3 m, vec3 n, float alpha)
 {
-	float vdotm = dot(v, m);
-	float vdotn = dot(v, n);
-    if (vdotm * vdotn > 0){
-		vdotn = clamp(vdotn, -1.0 + 1e-5, 1.0 - 1e-5);
+    float vdotm = dot(v, m);
+    float vdotn = dot(v, n);
+    if (vdotm * vdotn > 0) {
+        vdotn = clamp(vdotn, -1.0 + 1e-5, 1.0 - 1e-5);
         float theta_v = acos(vdotn);
         return 2.0 / (1.0 + sqrt(1.0 + pow(alpha, 2) * pow(tan(theta_v), 2)));
-    } else {
+    }
+    else {
         return 0.01;
     }
 }
 
-float GGX_G(vec3 w_i, vec3 w_o, vec3 m, vec3 n, float alpha){
+float GGX_G(vec3 w_i, vec3 w_o, vec3 m, vec3 n, float alpha) {
 
-    if(dot(w_i, n)*dot(w_i, m) <= 0 ||
-            dot(w_o, n)*dot(w_o, m) <= 0)
+    if (dot(w_i, n) * dot(w_i, m) <= 0 ||
+        dot(w_o, n) * dot(w_o, m) <= 0)
     {
         return 0.0f;
     }
@@ -123,21 +124,21 @@ float GGX_G(vec3 w_i, vec3 w_o, vec3 m, vec3 n, float alpha){
 
 float GGX_D(vec3 m, vec3 n, float alpha, float theta)
 {
-	float mDotn = cos(theta);
-	float alpha2 = alpha * alpha;
-	return (mDotn > 0 ? alpha2 / (PI * pow(mDotn, 4) * pow(alpha2 + pow(tan(theta), 2), 2) + 0.01) : 1);
+    float mDotn = cos(theta);
+    float alpha2 = alpha * alpha;
+    return (mDotn > 0 ? alpha2 / (PI * pow(mDotn, 4) * pow(alpha2 + pow(tan(theta), 2), 2) + 0.01) : 1);
 }
 
 
 
-float CT_brdf(vec3 w_i, vec3 w_o, vec3 normal, vec3 micro_normal, float refraction_index, float alpha, float theta){
-	vec3 halfway_vector = normalize(w_i + w_o);
-	
-	float D = GGX_D(micro_normal, normal, alpha, theta);
-	float F = F(refraction_index, w_o, halfway_vector);
-	float G = GGX_G(w_i, w_o, micro_normal, normal, alpha);
+float CT_brdf(vec3 w_i, vec3 w_o, vec3 normal, vec3 micro_normal, float refraction_index, float alpha, float theta) {
+    vec3 halfway_vector = normalize(w_i + w_o);
 
-	return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)) + 0.000001);
+    float D = GGX_D(micro_normal, normal, alpha, theta);
+    float F = F(refraction_index, w_o, halfway_vector);
+    float G = GGX_G(w_i, w_o, micro_normal, normal, alpha);
+
+    return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)) + 0.000001);
 }
 
 
@@ -156,7 +157,7 @@ void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 C
 
     F0 = (1.0 - eta) / (1.0 + eta);
     F0 *= F0;
-    
+
     Cspec0 = F0 * mix(vec3(1.0), ctint, 0/*mat.specularTint*/);
     Csheen = mix(vec3(1.0), ctint, 0/*mat.sheenTint*/);
 }
@@ -216,7 +217,7 @@ vec3 transmition(vec3 micro_normal, rayPayload payload) {
     vec3 micro_normal_alt = ray_entering ? micro_normal : -micro_normal;
 
     float cos_theta = -dot(payload.direction, normal_alt);
-    float sin_theta = n * n * (1.0 - cos_theta*cos_theta);
+    float sin_theta = n * n * (1.0 - cos_theta * cos_theta);
 
     bool cannot_refract = (ni > nt && sin_theta > 1);
 
@@ -227,7 +228,7 @@ vec3 transmition(vec3 micro_normal, rayPayload payload) {
         payload.bsdf_type = BSDF_REFLECTION;
         return micro_reflect(-payload.direction, micro_normal);
     }
-    else{
+    else {
         payload.bsdf_type = BSDF_TRANSMISSION;
         return micro_transmit(-payload.direction, micro_normal_alt, normal_alt, n);
     }
@@ -254,7 +255,8 @@ vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
 
     if (abs(normal.x) > abs(normal.z)) {
         tangent = normalize(vec3(-normal.y, normal.x, 0.0));
-    } else {
+    }
+    else {
         tangent = normalize(vec3(0.0, -normal.z, normal.y));
     }
     bitangent = normalize(cross(normal, tangent));
@@ -265,14 +267,15 @@ vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
     return normalize(sample_dir);
 }
 
-void disney_bsdf(inout rayPayload payload){
-    if(length(payload.material.emission) > 0) {
+void disney_bsdf(inout rayPayload payload) {
+    if (length(payload.material.emission) > 0) {
         // TO-DO: Cambiar esto por alguna aproximaci�n al L de Veach
         payload.bsdf_sample = payload.material.emission * payload.material.baseColor;
         payload.Le = payload.material.emission * payload.material.baseColor;
         payload.status = RAY_HIT_LIGHT;
-    } else {
-     
+    }
+    else {
+
 
         // Initialize variables
         vec3 w_i = -payload.direction; // Incident direction (towards the surface)
@@ -284,7 +287,7 @@ void disney_bsdf(inout rayPayload payload){
 
         // Adjust normal and cosine for transmission if necessary
         vec3 n = payload.surface_normal;
-        /* 
+        /*
         if (!entering) {
             n = -payload.surface_normal;
             cos_theta_i = dot(n, w_i);
@@ -292,12 +295,12 @@ void disney_bsdf(inout rayPayload payload){
         */
 
         // Material properties
-        float metallic     = clamp(payload.material.metallic, 0.0, 1.0);
-        float roughness    = clamp(payload.material.roughness, 0.005, 1.0); // Minimum roughness to avoid singularities
-        float alpha        = roughness * roughness;
+        float metallic = clamp(payload.material.metallic, 0.0, 1.0);
+        float roughness = clamp(payload.material.roughness, 0.005, 1.0); // Minimum roughness to avoid singularities
+        float alpha = roughness * roughness;
         float transmission = 1 - clamp(payload.material.opacity, 0.0, 1.0);
-        float eta_i        = 1.0;           // Index of refraction of the incident medium (air)
-        float eta_t        = payload.material.ior;  // Index of refraction of the transmitted medium (material)
+        float eta_i = 1.0;           // Index of refraction of the incident medium (air)
+        float eta_t = payload.material.ior;  // Index of refraction of the transmitted medium (material)
         if (!entering) {
             // Swap indices if exiting the material
             float temp = eta_i;
@@ -310,7 +313,7 @@ void disney_bsdf(inout rayPayload payload){
         vec3 Csheen, Cspec0;
         TintColors(payload.material.baseColor, eta, F0, Csheen, Cspec0); // void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
 
-        float NdotV = dot(n,w_i);
+        float NdotV = dot(n, w_i);
 
         float schlickWt = SchlickWeight(NdotV);
 
@@ -359,23 +362,25 @@ void disney_bsdf(inout rayPayload payload){
             float pdf = max(dot(n, w_o), 0.0) / PI;
 
             // Update payload
-            payload.direction    = w_o;
-            payload.bsdf_sample  = f_diffuse;
-            payload.pdf          = pdf;
-            payload.status       = RAY_CONTINUE;
+            payload.direction = w_o;
+            payload.bsdf_sample = f_diffuse;
+            payload.pdf = pdf;
+            payload.status = RAY_CONTINUE;
         }
         else if (rnd < cdf[2]) { // Dielectric + Metallic reflection
 
             // vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
             float theta_m;
             vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
+            float VDotH = clamp(dot(w_i, micro_normal), 0.0, 1.0);
             vec3 w_o = micro_reflect(w_i, micro_normal);
-            
+
             // Dielectric Reflection
             if (rnd < cdf[1]) {
                 // Normalize for interpolating based on Cspec0
                 // float DielectricFresnel(float cosThetaI, float eta)
                 float NDotL = dot(n, w_o);
+
                 if (NDotL <= 0.0)
                 {
                     payload.bsdf_sample = vec3(0.0);
@@ -383,22 +388,68 @@ void disney_bsdf(inout rayPayload payload){
                     return;
                 }
 
-                float VDotH = dot(w_i,micro_normal);
                 float F = (DielectricFresnel(VDotH, 1.0 / payload.material.ior) - F0) / (1.0 - F0);
                 float pdf;
                 vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, mix(Cspec0, vec3(1.0), F), pdf);
 
-                payload.direction    = w_o;
-                payload.bsdf_sample  = f;
-                payload.pdf          = pdf;
-                payload.status       = RAY_CONTINUE;
+                payload.direction = w_o;
+                payload.bsdf_sample = f;
+                payload.pdf = pdf;
+                payload.status = RAY_CONTINUE;
             }
             else {
-                
+                vec3 w_o = micro_reflect(w_i, micro_normal);
+
+                float pdf;
+
+                vec3 F = mix(payload.material.baseColor, vec3(1.0), SchlickWeight(VDotH));
+
+                vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, F, pdf);
+
+                payload.direction = w_o;
+                payload.bsdf_sample = f;
+                payload.pdf = pdf;
+                payload.status = RAY_CONTINUE;
+
             }
-            
         }
-        
+        else if (rnd < cdf[3]) {  // Glass/Specular BSDF
+            // Dielectric fresnel (achromatic)
+            float theta_m;
+            vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
+            float VDotH = dot(w_i, micro_normal);
+
+            float F = DielectricFresnel(VDotH, 1.0 / payload.material.ior);
+
+            bool ray_entering = dot(payload.direction, payload.surface_normal) < 0;
+            float ni = 1;
+            float nt = payload.material.ior;
+            if (!ray_entering) {
+                ni = nt;
+                nt = 1;
+            }
+            // float Schlick(const float cosine, const float refractionIndex)
+            if (Schlick(cos_theta_i, ni / nt) > rand(payload.random_seed))
+            {
+                vec3 w_o = micro_reflect(w_i, micro_normal);
+
+                float pdf;
+
+                vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, vec3(F), pdf);
+
+                payload.direction = w_o;
+                payload.bsdf_sample = f;
+                payload.pdf = pdf;
+                payload.status = RAY_CONTINUE;
+            }
+            /*else
+            {
+                vec3 w_o = micro_transmit(-payload.direction, micro_normal_alt, normal_alt, ni/nt);
+                f += EvalMicrofacetRefraction(state.mat, state.eta, V, L, H, vec3(F), tmpPdf) * glassWt;
+                // pdf += tmpPdf * glassPr * (1.0 - F);
+            }*/
+        }
+
     }
 }
 
