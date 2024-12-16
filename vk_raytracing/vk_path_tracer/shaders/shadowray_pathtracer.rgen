@@ -7,7 +7,8 @@
 #extension GL_EXT_scalar_block_layout : enable
 
 
-#include "raycommon.glsl"
+#include "wavefront.glsl"
+//#include "raycommon.glsl"
 //#include "host_device.h"
 //#include "random.glsl"
 

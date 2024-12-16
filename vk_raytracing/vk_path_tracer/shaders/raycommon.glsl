@@ -1,5 +1,5 @@
 
-#include "wavefront.glsl"
+#include "host_device.h"
 
 const uint RAY_CONTINUE = 1;
 const uint RAY_HIT_LIGHT = 2;
