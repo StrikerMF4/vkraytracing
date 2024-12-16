@@ -83,7 +83,7 @@ vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
 }
 
 vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color){
-	float IOR = payload.material.IOR;
+	float IOR = payload.material.ior;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
 

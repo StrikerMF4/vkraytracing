@@ -1,0 +1,42 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.5, 1.5, 1.5],
+        "lookat": [0.0, 0.0, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Dots",
+            "color": [1.0, 1.0, 1.0],
+            "roughness": 1.0,
+            "opacity": 0.0,
+            "albedotexture": "textures/micro_test.png"
+        },
+        {
+            "name": "Glass",
+            "color": [1.0, 1.0, 1.0],
+            "roughness": 0.0,
+            "opacity": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "GlassRoughness",
+            "color": [1.0, 1.0, 1.0],
+            "roughness": 0.2,
+            "opacity": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "Light",
+            "emission": [60.0, 60.0, 60.0]
+        }
+    ],
+    "entities": [
+	    {
+            "type": "mesh",
+            "file": "models/WalterGlass.obj"
+        }
+    ]
+}

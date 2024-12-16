@@ -25,6 +25,8 @@ layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID f
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
+layout(set = 1, binding = eImplicit, scalar) buffer implicitObjs_ { ImplicitObj i[]; } implicitObjs;
+layout(set = 1, binding = eImplicitSpheres, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
@@ -67,35 +69,34 @@ void main() {
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
     MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
     Materials  materials   = Materials(objResource.materialAddress);
-    Indices    indices     = Indices(objResource.indexAddress);
-    Vertices   vertices    = Vertices(objResource.vertexAddress);
-
-    // Indices of the triangle
-    ivec3 ind = indices.i[gl_PrimitiveID];
-    //int ind = gl_PrimitiveID * 3;
-    // Vertex of the triangle
-    Vertex v0 = vertices.v[ind.x];
-    Vertex v1 = vertices.v[ind.y];
-    Vertex v2 = vertices.v[ind.z];
-    const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
-    // Computing the coordinates of the hit position
-    const vec3 local_position = v0.pos * barycentrics.x + v1.pos * barycentrics.y + v2.pos * barycentrics.z;
-    const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0));  // Transforming the position to world space
-    // Computing the normal at hit position
-    const vec3 local_normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
-    payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
-
     
+    vec3 hit_position = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+
+    ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
+
+    // Computing the normal and uv at hit position
+    vec2 texCoord;
+    if(gl_HitKindEXT == KIND_SPHERE) 
+    {
+        Sphere instance = allSpheres.i[object.kind_id];
+
+        payload.surface_normal = normalize(hit_position - instance.center);
+        payload.surface_normal *= 2 * int(instance.inverted_normal) - 1;
+
+        texCoord = vec2(
+            atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
+            payload.surface_normal.y * 0.5 + 0.5
+        );
+    }
+
     // Material of the object
     int               matIdx = matIndices.i[gl_PrimitiveID];
-
     WaveFrontMaterial material    = materials.m[matIdx];
 
     // Texture
     vec3 texture_color = vec3(1);
     if(material.albedoTextureID >= 0) {
         uint txtId    = material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
     }
     //--------------------------------------------------------------------------------------------------------

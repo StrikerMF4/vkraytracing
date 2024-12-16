@@ -25,7 +25,9 @@ START_BINDING(SceneBindings)
 eGlobals = 0,  // Global uniform containing camera matrices
 eObjDescs = 1,  // Access to the object descriptions
 eTextures = 2,  // Access to textures
-eLights = 3
+eLights = 3,
+eImplicit = 4,
+eImplicitSpheres = 5
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -34,6 +36,8 @@ eOutImage = 1   // Ray tracer output image
 END_BINDING();
 // clang-format on
 
+#define KIND_SPHERE 0
+#define KIND_CUBE 1
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc
@@ -83,19 +87,56 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 {
 	vec3 pos;
 	vec3 nrm;
-	vec3 color;
 	vec2 texCoord;
 };
 
+struct ImplicitObj {
+	uint kind; //type of implicit geometry
+	uint kind_id; //index in the corresponding array
+};
+
+struct Sphere {
+	vec3 center;
+	float radius;
+	bool inverted_normal;
+};
+
+struct AABB {
+	vec3 minimum;
+	vec3 maximum;
+};
+
+
 struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compressed for device
 {
-	vec3  color;
-	float IOR;
-	float roughness;
+	uint ID;
+
+	vec3 baseColor;
+
+	vec3 emission;
+
 	float metallic;
-	vec3  emittance;
-	float transparent;
-	int   textureId;
+	float roughness;
+	float subsurface;
+	float specularTint;
+	float anisotropic;
+
+	float sheen;
+	float sheenTint;
+	float clearcoat;
+	float clearcoatGloss;
+
+	float specTrans;
+	float ior;
+
+	int albedoTextureID;
+	int metallicRoughnessTextureID;
+	int normalTextureID;
+	int emissionTextureID;
+
+	float opacity;
+	float alphaMode;
+	float alphaCutoff;
 };
 
 struct Light {

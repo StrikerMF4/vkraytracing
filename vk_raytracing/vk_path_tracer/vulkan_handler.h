@@ -9,6 +9,7 @@
 
 // #VKRay
 #include "nvvk/raytraceKHR_vk.hpp"
+#include <scene_loader.h>
 
 enum TechniqueType
 {
@@ -66,11 +67,13 @@ public:
   void createDescriptorSetLayout();
   void createGraphicsPipeline();
   void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
+  void loadScene(SceneLoader::Scene* scene, std::string scene_path);
+  void uploadImplicitObjects();
   void updateDescriptorSet();
   void createUniformBuffer();
   void createObjDescriptionBuffer();
   void createLightBuffer();
-  void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures);
+  void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/");
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
@@ -105,10 +108,21 @@ public:
 
   // Array of objects and instances in the scene
   std::vector<ObjModel>    m_objModel;   // Model on host
+  std::vector<nvvk::Buffer> m_scene_buffers;
   std::vector<ObjDesc>     m_objDesc;    // Model description for device access
   std::vector<ObjInstance> m_instances;  // Scene model instances
   std::vector<Light>    m_lights;     // Lights in the scene
-
+  std::vector<ImplicitObj> m_implicitObj; //Implicits objects in the scene
+  
+  //implicit objects arrays/buffers
+  std::vector<unsigned int> m_implicitObj_materials_idx;
+  std::vector<objl::Material> m_implicitObj_materials;
+  std::vector<Sphere> m_spheres;
+  nvvk::Buffer m_implicitObjBuffer;
+  nvvk::Buffer m_implicitObj_AABBBuffer;
+  nvvk::Buffer m_implicitObj_MatBuffer;
+  nvvk::Buffer m_implicitObj_MatIndexBuffer;
+  nvvk::Buffer m_spheresBuffer;
 
   // Graphic pipeline
   VkPipelineLayout            m_pipelineLayout;
@@ -152,6 +166,7 @@ public:
   // #VKRay
   void initRayTracing();
   auto objectToVkGeometryKHR(const ObjModel& model);
+  auto implicitObjToVkGeometryKHR();
   void createBottomLevelAS();
   void createTopLevelAS();
   void createRtDescriptorSet();

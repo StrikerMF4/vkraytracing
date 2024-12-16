@@ -1,0 +1,38 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [
+            10.2,
+            0.0,
+            0.35
+        ],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "floor",
+			"color": [0.6, 0.05, 0.05],
+            "roughness": 0.5,
+            "metallic": 0.1
+        },
+        {
+            "name": "light",
+            "emission": [50.0, 50.0, 50.0]
+        }
+    ],
+    "entities": [
+		{
+			"material": "floor",
+            "type": "sphere",
+            "position": [5, 0, 0],
+			"radius": 2.0
+        },
+	{
+			"material": "light",
+            "type": "sphere",
+            "position": [-5, 0, 0],
+			"radius": 1.5
+        }
+    ]
+}
