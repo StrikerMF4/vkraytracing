@@ -41,6 +41,7 @@ void main() {
 
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
+
     // Computing the normal and uv at hit position
     vec2 texCoord;
     if(gl_HitKindEXT == KIND_SPHERE) 
@@ -48,7 +49,7 @@ void main() {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
-        payload.surface_normal *= int(instance.inverted_normal) - int(!instance.inverted_normal);
+        payload.surface_normal *= 1 - 2 * instance.inverted_normal;
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
