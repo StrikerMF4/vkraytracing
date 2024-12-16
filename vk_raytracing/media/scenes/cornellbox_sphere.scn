@@ -29,7 +29,7 @@
         },
 		{
             "name": "leftSphere",
-			"color": [1.0, 0, 0],
+			"color": [0.725, 0.71, 0.68],
 			"roughness": 0.01,
             "metallic": 1.0
         },
