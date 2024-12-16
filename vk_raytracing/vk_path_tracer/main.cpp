@@ -328,7 +328,7 @@ int main(int argc, char** argv)
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
 	// Load Scene
-	const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
 
 	//Escenas Walter
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronConductor.scn", defaultSearchPaths, true);
@@ -340,7 +340,8 @@ int main(int argc, char** argv)
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
