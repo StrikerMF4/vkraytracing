@@ -7,7 +7,8 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
 
-#include "raycommon.glsl"
+#include "wavefront.glsl"
+//#include "raycommon.glsl"
 //#include "host_device.h"
 //#include "random.glsl"
 
@@ -72,7 +73,7 @@ void random_point_in_light(inout vec3 point, inout vec3 emission, inout vec3 sur
 
 
 vec3 shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color, point_data light_hits[11], uint light_max_index){
-	float IOR = payload.material.IOR;
+	float IOR = payload.material.ior;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
 

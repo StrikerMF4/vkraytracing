@@ -48,7 +48,7 @@ void main() {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
-        payload.surface_normal *= 2 * int(instance.inverted_normal) - 1;
+        payload.surface_normal *= int(instance.inverted_normal) - int(!instance.inverted_normal);
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
@@ -56,14 +56,16 @@ void main() {
         );
     }
 
+
+
     // Material of the object
     int               matIdx = matIndices.i[gl_PrimitiveID];
-    WaveFrontMaterial material    = materials.m[matIdx];
+    payload.material = materials.m[matIdx];
 
     // Texture
     vec3 texture_color = vec3(1);
-    if(material.albedoTextureID >= 0) {
-        uint txtId    = material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+    if(payload.material.albedoTextureID >= 0) {
+        uint txtId    = payload.material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
     }
     //--------------------------------------------------------------------------------------------------------

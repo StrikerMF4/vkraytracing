@@ -33,7 +33,7 @@ namespace SceneLoader {
 	public:
 		float radius;
 		unsigned int material_idx;
-		bool inverted_normal;
+		bool inverted_normal = false;
 	};
 
 
