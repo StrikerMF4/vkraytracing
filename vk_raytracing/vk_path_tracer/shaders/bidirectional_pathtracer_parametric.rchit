@@ -48,7 +48,7 @@ void main() {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
-        payload.surface_normal *= instance.inverted_normal == 1 ? -1 : 1;
+        payload.surface_normal *= 1 - 2 * instance.inverted_normal;
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
