@@ -349,7 +349,7 @@ void disney_bsdf(inout rayPayload payload) {
             // Sample outgoing direction over hemisphere
             //vec3 w_o = sampleHemisphereCosineWeighted(n, payload.random_seed);
             vec3 w_o = RandomInUnitSemiSphere(payload.random_seed, n);
-
+            
             if (dot(payload.direction, n) > 0.0) {
                 payload.status = RAY_ABSORBED;
                 return;
@@ -366,6 +366,7 @@ void disney_bsdf(inout rayPayload payload) {
             payload.bsdf_sample = f_diffuse;
             payload.pdf = pdf;
             payload.status = RAY_CONTINUE;
+            payload.bsdf_type = BSDF_DIFFUSE;
         }
         else if (rnd < cdf[2]) { // Dielectric + Metallic reflection
 
@@ -396,6 +397,7 @@ void disney_bsdf(inout rayPayload payload) {
                 payload.bsdf_sample = f;
                 payload.pdf = pdf;
                 payload.status = RAY_CONTINUE;
+                payload.bsdf_type = BSDF_REFLECTION;
             }
             else {
                 vec3 w_o = micro_reflect(w_i, micro_normal);
@@ -410,6 +412,8 @@ void disney_bsdf(inout rayPayload payload) {
                 payload.bsdf_sample = f;
                 payload.pdf = pdf;
                 payload.status = RAY_CONTINUE;
+                payload.bsdf_type = BSDF_REFLECTION;
+
 
             }
         }
@@ -441,13 +445,19 @@ void disney_bsdf(inout rayPayload payload) {
                 payload.bsdf_sample = f;
                 payload.pdf = pdf;
                 payload.status = RAY_CONTINUE;
+                payload.bsdf_type = BSDF_REFLECTION;
+
             }
-            /*else
+            else
             {
+                /*
                 vec3 w_o = micro_transmit(-payload.direction, micro_normal_alt, normal_alt, ni/nt);
                 f += EvalMicrofacetRefraction(state.mat, state.eta, V, L, H, vec3(F), tmpPdf) * glassWt;
+                */
                 // pdf += tmpPdf * glassPr * (1.0 - F);
-            }*/
+                payload.bsdf_type = BSDF_TRANSMISSION;
+
+            }
         }
 
     }

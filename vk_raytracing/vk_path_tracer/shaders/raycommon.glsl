@@ -40,6 +40,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 
 	payload.Le = vec3(0);
     payload.bsdf_sample = vec3(0);
+	payload.pdf = 1.0;
 	payload.bsdf_type = 0;
 	payload.surface_normal = vec3(0);
 

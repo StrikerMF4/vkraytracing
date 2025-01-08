@@ -93,9 +93,9 @@ void main()
                 0xFF,
                 0, 1, 0,
                 origin,
-                0.001,             // Distancia m�nima
+                0.001,             // Distancia minima
                 direction,
-                1e20,              // Distancia m�xima
+                1e20,              // Distancia maxima
                 0                   // Desplazamiento del registro SBT
             );
 
@@ -109,7 +109,7 @@ void main()
                 output_color += w * settings.clearColor.rgb;
                 break;
             } else if (payload.status == RAY_ABSORBED) {
-                // Camino terminado por absorci�n
+                // Camino terminado por absorcion
                 break;
             }
 
@@ -117,17 +117,7 @@ void main()
             float cos_theta = max(dot(payload.surface_normal, payload.direction), 0.0);
             w *= (payload.bsdf_sample * cos_theta) / payload.pdf;
 
-            // Aplicar ruleta rusa para terminaci�n de caminos
-            if (depth >= 3) {
-                float p_continue = max(max(w.r, max(w.g, w.b)), 0.1);
-                p_continue = clamp(p_continue, 0.1, 1.0);
-                if (rand(payload.random_seed) > p_continue) {
-                    break;
-                }
-                w /= p_continue;
-            }
-
-            // Actualizar origen y direcci�n para el siguiente rebote
+            // Actualizar origen y direccion para el siguiente rebote
             origin = payload.origin;
             direction = payload.direction;
         }
