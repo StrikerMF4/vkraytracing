@@ -267,9 +267,92 @@ vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
     return normalize(sample_dir);
 }
 
+
+void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, vec3 outputColor, float pdf, inout uint random_seed)
+{ 
+
+    float cos_theta_i = dot(normal, w_i);
+    float cos_theta_o = dot(normal, w_o);
+    cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
+    cos_theta_o = clamp(cos_theta_i, -1.0, 1.0);
+
+    bool reflecting = cos_theta_i * cos_theta_o < 0;
+
+    // Determine if the ray is entering or exiting the 
+    bool entering = cos_theta_i >= 0.0;
+
+    float eta_i = 1.0;           // Index of refraction of the incident medium (air)
+    float eta_t = payload.material.ior;  // Index of refraction of the transmitted medium (material)
+    if (!entering) {
+        // Swap indices if exiting the material
+        float temp = eta_i;
+        eta_i = eta_t;
+        eta_t = temp;
+    }
+    float eta = eta_i / eta_t;
+    
+    float F0;
+    vec3 Csheen, Cspec0;
+    TintColors(material.baseColor, eta, F0, Csheen, Cspec0); // void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
+
+    float NdotV = dot(n, w_i);
+
+    float schlickWt = SchlickWeight(NdotV);
+
+    float dielectricWt = (1.0 - metallic) * (1.0 - transmission);
+    float glassWt = (1.0 - metallic) * transmission;
+
+    float diffPr = dielectricWt * Luminance(material.baseColor);
+    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+    float metalPr = metallic * Luminance(mix(material.baseColor, vec3(1.0), schlickWt));
+    float glassPr = glassWt;
+
+    // Normalize probabilities
+    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr);
+    diffPr *= invTotalWt;
+    dielectricPr *= invTotalWt;
+    metalPr *= invTotalWt;
+    glassPr *= invTotalWt;
+
+    float alpha = roughness * roughness;
+    float theta_m;
+    vec3 micro_normal = ggx_micronormal(normal, alpha, random_seed, theta_m);
+    float VDotH = dot(w_i, micro_normal);
+
+    if (diffPr > 0.001 && reflecting) { // Diffuse Reflection
+        vec3 f_diffuse = material.baseColor / PI;
+        float pdf = max(dot(n, w_o), 0.0) / PI;
+    }
+    if (dielectricPr && reflecting) { // Dielectric 
+        float F = (DielectricFresnel(VDotH, 1.0 / material.ior) - F0) / (1.0 - F0);
+        float pdf;
+        vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, mix(Cspec0, vec3(1.0), F), pdf);
+    }
+    if (metalPr && reflecting) { // Metallic reflection
+        vec3 F = mix(material.baseColor, vec3(1.0), SchlickWeight(VDotH));
+        float pdf;
+        vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, F, pdf);
+    }
+    if (rnd < cdf[3]) {  // Glass/Specular BSDF
+        // Dielectric fresnel (achromatic)
+        float F = DielectricFresnel(VDotH, 1.0 / payload.material.ior);
+
+        if (reflecting)
+        {
+            float pdf;
+            vec3 f = EvalMicrofacetReflection(micro_normal, w_o, w_i, n, alpha, theta_m, vec3(F), pdf);
+        }
+        else
+        {
+
+
+        }
+    }
+}
+
 void disney_bsdf(inout rayPayload payload) {
     if (length(payload.material.emission) > 0) {
-        // TO-DO: Cambiar esto por alguna aproximaci�n al L de Veach
+        // TO-DO: Cambiar esto por alguna aproximacion al L de Veach
         payload.bsdf_sample = payload.material.emission * payload.material.baseColor;
         payload.Le = payload.material.emission * payload.material.baseColor;
         payload.status = RAY_HIT_LIGHT;
