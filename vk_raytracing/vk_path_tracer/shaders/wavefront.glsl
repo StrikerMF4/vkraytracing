@@ -3,6 +3,8 @@
 #include "random.glsl"
 
 const float PI = 3.14159265;
+const float TWO_PI = 2*3.14159265;
+const float INV_PI = 1/3.14159265;
 
 vec3 computeDiffuse(WaveFrontMaterial mat, vec3 lightDir, vec3 normal)
 {
@@ -149,18 +151,18 @@ float Luminance(vec3 c)
     return 0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z;
 }
 
-
-void TintColors(vec3 color, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
+void TintColors(WaveFrontMaterial material, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0)
 {
-    float lum = Luminance(color);
-    vec3 ctint = lum > 0.0 ? color / lum : vec3(1.0);
+    float lum = Luminance(material.baseColor);
+    vec3 ctint = lum > 0.0 ? material.baseColor / lum : vec3(1.0);
 
     F0 = (1.0 - eta) / (1.0 + eta);
     F0 *= F0;
-
-    Cspec0 = F0 * mix(vec3(1.0), ctint, 0/*mat.specularTint*/);
-    Csheen = mix(vec3(1.0), ctint, 0/*mat.sheenTint*/);
+    
+    Cspec0 = F0 * mix(vec3(1.0), ctint, material.specularTint);
+    Csheen = mix(vec3(1.0), ctint, material.sheenTint);
 }
+
 
 float SchlickWeight(float u)
 {
@@ -186,31 +188,169 @@ float DielectricFresnel(float cosThetaI, float eta)
     return 0.5f * (rs * rs + rp * rp);
 }
 
-vec3 EvalMicrofacetRefraction(vec3 micro_normal, float eta_i, float eta_t, vec3 w_o, vec3 w_i, vec3 n, float alpha, float theta_m, vec3 F, out float pdf)
+/* DISNEY START */
+
+float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay)
+{
+    float a = HDotX / ax;
+    float b = HDotY / ay;
+    float c = a * a + b * b + NDotH * NDotH;
+    return 1.0 / (PI * ax * ay * c * c);
+}
+
+
+float SmithG(float NDotV, float alphaG)
+{
+    float a = alphaG * alphaG;
+    float b = NDotV * NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
+}
+
+float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay)
+{
+    float a = VDotX * ax;
+    float b = VDotY * ay;
+    float c = NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
+}
+
+float GTR1(float NDotH, float a)
+{
+    if (a >= 1.0)
+        return INV_PI;
+    float a2 = a * a;
+    float t = 1.0 + (a2 - 1.0) * NDotH * NDotH;
+    return (a2 - 1.0) / (PI * log(a2) * t);
+}
+
+vec3 SampleGTR1(float rgh, float r1, float r2)
+{
+    float a = max(0.001, rgh);
+    float a2 = a * a;
+
+    float phi = r1 * TWO_PI;
+
+    float cosTheta = sqrt((1.0 - pow(a2, 1.0 - r2)) / (1.0 - a2));
+    float sinTheta = clamp(sqrt(1.0 - (cosTheta * cosTheta)), 0.0, 1.0);
+    float sinPhi = sin(phi);
+    float cosPhi = cos(phi);
+
+    return vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+}
+
+vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2)
+{
+    vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
+
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    vec3 T1 = lensq > 0 ? vec3(-Vh.y, Vh.x, 0) * inversesqrt(lensq) : vec3(1, 0, 0);
+    vec3 T2 = cross(Vh, T1);
+
+    float r = sqrt(r1);
+    float phi = 2.0 * PI * r2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+    return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
+}
+
+vec3 EvalDisneyDiffuse(WaveFrontMaterial material, vec3 Csheen, vec3 V, vec3 L, vec3 H, out float pdf)
 {
     pdf = 0.0;
-//    if (L.z >= 0.0)
-//        return vec3(0.0);
+    if (L.z <= 0.0)
+        return vec3(0.0);
 
-    float IDotN = dot(n, w_i);
-    float ODotN = dot(n, w_o);
+    float LDotH = dot(L, H);
 
-    vec3 h_t = -(eta_i* w_i + eta_t * w_o);
+    float Rr = 2.0 * material.roughness * LDotH * LDotH;
 
-    float IDotH = dot(h_t, w_i);
-    float ODotH = dot(h_t, w_o);
+    // Diffuse
+    float FL = SchlickWeight(L.z);
+    float FV = SchlickWeight(V.z);
+    float Fretro = Rr * (FL + FV + FL * FV * (Rr - 1.0));
+    float Fd = (1.0 - 0.5 * FL) * (1.0 - 0.5 * FV);
 
-    float D = GGX_D(micro_normal, n, alpha, theta_m);
-    float G = GGX_G(w_i, w_o, micro_normal, n, alpha);
-    float denom = eta_i * IDotH + eta_t * ODotH;
-    denom *= denom;
-    float eta_t2 = eta_t * eta_t;
+    // Fake subsurface
+    float Fss90 = 0.5 * Rr;
+    float Fss = mix(1.0, Fss90, FL) * mix(1.0, Fss90, FV);
+    float ss = 1.25 * (Fss * (1.0 / (L.z + V.z) - 0.5) + 0.5);
 
-    float jacobian = abs(ODotH) / denom;
+    // Sheen
+    float FH = SchlickWeight(LDotH);
+    vec3 Fsheen = FH * material.sheen * Csheen;
 
-    pdf = max(0.0, IDotH) * D * jacobian / IDotN;
-    return (1.0 - F) * D * G * eta_t2 * abs(IDotH * ODotH) / (denom * abs(IDotN * ODotN));
+    pdf = L.z * INV_PI;
+    return INV_PI * material.baseColor * mix(Fd + Fretro, ss, material.subsurface) + Fsheen;
 }
+
+vec3 EvalMicrofacetReflection(WaveFrontMaterial material, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf)
+{
+    pdf = 0.0;
+    if (L.z <= 0.0)
+        return vec3(0.0);
+
+    float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+    float ax = max(0.001, material.roughness / aspect);
+    float ay = max(0.001, material.roughness * aspect);
+
+    float D = GTR2Aniso(H.z, H.x, H.y, ax, ay);
+    float G1 = SmithGAniso(abs(V.z), V.x, V.y, ax, ay);
+    float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, ax, ay);
+
+    pdf = G1 * D / (4.0 * V.z);
+    return F * D * G2 / (4.0 * L.z * V.z);
+}
+
+vec3 EvalMicrofacetRefraction(WaveFrontMaterial material, float eta, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf)
+{
+    pdf = 0.0;
+    if (L.z >= 0.0)
+        return vec3(0.0);
+
+    float LDotH = dot(L, H);
+    float VDotH = dot(V, H);
+
+    float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+    float ax = max(0.001, material.roughness / aspect);
+    float ay = max(0.001, material.roughness * aspect);
+
+    float D = GTR2Aniso(H.z, H.x, H.y, ax, ay);
+    float G1 = SmithGAniso(abs(V.z), V.x, V.y, ax, ay);
+    float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, ax, ay);
+    float denom = LDotH + VDotH * eta;
+    denom *= denom;
+    float eta2 = eta * eta;
+    float jacobian = abs(LDotH) / denom;
+
+    pdf = G1 * max(0.0, VDotH) * D * jacobian / V.z;
+    return pow(material.baseColor, vec3(0.5)) * (1.0 - F) * D * G2 * abs(VDotH) * jacobian * eta2 / abs(L.z * V.z);
+}
+
+vec3 EvalClearcoat(WaveFrontMaterial material, vec3 V, vec3 L, vec3 H, out float pdf)
+{
+    pdf = 0.0;
+    if (L.z <= 0.0)
+        return vec3(0.0);
+
+    float VDotH = dot(V, H);
+
+    float clearcoatRoughness = mix(0.1, 0.001, material.clearcoatGloss);
+
+    float F = mix(0.04, 1.0, SchlickWeight(VDotH));
+    float D = GTR1(H.z, clearcoatRoughness);
+    float G = SmithG(L.z, 0.25) * SmithG(V.z, 0.25);
+    float jacobian = 1.0 / (4.0 * VDotH);
+
+    pdf = D * H.z * jacobian;
+    return vec3(F) * D * G;
+}
+
+/* END DISNEY */
+
 
 vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, float alpha, float theta_m, vec3 F, out float pdf)
 {
@@ -293,6 +433,17 @@ vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
     return normalize(sample_dir);
 }
 
+vec3 CosineSampleHemisphere(float r1, float r2)
+{
+    vec3 dir;
+    float r = sqrt(r1);
+    float phi = TWO_PI * r2;
+    dir.x = r * cos(phi);
+    dir.y = r * sin(phi);
+    dir.z = sqrt(max(0.0, 1.0 - dir.x * dir.x - dir.y * dir.y));
+    return dir;
+}
+
 vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V)
 {
     return V.x * X + V.y * Y + V.z * Z;
@@ -321,21 +472,24 @@ void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, ou
 
     // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
     vec3 V = ToLocal(T, B, normal, w_i);
-    vec3 L = ToLocal(T, B, normal, wo);
+    vec3 L = ToLocal(T, B, normal, w_o);
 
+    float eta = dot(-w_i, normal) < 0.0 ? (1.0 / material.ior) : material.ior;
+    
     vec3 H;
     if (L.z > 0.0)
         H = normalize(L + V);
     else
-        H = normalize(L + V * material.ior);
+        H = normalize(L + V * eta);
 
     if (H.z < 0.0)
         H = -H;
 
+
     // Tint colors
     vec3 Csheen, Cspec0;
     float F0;
-    TintColors(material.baseColor, eta, F0, Csheen, Cspec0);
+    TintColors(material, eta, F0, Csheen, Cspec0);
 
     // Model weights
     float dielectricWt = (1.0 - material.metallic) * (1.0 - material.specTrans);
@@ -386,7 +540,7 @@ void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, ou
     
     if (glassPr > 0.0) { // Glass/Specular BSDF
         // Dielectric fresnel (achromatic)
-        float F = DielectricFresnel(VDotH, material.ior);
+        float F = DielectricFresnel(VDotH, eta);
 
         if (reflect)
         {
@@ -395,7 +549,7 @@ void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, ou
         }
         else
         {
-            f += EvalMicrofacetRefraction(material, material.ior, V, L, H, vec3(F), tmpPdf) * glassWt;
+            f += EvalMicrofacetRefraction(material, eta, V, L, H, vec3(F), tmpPdf) * glassWt;
             pdf += tmpPdf * glassPr * (1.0 - F);
         }
     }
@@ -416,7 +570,7 @@ void disney_bsdf(inout rayPayload payload) {
         payload.status = RAY_HIT_LIGHT;
     }
     else {
-        pdf = 0.0;
+        float pdf = 0.0;
 
         float r1 = rand(payload.random_seed);
         float r2 = rand(payload.random_seed);
@@ -428,10 +582,12 @@ void disney_bsdf(inout rayPayload payload) {
         // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
         vec3 V = ToLocal(T, B, N, -payload.direction);
 
+        float eta = dot(payload.direction, payload.surface_normal) < 0.0 ? (1.0 / payload.material.ior) : payload.material.ior;
+
         // Tint colors
         vec3 Csheen, Cspec0;
         float F0;
-        TintColors(payload.material, payload.material.ior, F0, Csheen, Cspec0);
+        TintColors(payload.material, eta, F0, Csheen, Cspec0);
 
         // Model weights
         float dielectricWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.specTrans);
@@ -466,6 +622,8 @@ void disney_bsdf(inout rayPayload payload) {
         // Sample a lobe based on its importance
         float r3 = rand(payload.random_seed);
 
+        float tmpPdf;
+        vec3 L, f;        
         if (r3 < cdf[0]) // Diffuse
         {
             L = CosineSampleHemisphere(r1, r2);
@@ -476,30 +634,53 @@ void disney_bsdf(inout rayPayload payload) {
                 return;
             }
 
-            f = EvalDisneyDiffuse(material, Csheen, V, L, H, tmpPdf) * dielectricWt;
+            vec3 H;
+            if (L.z > 0.0)
+                H = normalize(L + V);
+            else
+                H = normalize(L + V * eta);
+
+            if (H.z < 0.0)
+                H = -H;
+
+            f = EvalDisneyDiffuse(payload.material, Csheen, V, L, H, tmpPdf) * dielectricWt;
             pdf = tmpPdf * diffPr;
             payload.bsdf_type = BSDF_DIFFUSE;
         }
         else if (r3 < cdf[2]) 
         {
-            vec3 H = SampleGGXVNDF(V, payload.material.ax, payload.material.ay, r1, r2);
+            float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
+            float ax = max(0.001, payload.material.roughness / aspect);
+            float ay = max(0.001, payload.material.roughness * aspect);
+
+            vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
 
             if (H.z < 0.0)
                 H = -H;
 
             L = normalize(reflect(-V, H));
 
+            if (L.z > 0.0)
+                H = normalize(L + V);
+            else
+                H = normalize(L + V * eta);
+
+            if (H.z < 0.0)
+                H = -H;
+
+            float VDotH = abs(dot(V, H));
+            
             if(r3 < cdf[1]){ // Dielectric reflection
                 // Normalize for interpolating based on Cspec0
-                float F = (DielectricFresnel(VDotH, 1.0 / material.ior) - F0) / (1.0 - F0);
+                float F = (DielectricFresnel(VDotH, 1.0 / payload.material.ior) - F0) / (1.0 - F0);
 
-                f = EvalMicrofacetReflection(material, V, L, H, mix(Cspec0, vec3(1.0), F), tmpPdf) * dielectricWt;
+                f = EvalMicrofacetReflection(payload.material, V, L, H, mix(Cspec0, vec3(1.0), F), tmpPdf) * dielectricWt;
                 pdf = tmpPdf * dielectricPr;
             }
             else{ // Metallic reflection
-                vec3 F = mix(material.baseColor, vec3(1.0), SchlickWeight(VDotH));
+                vec3 F = mix(payload.material.baseColor, vec3(1.0), SchlickWeight(VDotH));
 
-                f = EvalMicrofacetReflection(material, V, L, H, F, tmpPdf) * metalWt;
+                f = EvalMicrofacetReflection(payload.material, V, L, H, F, tmpPdf) * metalWt;
                 pdf = tmpPdf * metalPr;
             }
             
@@ -507,46 +688,70 @@ void disney_bsdf(inout rayPayload payload) {
         }
         else if (r3 < cdf[3]) // Glass
         {
-            vec3 H = SampleGGXVNDF(V, payload.material.ax, payload.material.ay, r1, r2);
-            float F = DielectricFresnel(abs(dot(V, H)), payload.material.ior);
+            float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
+            float ax = max(0.001, payload.material.roughness / aspect);
+            float ay = max(0.001, payload.material.roughness * aspect);
+            
+            vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
+            float F = DielectricFresnel(abs(dot(V, H)), eta);
 
             if (H.z < 0.0)
                 H = -H;
+
+            if (L.z > 0.0)
+                H = normalize(L + V);
+            else
+                H = normalize(L + V * eta);
+
+            if (H.z < 0.0)
+                H = -H;
+
+            float VDotH = abs(dot(V, H));
 
             // Rescale random number for reuse
             r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
 
             // Dielectric fresnel (achromatic)
-            float F = DielectricFresnel(VDotH, material.ior);
+            F = DielectricFresnel(VDotH, eta);
 
             // Reflection
             if (r3 < F)
             {
                 L = normalize(reflect(-V, H));
 
-                f = EvalMicrofacetReflection(material, V, L, H, vec3(F), tmpPdf) * glassWt;
+                f = EvalMicrofacetReflection(payload.material, V, L, H, vec3(F), tmpPdf) * glassWt;
                 pdf = tmpPdf * glassPr * F;
                 payload.bsdf_type = BSDF_REFLECTION;
             }
             else // Transmission
             {
-                L = normalize(refract(-V, H, payload.material.ior));
+                L = normalize(refract(-V, H, eta));
 
-                f = EvalMicrofacetRefraction(material, material.ior, V, L, H, vec3(F), tmpPdf) * glassWt;
+                f = EvalMicrofacetRefraction(payload.material, eta, V, L, H, vec3(F), tmpPdf) * glassWt;
                 pdf = tmpPdf * glassPr * (1.0 - F);
                 payload.bsdf_type = BSDF_TRANSMISSION;
             }
         }
         else // Clearcoat
         {
-            vec3 H = SampleGTR1(payload.material.clearcoatRoughness, r1, r2);
+            float clearcoatRoughness = mix(0.1, 0.001, payload.material.clearcoatGloss);
+
+            vec3 H = SampleGTR1(clearcoatRoughness, r1, r2);
 
             if (H.z < 0.0)
                 H = -H;
 
             L = normalize(reflect(-V, H));
 
-            f = EvalClearcoat(material, V, L, H, tmpPdf) * 0.25 * material.clearcoat;
+            if (L.z > 0.0)
+                H = normalize(L + V);
+            else
+                H = normalize(L + V * eta);
+
+            if (H.z < 0.0)
+                H = -H;
+
+            f = EvalClearcoat(payload.material, V, L, H, tmpPdf) * 0.25 * payload.material.clearcoat;
             pdf = tmpPdf * clearCtPr;
             payload.bsdf_type = BSDF_REFLECTION;
         }
