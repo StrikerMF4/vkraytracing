@@ -109,7 +109,7 @@ vec3 contributionColorBDPT(point_data light, point_data eye, vec3 direction, ino
 
     vec3 light_color = vec3(0);
     float light_pdf = 0;
-    disney_bdpt(light.w_i, -direction, light.normal, light.material, light_color, light_pdf, random_seed);
+    disney_bdpt(-light.w_i, -direction, light.normal, light.material, light_color, light_pdf, random_seed);
 
     vec3  d  = light.point - eye.point;
     float cos_theta_light = abs(dot(light.normal, -direction));
