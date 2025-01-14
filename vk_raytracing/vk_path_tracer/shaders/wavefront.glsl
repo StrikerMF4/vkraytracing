@@ -627,24 +627,6 @@ void disney_bsdf(inout rayPayload payload) {
         if (r3 < cdf[0]) // Diffuse
         {
             L = CosineSampleHemisphere(r1, r2);
-
-            if(L.z <= 0){
-                payload.bsdf_sample = vec3(0.0);
-                payload.status = RAY_ABSORBED;
-                return;
-            }
-
-            vec3 H;
-            if (L.z > 0.0)
-                H = normalize(L + V);
-            else
-                H = normalize(L + V * eta);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            f = EvalDisneyDiffuse(payload.material, Csheen, V, L, H, tmpPdf) * dielectricWt;
-            pdf = tmpPdf * diffPr;
             payload.bsdf_type = BSDF_DIFFUSE;
         }
         else if (r3 < cdf[2]) 
@@ -659,31 +641,6 @@ void disney_bsdf(inout rayPayload payload) {
                 H = -H;
 
             L = normalize(reflect(-V, H));
-
-            if (L.z > 0.0)
-                H = normalize(L + V);
-            else
-                H = normalize(L + V * eta);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            float VDotH = abs(dot(V, H));
-            
-            if(r3 < cdf[1]){ // Dielectric reflection
-                // Normalize for interpolating based on Cspec0
-                float F = (DielectricFresnel(VDotH, 1.0 / payload.material.ior) - F0) / (1.0 - F0);
-
-                f = EvalMicrofacetReflection(payload.material, V, L, H, mix(Cspec0, vec3(1.0), F), tmpPdf) * dielectricWt;
-                pdf = tmpPdf * dielectricPr;
-            }
-            else{ // Metallic reflection
-                vec3 F = mix(payload.material.baseColor, vec3(1.0), SchlickWeight(VDotH));
-
-                f = EvalMicrofacetReflection(payload.material, V, L, H, F, tmpPdf) * metalWt;
-                pdf = tmpPdf * metalPr;
-            }
-            
             payload.bsdf_type = BSDF_REFLECTION;
         }
         else if (r3 < cdf[3]) // Glass
@@ -697,48 +654,19 @@ void disney_bsdf(inout rayPayload payload) {
 
             if (H.z < 0.0)
                 H = -H;
-
             
-            float VDotH = abs(dot(V, H));
-
             // Rescale random number for reuse
             r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
-
-            // Dielectric fresnel (achromatic)
-            F = DielectricFresnel(VDotH, eta);
 
             // Reflection
             if (r3 < F)
             {
                 L = normalize(reflect(-V, H));
-
-                if (L.z > 0.0)
-                    H = normalize(L + V);
-                else
-                    H = normalize(L + V * eta);
-
-                if (H.z < 0.0)
-                    H = -H;
-
-                f = EvalMicrofacetReflection(payload.material, V, L, H, vec3(F), tmpPdf) * glassWt;
-                pdf = tmpPdf * glassPr * F;
                 payload.bsdf_type = BSDF_REFLECTION;
             }
             else // Transmission
             {
                 L = normalize(refract(-V, H, eta));
-
-                if (L.z > 0.0)
-                    H = normalize(L + V);
-                else
-                    H = normalize(L + V * eta);
-
-                if (H.z < 0.0)
-                    H = -H;
-
-
-                f = EvalMicrofacetRefraction(payload.material, eta, V, L, H, vec3(F), tmpPdf) * glassWt;
-                pdf = tmpPdf * glassPr * (1.0 - F);
                 payload.bsdf_type = BSDF_TRANSMISSION;
             }
         }
@@ -752,23 +680,12 @@ void disney_bsdf(inout rayPayload payload) {
                 H = -H;
 
             L = normalize(reflect(-V, H));
-
-            if (L.z > 0.0)
-                H = normalize(L + V);
-            else
-                H = normalize(L + V * eta);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            f = EvalClearcoat(payload.material, V, L, H, tmpPdf) * 0.25 * payload.material.clearcoat;
-            pdf = tmpPdf * clearCtPr;
-            payload.bsdf_type = BSDF_REFLECTION;
         }
 
-        payload.direction = ToWorld(T, B, N, L);
-        payload.bsdf_sample = f;
-        payload.pdf = pdf;
+        L = ToWorld(T, B, N, L);
+
+        disney_bdpt(L, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdf, payload.random_seed);
+        payload.direction = L;
         payload.status = RAY_CONTINUE;
     }
 }
