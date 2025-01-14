@@ -325,7 +325,7 @@ vec3 EvalMicrofacetRefraction(WaveFrontMaterial material, float eta, vec3 V, vec
     denom *= denom;
     float eta2 = eta * eta;
     float jacobian = abs(LDotH) / denom;
-
+        
     pdf = G1 * max(0.0, VDotH) * D * jacobian / V.z;
     return pow(material.baseColor, vec3(0.5)) * (1.0 - F) * D * G2 * abs(VDotH) * jacobian * eta2 / abs(L.z * V.z);
 }
@@ -492,9 +492,9 @@ void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, ou
     TintColors(material, eta, F0, Csheen, Cspec0);
 
     // Model weights
-    float dielectricWt = (1.0 - material.metallic) * (1.0 - material.specTrans);
+    float dielectricWt = (1.0 - material.metallic) * material.opacity;
     float metalWt = material.metallic;
-    float glassWt = (1.0 - material.metallic) * material.specTrans;
+    float glassWt = (1.0 - material.metallic) * (1.0 - material.opacity);
 
     // Lobe probabilities
     float schlickWt = SchlickWeight(V.z);
@@ -590,9 +590,9 @@ void disney_bsdf(inout rayPayload payload) {
         TintColors(payload.material, eta, F0, Csheen, Cspec0);
 
         // Model weights
-        float dielectricWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.specTrans);
+        float dielectricWt = (1.0 - payload.material.metallic) * payload.material.opacity;
         float metalWt = payload.material.metallic;
-        float glassWt = (1.0 - payload.material.metallic) * payload.material.specTrans;
+        float glassWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.opacity);
 
         // Lobe probabilities
         float schlickWt = SchlickWeight(V.z);
@@ -698,14 +698,7 @@ void disney_bsdf(inout rayPayload payload) {
             if (H.z < 0.0)
                 H = -H;
 
-            if (L.z > 0.0)
-                H = normalize(L + V);
-            else
-                H = normalize(L + V * eta);
-
-            if (H.z < 0.0)
-                H = -H;
-
+            
             float VDotH = abs(dot(V, H));
 
             // Rescale random number for reuse
@@ -719,6 +712,14 @@ void disney_bsdf(inout rayPayload payload) {
             {
                 L = normalize(reflect(-V, H));
 
+                if (L.z > 0.0)
+                    H = normalize(L + V);
+                else
+                    H = normalize(L + V * eta);
+
+                if (H.z < 0.0)
+                    H = -H;
+
                 f = EvalMicrofacetReflection(payload.material, V, L, H, vec3(F), tmpPdf) * glassWt;
                 pdf = tmpPdf * glassPr * F;
                 payload.bsdf_type = BSDF_REFLECTION;
@@ -726,6 +727,15 @@ void disney_bsdf(inout rayPayload payload) {
             else // Transmission
             {
                 L = normalize(refract(-V, H, eta));
+
+                if (L.z > 0.0)
+                    H = normalize(L + V);
+                else
+                    H = normalize(L + V * eta);
+
+                if (H.z < 0.0)
+                    H = -H;
+
 
                 f = EvalMicrofacetRefraction(payload.material, eta, V, L, H, vec3(F), tmpPdf) * glassWt;
                 pdf = tmpPdf * glassPr * (1.0 - F);
