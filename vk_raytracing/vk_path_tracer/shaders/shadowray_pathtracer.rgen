@@ -195,7 +195,7 @@ void main()
 			}
 
             // Actualizar throughput
-            float cos_theta = max(dot(normal, direction), 0.0);
+            float cos_theta = abs(dot(normal, direction));
             w *= (bsdf_sample * cos_theta) / pdf;
 
 			resetPayload(payload, origin, direction);

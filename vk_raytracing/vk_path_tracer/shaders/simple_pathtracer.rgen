@@ -114,7 +114,7 @@ void main()
             }
 
             // Actualizar throughput
-            float cos_theta = max(dot(payload.surface_normal, payload.direction), 0.0);
+            float cos_theta = abs(dot(payload.surface_normal, payload.direction));
             w *= (payload.bsdf_sample * cos_theta) / payload.pdf;
 
             // Actualizar origen y direccion para el siguiente rebote
