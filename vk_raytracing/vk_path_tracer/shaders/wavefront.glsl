@@ -180,8 +180,8 @@ float DielectricFresnel(float cosThetaI, float eta)
 
     float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
 
-    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI);
-    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT);
+    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI + 0.00001);
+    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT + 0.00001);
 
     return 0.5f * (rs * rs + rp * rp);
 }
@@ -215,8 +215,8 @@ vec3 EvalMicrofacetRefraction(vec3 micro_normal, float eta_i, float eta_t, vec3 
 vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, float alpha, float theta_m, vec3 F, out float pdf)
 {
     pdf = 0.0;
-    float IDotN = dot(n, w_i);
-    float ODotN = dot(n, w_o);
+    float IDotN = dot(n, w_i) + 0.000001;
+    float ODotN = dot(n, w_o) + 0.000001;
 
     //float D = GTR2Aniso(H.z, H.x, H.y, mat.ax, mat.ay);
     float D = GGX_D(micro_normal, n, alpha, theta_m);
@@ -226,7 +226,7 @@ vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, flo
 
     // D * abs(dot(n, micro_normal)) / (4.0 * abs(dot(w_o, micro_normal)) + 1e-7);
     pdf = abs(dot(n, micro_normal)) * D / (4.0 * IDotN);
-    return F * D * G / (4.0 * ODotN * IDotN);
+    return F * D * G / ((4.0 * ODotN * IDotN) + 0.00001);
 }
 
 vec3 transmition(vec3 micro_normal, rayPayload payload) {
@@ -296,13 +296,14 @@ vec3 sampleHemisphereCosineWeighted(vec3 normal, inout uint seed) {
 
 void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out vec3 f, out float pdf, inout uint random_seed)
 { 
+    normal = normalize(normal);
+    w_i = normalize(w_i);
+    w_o = normalize(w_o);
 
     float cos_theta_i = dot(normal, w_i);
     float cos_theta_o = dot(normal, w_o);
-    cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
-    cos_theta_o = clamp(cos_theta_i, -1.0, 1.0);
 
-    bool reflecting = cos_theta_i * cos_theta_o < 0;
+    bool reflecting = cos_theta_i * cos_theta_o > 0;
 
     // Determine if the ray is entering or exiting the 
     bool entering = cos_theta_i >= 0.0;
@@ -400,6 +401,7 @@ void disney_bsdf(inout rayPayload payload) {
 
         // Initialize variables
         vec3 w_i = -payload.direction; // Incident direction (towards the surface)
+        w_i = normalize(w_i);
         float cos_theta_i = dot(payload.surface_normal, w_i);
         cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
 
@@ -491,8 +493,8 @@ void disney_bsdf(inout rayPayload payload) {
             float theta_m;
             vec3 micro_normal = ggx_micronormal(n, alpha, payload.random_seed, theta_m);
             float VDotH = clamp(dot(w_i, micro_normal), 0.0, 1.0);
-            vec3 w_o = micro_reflect(w_i, micro_normal);
-
+            vec3 w_o = normalize(micro_reflect(w_i, micro_normal));
+            
             // Dielectric Reflection
             if (rnd < cdf[1]) {
                 // Normalize for interpolating based on Cspec0

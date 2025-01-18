@@ -115,14 +115,14 @@ void main()
 
             // Actualizar throughput
             float cos_theta = abs(dot(payload.surface_normal, payload.direction));
-            w *= (payload.bsdf_sample * cos_theta) / payload.pdf;
+            w *= (payload.bsdf_sample * cos_theta) / (payload.pdf + 0.000001);
 
             // Actualizar origen y direccion para el siguiente rebote
             origin = payload.origin;
             direction = payload.direction;
         }
-        if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
-            output_color = vec3(0.0);
+//        if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+//            output_color = vec3(0.0);
 
 	}
 

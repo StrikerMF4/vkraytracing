@@ -101,32 +101,37 @@ vec3 shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color, poin
 }
 
 
-vec3 contributionColorBDPT(point_data light, point_data eye, vec3 direction, inout uint random_seed, out float pdf) 
+vec3 contributionColorBDPT(point_data light, point_data eye, vec3 direction, inout uint random_seed, out float misWeight) 
 {
     vec3 eye_color = vec3(0);
     float eye_pdf = 0;
-//    disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, vec3 outputColor, float pdf, inout uint random_seed)
     disney_bdpt(direction, eye.w_i, eye.normal, eye.material, eye_color, eye_pdf, random_seed);
 
     vec3 light_color = vec3(0);
     float light_pdf = 0;
-    disney_bdpt(-light.w_i, direction, light.normal, light.material, light_color, light_pdf, random_seed);
+    disney_bdpt(light.w_i, -direction, light.normal, light.material, light_color, light_pdf, random_seed);
 
-    pdf = light.pdf * light_pdf * eye.pdf * eye_pdf;
+    vec3  d  = light.point - eye.point;
+    float cos_theta_light = abs(dot(light.normal, -direction));
+    float cos_theta_eye = abs(dot(eye.normal, direction));
+    float Gterm = (cos_theta_light * cos_theta_eye) / (dot(d,d) + 0.00001);
 
-    float cos_theta_light = max(dot(light.normal, payload.direction), 0.0);
-    float cos_theta_eye = max(dot(eye.normal, payload.direction), 0.0);
+    float pdfEye = eye.pdf * eye_pdf;
+    float pdfLight = light.pdf * light_pdf;
+    float pdfEye2 = pdfEye * pdfEye;
+    float pdfLight2 = pdfLight * pdfLight;
+    misWeight =  pdfEye2 / (pdfEye2 + pdfLight2 + 1e-12);
 
-    if(isnan(eye_color.r) || isnan(eye_color.g) || isnan(eye_color.b))
-        return vec3(1.0, 0.0, 0.0);
+//    if(isnan(eye_color.r) || isnan(eye_color.g) || isnan(eye_color.b))
+//        return vec3(100.0, 0.0, 100.0);
+//
+//    if(isnan(light_color.r) || isnan(light_color.g) || isnan(light_color.b))
+//        return vec3(0.0, 0.0, 1.0);
+//
+//    if (eye_pdf < 0.0000000001)
+//        return vec3(0.0, 50.0, 0.0);
 
-    if(isnan(light_color.r) || isnan(light_color.g) || isnan(light_color.b))
-        return vec3(0.0, 0.0, 1.0);
-
-    if (eye_pdf < 0.0000000001)
-        return vec3(0.0, 50.0, 0.0);
-
-    return (light.color * light_color / light_pdf) * (eye.color * eye_color / eye_pdf);
+    return (light.color * light_color) * (eye.color * eye_color) * Gterm;
 }
 
 void main()
@@ -165,18 +170,17 @@ void main()
         point_data eye_hits[11];
         point_data light_hits[11];
 
+        /* EYE */
         uint eye_max_index = 0;
         uint light_max_index = 0;
 
         eye_hits[0].point = origin;
-        eye_hits[0].color = vec3(1.0, 1.0, 1.0);
+        eye_hits[0].color = vec3(1.0);
+        eye_hits[0].pdf = 1.0;
+        eye_hits[0].w_i = -direction;
+        eye_hits[0].normal = normalize(target);
 
-        vec3 light_surface_normal = vec3(0);
-        random_point_in_light(light_hits[0].point, light_hits[0].color, light_surface_normal);
-        vec3 light_direction = RandomInUnitSemiSphere(payload.random_seed, light_surface_normal); //veach
-
-        /* EYE */
-        vec3 w = light_hits[0].color; //precargar con la funcion W_e de Veach (si es necesario)
+        vec3 w = vec3(1.0);
         float temp_pdf = 1.0f;
         origin = eye_hits[0].point;
         resetPayload(payload, origin, direction);
@@ -208,27 +212,28 @@ void main()
             // Manejar diferentes estados del rayo
             if (payload.status == RAY_HIT_LIGHT) {
                 // Agregar radiancia emitida
-                // output_color += w * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+                output_color += w * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
                 break;
             } else if (payload.status == RAY_MISS) {
                 // Manejar color de fondo o mapa de entorno
                 break;
             }
 
-            eye_hits[depth + 1].point = payload.origin;
-            //eye_hits[depth + 1].color = payload.origin;
+            eye_max_index = depth + 1;
+            eye_hits[eye_max_index].point = payload.origin;
+            eye_hits[eye_max_index].normal = payload.surface_normal;
+            eye_hits[eye_max_index].material = payload.material;
+            eye_hits[eye_max_index].w_i = -direction;
+            eye_hits[eye_max_index].pdf = temp_pdf;
+            eye_hits[eye_max_index].color = w;
 
             // Actualizar throughput
-            float cos_theta = abs(dot(payload.surface_normal, payload.direction));
-            eye_hits[depth + 1].color = w;
-            eye_hits[depth + 1].pdf = temp_pdf;
-            eye_hits[depth + 1].w_i = direction;
-            eye_hits[depth + 1].material = payload.material;
-
-            w *= (payload.bsdf_sample * cos_theta) / payload.pdf;
+            float cos_theta_i = abs(dot(payload.surface_normal, direction));
+            float cos_theta_o = abs(dot(eye_hits[eye_max_index - 1].normal, direction));
+            vec3 x_diff = eye_hits[eye_max_index - 1].point - eye_hits[eye_max_index].point;
+            float g = abs(cos_theta_o * cos_theta_i / (dot(x_diff, x_diff) + 1e-12));
+            w *= (payload.bsdf_sample * cos_theta_i) / (payload.pdf + 1e-18);
             temp_pdf *= payload.pdf;
-
-            eye_max_index = depth + 1;
 
             origin = payload.origin;
             direction = payload.direction;
@@ -237,36 +242,43 @@ void main()
         if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
             output_color = vec3(0.0);
 
-        if (payload.status == RAY_HIT_LIGHT) continue;
+        if (payload.status == RAY_HIT_LIGHT || eye_max_index == 0) continue;
 
-        /* LIGHT */
-        w = vec3(1.0);
-        temp_pdf = 1.0f;
+        /* LIGHT */ 
+        random_point_in_light(light_hits[0].point, light_hits[0].color, light_hits[0].normal);
+        vec3 light_direction = RandomInUnitSemiSphere(payload.random_seed, light_hits[0].normal); //veach
+
+        light_hits[0].pdf = 1.0;
+        light_hits[0].w_i = vec3(0);
+
+        w = light_hits[0].color; //precargar con la funcion W_e de Veach (si es necesario)
+        temp_pdf = light_hits[0].pdf;
         resetPayload(payload, light_hits[0].point, light_direction);
-        vec3 normal = normalize(target); // TO-DO: reemplazar con normal desde la camara
 
         for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-            if(payload.status == RAY_MISS){
+            if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT){
 				break;
 			}
 
-            light_hits[depth + 1].point = payload.origin;
-            //light_hits[depth + 1].color = payload.bsdf_sample;
+            light_max_index = depth + 1;
+            light_hits[light_max_index].point = payload.origin;
+            light_hits[light_max_index].normal = payload.surface_normal;
+            light_hits[light_max_index].material = payload.material;
+            light_hits[light_max_index].w_i = -light_direction;
+            light_hits[light_max_index].color = w;
+            light_hits[light_max_index].pdf = temp_pdf;
 
-            light_hits[depth + 1].color = w;
-            light_hits[depth + 1].pdf = temp_pdf;
-            eye_hits[depth + 1].w_i = direction;
-            eye_hits[depth + 1].material = payload.material;
-
-            w *= payload.bsdf_sample;
+            float cos_theta_i = abs(dot(payload.surface_normal, light_direction));
+//            float cos_theta_o = dot(light_hits[light_max_index - 1].normal, light_direction);
+//            vec3 x_diff = light_hits[light_max_index - 1].point - light_hits[light_max_index].point;
+//            float g = abs(cos_theta_o * cos_theta_i / dot(x_diff, x_diff));
+            w *= (payload.bsdf_sample * cos_theta_i) / (payload.pdf + 1e-18);
             temp_pdf *= payload.pdf;
 
             origin    = payload.origin;
             light_direction = payload.direction;
-            normal = payload.surface_normal;
-            light_max_index = depth + 1;
         }
 
 
@@ -289,15 +301,17 @@ void main()
 		        traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - 0.0001f, 0);
                 if (payload.status != RAY_MISS) continue;
 
-                float pdf = 0.0f;
-                vec3 contribution = contributionColorBDPT(light_hits[j], eye_hits[i], direction, payload.random_seed, pdf);
+                float misWeight = 0.0f;
+                vec3 contribution = contributionColorBDPT(light_hits[j], eye_hits[i], direction, payload.random_seed, misWeight);
 
 //                if(isnan(contribution.r) || isnan(contribution.g) || isnan(contribution.b))
-//                    contribution = vec3(1.0);
+//                    contribution = vec3(0.0);
 
-                pdf = max(pdf * pdf, 0.001);
-                mis_paths[sample_count] = contribution * pdf;
-                sum_pdf2 += pdf;
+                output_color += contribution * misWeight;
+
+//                pdf = max(pdf * pdf, 0.00001);
+//                mis_paths[sample_count] = contribution * pdf;
+//                sum_pdf2 += pdf;
 
 //                float misWeight = 1.0;// multipleImportanceSampling();
 //
@@ -308,14 +322,14 @@ void main()
             }
         }
 
-        for (int i = 0; i < 1; i++) 
-        {
+//        for (int i = 0; i < sample_count; i++) 
+//        {
 //            if(isnan(mis_paths[i].r) || isnan(mis_paths[i].g) || isnan(mis_paths[i].b))
 //                mis_paths[i] = vec3(0.0);
-//            output_color +=  mis_paths[i] / max(sum_pdf2, 0.001);
-            output_color +=  mis_paths[i];
-        }
-
+//            output_color +=  mis_paths[i] / sum_pdf2;
+//        }
+//        if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+//            output_color = vec3(0.0, 0.0, 1.0);
 
     }
     output_color  = output_color / NBSAMPLES;
