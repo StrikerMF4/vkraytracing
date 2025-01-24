@@ -461,7 +461,7 @@ void Onb(in vec3 N, inout vec3 T, inout vec3 B)
     B = cross(N, T);
 }
 
-void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out vec3 outputColor, out float pdf, inout uint random_seed)
+void disney_pdf(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out vec3 outputColor, out float pdf, inout uint random_seed)
 {
     pdf = 0.0;
     vec3 f = vec3(0.0);
@@ -562,7 +562,121 @@ void disney_bdpt(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, ou
     outputColor = f * abs(L.z);
 }
 
-void disney_bsdf(inout rayPayload payload) {
+vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint random_seed) {
+    float r1 = rand(payload.random_seed);
+    float r2 = rand(payload.random_seed);
+
+    // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
+    vec3 T, B, N = normal;
+    Onb(N, T, B);
+
+    // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
+    vec3 V = ToLocal(T, B, N, w_o);
+
+    float eta = dot(payload.direction, normal) < 0.0 ? (1.0 / payload.material.ior) : payload.material.ior;
+
+    // Tint colors
+    vec3 Csheen, Cspec0;
+    float F0;
+    TintColors(payload.material, eta, F0, Csheen, Cspec0);
+
+    // Model weights
+    float dielectricWt = (1.0 - payload.material.metallic) * payload.material.opacity;
+    float metalWt = payload.material.metallic;
+    float glassWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.opacity);
+
+    // Lobe probabilities
+    float schlickWt = SchlickWeight(V.z);
+
+    float diffPr = dielectricWt * Luminance(payload.material.baseColor);
+    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+    float metalPr = metalWt * Luminance(mix(payload.material.baseColor, vec3(1.0), schlickWt));
+    float glassPr = glassWt;
+    float clearCtPr = 0.25 * payload.material.clearcoat;
+
+    // Normalize probabilities
+    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
+    diffPr *= invTotalWt;
+    dielectricPr *= invTotalWt;
+    metalPr *= invTotalWt;
+    glassPr *= invTotalWt;
+    clearCtPr *= invTotalWt;
+
+    // CDF of the sampling probabilities
+    float cdf[5];
+    cdf[0] = diffPr;
+    cdf[1] = cdf[0] + dielectricPr;
+    cdf[2] = cdf[1] + metalPr;
+    cdf[3] = cdf[2] + glassPr;
+    cdf[4] = cdf[3] + clearCtPr;
+
+    // Sample a lobe based on its importance
+    float r3 = rand(payload.random_seed);
+
+    float tmpPdf;
+    vec3 L, f;        
+    if (r3 < cdf[0]) // Diffuse
+    {
+        L = CosineSampleHemisphere(r1, r2);
+        payload.bsdf_type = BSDF_DIFFUSE;
+    }
+    else if (r3 < cdf[2]) 
+    {
+        float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
+        float ax = max(0.001, payload.material.roughness / aspect);
+        float ay = max(0.001, payload.material.roughness * aspect);
+
+        vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
+
+        if (H.z < 0.0)
+            H = -H;
+
+        L = normalize(reflect(-V, H));
+        payload.bsdf_type = BSDF_REFLECTION;
+    }
+    else if (r3 < cdf[3]) // Glass
+    {
+        float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
+        float ax = max(0.001, payload.material.roughness / aspect);
+        float ay = max(0.001, payload.material.roughness * aspect);
+        
+        vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
+        float F = DielectricFresnel(abs(dot(V, H)), eta);
+
+        if (H.z < 0.0)
+            H = -H;
+        
+        // Rescale random number for reuse
+        r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
+
+        // Reflection
+        if (r3 < F)
+        {
+            L = normalize(reflect(-V, H));
+            payload.bsdf_type = BSDF_REFLECTION;
+        }
+        else // Transmission
+        {
+            L = normalize(refract(-V, H, eta));
+            payload.bsdf_type = BSDF_TRANSMISSION;
+        }
+    }
+    else // Clearcoat
+    {
+        float clearcoatRoughness = mix(0.1, 0.001, payload.material.clearcoatGloss);
+
+        vec3 H = SampleGTR1(clearcoatRoughness, r1, r2);
+
+        if (H.z < 0.0)
+            H = -H;
+
+        L = normalize(reflect(-V, H));
+    }
+
+    return ToWorld(T, B, N, L);
+}
+
+void disney_bsdf_sample(inout rayPayload payload) {
     if (length(payload.material.emission) > 0) {
         // TO-DO: Cambiar esto por alguna aproximacion al L de Veach
         payload.bsdf_sample = payload.material.emission * payload.material.baseColor;
@@ -570,122 +684,15 @@ void disney_bsdf(inout rayPayload payload) {
         payload.status = RAY_HIT_LIGHT;
     }
     else {
-        float pdf = 0.0;
+        vec3 new_direction = disney_bsdf(-payload.direction, payload.surface_normal, payload.material, payload.random_seed);
 
-        float r1 = rand(payload.random_seed);
-        float r2 = rand(payload.random_seed);
-
-        // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
-        vec3 T, B, N = payload.surface_normal;
-        Onb(N, T, B);
-
-        // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
-        vec3 V = ToLocal(T, B, N, -payload.direction);
-
-        float eta = dot(payload.direction, payload.surface_normal) < 0.0 ? (1.0 / payload.material.ior) : payload.material.ior;
-
-        // Tint colors
-        vec3 Csheen, Cspec0;
-        float F0;
-        TintColors(payload.material, eta, F0, Csheen, Cspec0);
-
-        // Model weights
-        float dielectricWt = (1.0 - payload.material.metallic) * payload.material.opacity;
-        float metalWt = payload.material.metallic;
-        float glassWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.opacity);
-
-        // Lobe probabilities
-        float schlickWt = SchlickWeight(V.z);
-
-        float diffPr = dielectricWt * Luminance(payload.material.baseColor);
-        float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-        float metalPr = metalWt * Luminance(mix(payload.material.baseColor, vec3(1.0), schlickWt));
-        float glassPr = glassWt;
-        float clearCtPr = 0.25 * payload.material.clearcoat;
-
-        // Normalize probabilities
-        float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
-        diffPr *= invTotalWt;
-        dielectricPr *= invTotalWt;
-        metalPr *= invTotalWt;
-        glassPr *= invTotalWt;
-        clearCtPr *= invTotalWt;
-
-        // CDF of the sampling probabilities
-        float cdf[5];
-        cdf[0] = diffPr;
-        cdf[1] = cdf[0] + dielectricPr;
-        cdf[2] = cdf[1] + metalPr;
-        cdf[3] = cdf[2] + glassPr;
-        cdf[4] = cdf[3] + clearCtPr;
-
-        // Sample a lobe based on its importance
-        float r3 = rand(payload.random_seed);
-
-        float tmpPdf;
-        vec3 L, f;        
-        if (r3 < cdf[0]) // Diffuse
-        {
-            L = CosineSampleHemisphere(r1, r2);
-            payload.bsdf_type = BSDF_DIFFUSE;
-        }
-        else if (r3 < cdf[2]) 
-        {
-            float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
-            float ax = max(0.001, payload.material.roughness / aspect);
-            float ay = max(0.001, payload.material.roughness * aspect);
-
-            vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            L = normalize(reflect(-V, H));
-            payload.bsdf_type = BSDF_REFLECTION;
-        }
-        else if (r3 < cdf[3]) // Glass
-        {
-            float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
-            float ax = max(0.001, payload.material.roughness / aspect);
-            float ay = max(0.001, payload.material.roughness * aspect);
-            
-            vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
-            float F = DielectricFresnel(abs(dot(V, H)), eta);
-
-            if (H.z < 0.0)
-                H = -H;
-            
-            // Rescale random number for reuse
-            r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
-
-            // Reflection
-            if (r3 < F)
-            {
-                L = normalize(reflect(-V, H));
-                payload.bsdf_type = BSDF_REFLECTION;
-            }
-            else // Transmission
-            {
-                L = normalize(refract(-V, H, eta));
-                payload.bsdf_type = BSDF_TRANSMISSION;
-            }
-        }
-        else // Clearcoat
-        {
-            float clearcoatRoughness = mix(0.1, 0.001, payload.material.clearcoatGloss);
-
-            vec3 H = SampleGTR1(clearcoatRoughness, r1, r2);
-
-            if (H.z < 0.0)
-                H = -H;
-
-            L = normalize(reflect(-V, H));
+        if(!payload.backward_propagation)
+            disney_pdf(new_direction, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdf, payload.random_seed);
+        else{
+            disney_pdf(-payload.direction, new_direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdf, payload.random_seed);
         }
 
-        L = ToWorld(T, B, N, L);
-
-        disney_bdpt(L, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdf, payload.random_seed);
-        payload.direction = L;
+        payload.direction = new_direction;
         payload.status = RAY_CONTINUE;
     }
 }

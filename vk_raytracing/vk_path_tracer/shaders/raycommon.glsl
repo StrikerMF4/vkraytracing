@@ -30,7 +30,7 @@ struct rayPayload
 
 	//Exchange
 	uint random_seed;
-
+	bool backward_propagation;
 };
 
 void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
