@@ -73,7 +73,7 @@ void main() {
     payload.material.baseColor = payload.material.baseColor * texture_color;
     payload.origin = hit_position;
 
-    disney_bsdf(payload);
+    disney_bsdf_sample(payload);
 
     payload.origin = hit_position + payload.direction * 1e-4;
 }

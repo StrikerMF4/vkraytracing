@@ -562,9 +562,9 @@ void disney_pdf(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out
     outputColor = f * abs(L.z);
 }
 
-vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint random_seed) {
-    float r1 = rand(payload.random_seed);
-    float r2 = rand(payload.random_seed);
+vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint bsdf_type, inout uint random_seed) {
+    float r1 = rand(random_seed);
+    float r2 = rand(random_seed);
 
     // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
     vec3 T, B, N = normal;
@@ -573,26 +573,26 @@ vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint r
     // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
     vec3 V = ToLocal(T, B, N, w_o);
 
-    float eta = dot(payload.direction, normal) < 0.0 ? (1.0 / payload.material.ior) : payload.material.ior;
+    float eta = dot(-w_o, normal) < 0.0 ? (1.0 / material.ior) : material.ior;
 
     // Tint colors
     vec3 Csheen, Cspec0;
     float F0;
-    TintColors(payload.material, eta, F0, Csheen, Cspec0);
+    TintColors(material, eta, F0, Csheen, Cspec0);
 
     // Model weights
-    float dielectricWt = (1.0 - payload.material.metallic) * payload.material.opacity;
-    float metalWt = payload.material.metallic;
-    float glassWt = (1.0 - payload.material.metallic) * (1.0 - payload.material.opacity);
+    float dielectricWt = (1.0 - material.metallic) * material.opacity;
+    float metalWt = material.metallic;
+    float glassWt = (1.0 - material.metallic) * (1.0 - material.opacity);
 
     // Lobe probabilities
     float schlickWt = SchlickWeight(V.z);
 
-    float diffPr = dielectricWt * Luminance(payload.material.baseColor);
+    float diffPr = dielectricWt * Luminance(material.baseColor);
     float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-    float metalPr = metalWt * Luminance(mix(payload.material.baseColor, vec3(1.0), schlickWt));
+    float metalPr = metalWt * Luminance(mix(material.baseColor, vec3(1.0), schlickWt));
     float glassPr = glassWt;
-    float clearCtPr = 0.25 * payload.material.clearcoat;
+    float clearCtPr = 0.25 * material.clearcoat;
 
     // Normalize probabilities
     float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
@@ -611,20 +611,20 @@ vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint r
     cdf[4] = cdf[3] + clearCtPr;
 
     // Sample a lobe based on its importance
-    float r3 = rand(payload.random_seed);
+    float r3 = rand(random_seed);
 
     float tmpPdf;
     vec3 L, f;        
     if (r3 < cdf[0]) // Diffuse
     {
         L = CosineSampleHemisphere(r1, r2);
-        payload.bsdf_type = BSDF_DIFFUSE;
+        bsdf_type = BSDF_DIFFUSE;
     }
     else if (r3 < cdf[2]) 
     {
-        float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
-        float ax = max(0.001, payload.material.roughness / aspect);
-        float ay = max(0.001, payload.material.roughness * aspect);
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float ax = max(0.001, material.roughness / aspect);
+        float ay = max(0.001, material.roughness * aspect);
 
         vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
 
@@ -632,13 +632,13 @@ vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint r
             H = -H;
 
         L = normalize(reflect(-V, H));
-        payload.bsdf_type = BSDF_REFLECTION;
+        bsdf_type = BSDF_REFLECTION;
     }
     else if (r3 < cdf[3]) // Glass
     {
-        float aspect = sqrt(1.0 - payload.material.anisotropic * 0.9);
-        float ax = max(0.001, payload.material.roughness / aspect);
-        float ay = max(0.001, payload.material.roughness * aspect);
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float ax = max(0.001, material.roughness / aspect);
+        float ay = max(0.001, material.roughness * aspect);
         
         vec3 H = SampleGGXVNDF(V, ax, ay, r1, r2);
         float F = DielectricFresnel(abs(dot(V, H)), eta);
@@ -653,17 +653,17 @@ vec3 disney_bsdf(vec3 w_o, vec3 normal, WaveFrontMaterial material, inout uint r
         if (r3 < F)
         {
             L = normalize(reflect(-V, H));
-            payload.bsdf_type = BSDF_REFLECTION;
+            bsdf_type = BSDF_REFLECTION;
         }
         else // Transmission
         {
             L = normalize(refract(-V, H, eta));
-            payload.bsdf_type = BSDF_TRANSMISSION;
+            bsdf_type = BSDF_TRANSMISSION;
         }
     }
     else // Clearcoat
     {
-        float clearcoatRoughness = mix(0.1, 0.001, payload.material.clearcoatGloss);
+        float clearcoatRoughness = mix(0.1, 0.001, material.clearcoatGloss);
 
         vec3 H = SampleGTR1(clearcoatRoughness, r1, r2);
 
@@ -684,7 +684,7 @@ void disney_bsdf_sample(inout rayPayload payload) {
         payload.status = RAY_HIT_LIGHT;
     }
     else {
-        vec3 new_direction = disney_bsdf(-payload.direction, payload.surface_normal, payload.material, payload.random_seed);
+        vec3 new_direction = disney_bsdf(-payload.direction, payload.surface_normal, payload.material, payload.bsdf_type, payload.random_seed);
 
         if(!payload.backward_propagation)
             disney_pdf(new_direction, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdf, payload.random_seed);
