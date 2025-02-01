@@ -16,6 +16,7 @@ vk_raytracing/vk_path_tracer/CMakeFiles/generate.stamp.depend
 vk_raytracing/build/*
 vk_raytracing/out/build/x64-Debug
 vk_raytracing/.vs
+vk_raytracing/media/scenes/Externas
 
 # External tool builders
 .externalToolBuilders/

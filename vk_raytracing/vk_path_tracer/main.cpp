@@ -340,16 +340,28 @@ int main(int argc, char** argv)
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
 
 
+	//Externas
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
+	/*const std::string scene_path = nvh::findFile("media/scenes/Externas/spaceship.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/diningroom.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/staircase.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/test_veach.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_distant_light.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_rect_lights.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/tropical_island.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_sphere_light.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/renderman_teapot_all.scn", defaultSearchPaths, true);*/
+	
 	SceneLoader::Scene scene(scene_path);
 
-	// Setup camera - TODO, estaba mas arriba, funciona?
+	// Setup camera
 	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
 	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene.camera_fov);
