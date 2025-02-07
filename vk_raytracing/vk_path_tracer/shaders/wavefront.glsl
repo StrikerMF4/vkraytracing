@@ -5,6 +5,16 @@
 const float PI = 3.14159265;
 const float TWO_PI = 2*3.14159265;
 const float INV_PI = 1/3.14159265;
+const float EPSILON = 1e-10;
+
+float geometric_term(vec3 xi, vec3 ni, vec3 xo, vec3 no){
+    vec3 x_diff = normalize(xo - xi);
+    float cos_theta_i = dot(ni, x_diff);
+    float cos_theta_o = dot(no, x_diff);
+
+    return abs(cos_theta_o * cos_theta_i) / (dot(x_diff, x_diff) + EPSILON);
+}
+
 
 vec3 computeDiffuse(WaveFrontMaterial mat, vec3 lightDir, vec3 normal)
 {
@@ -140,7 +150,7 @@ float CT_brdf(vec3 w_i, vec3 w_o, vec3 normal, vec3 micro_normal, float refracti
     float F = F(refraction_index, w_o, halfway_vector);
     float G = GGX_G(w_i, w_o, micro_normal, normal, alpha);
 
-    return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)) + 0.000001);
+    return D * F * G / (4 * abs(dot(normal, w_i)) * abs(dot(normal, w_o)) + EPSILON);
 }
 
 
@@ -182,8 +192,8 @@ float DielectricFresnel(float cosThetaI, float eta)
 
     float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
 
-    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI + 0.00001);
-    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT + 0.00001);
+    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI + EPSILON);
+    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT + EPSILON);
 
     return 0.5f * (rs * rs + rp * rp);
 }
@@ -355,8 +365,8 @@ vec3 EvalClearcoat(WaveFrontMaterial material, vec3 V, vec3 L, vec3 H, out float
 vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, float alpha, float theta_m, vec3 F, out float pdf)
 {
     pdf = 0.0;
-    float IDotN = dot(n, w_i) + 0.000001;
-    float ODotN = dot(n, w_o) + 0.000001;
+    float IDotN = dot(n, w_i) + EPSILON;
+    float ODotN = dot(n, w_o) + EPSILON;
 
     //float D = GTR2Aniso(H.z, H.x, H.y, mat.ax, mat.ay);
     float D = GGX_D(micro_normal, n, alpha, theta_m);
@@ -366,7 +376,7 @@ vec3 EvalMicrofacetReflection(vec3 micro_normal, vec3 w_o, vec3 w_i, vec3 n, flo
 
     // D * abs(dot(n, micro_normal)) / (4.0 * abs(dot(w_o, micro_normal)) + 1e-7);
     pdf = abs(dot(n, micro_normal)) * D / (4.0 * IDotN);
-    return F * D * G / ((4.0 * ODotN * IDotN) + 0.00001);
+    return F * D * G / ((4.0 * ODotN * IDotN) + EPSILON);
 }
 
 vec3 transmition(vec3 micro_normal, rayPayload payload) {

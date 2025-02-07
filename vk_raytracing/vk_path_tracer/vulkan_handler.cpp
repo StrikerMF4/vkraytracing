@@ -1250,7 +1250,7 @@ void VulkanHandler::createTopLevelAS()
       rayInst.transform = nvvk::toTransformMatrixKHR(glm::mat4(1));  // Position of the instance (identity)
       rayInst.instanceCustomIndex = size;                            // nbObj == last object == implicit
       rayInst.accelerationStructureReference = m_rtBuilder.getBlasDeviceAddress(static_cast<uint32_t>(m_objModel.size()));
-      rayInst.instanceShaderBindingTableRecordOffset = 1;  // We will use the same hit group for all objects
+      rayInst.instanceShaderBindingTableRecordOffset = 1;  // Hit group for implicit objects
       rayInst.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
       rayInst.mask = 0xFF;  //  Only be hit if rayMask & instance.mask != 0
       tlas.emplace_back(rayInst);
