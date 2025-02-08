@@ -91,7 +91,7 @@ inline void algorithm::split(const std::string& in,
 				temp.clear();
 				i += (int)token.size() - 1;
 			}
-			else if(token != " ")
+			else if (token != " ")
 			{
 				out.push_back("");
 			}
@@ -248,8 +248,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 						light.emission = tempMesh.MeshMaterial->emission;
 						//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-						light.first_index = LoadedIndices.size() - Indices.size();
-						light.last_index = LoadedIndices.size() - 1;
+						light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+						light.last_index = (LoadedIndices.size() - 1) / 3;
 
 						LoadedLights.push_back(light);
 					}
@@ -340,7 +340,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 			}
 
-			for(int i = 0; i < iIndices.size() / 3; i++)
+			for (int i = 0; i < iIndices.size() / 3; i++)
 				LoadedMaterialIndices.push_back(tempMaterial->ID);
 		}
 		// Get Mesh Material Name
@@ -368,8 +368,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 					light.emission = tempMesh.MeshMaterial->emission;
 					//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-					light.first_index = LoadedIndices.size() - Indices.size();
-					light.last_index = LoadedIndices.size() - 1;
+					light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+					light.last_index = (LoadedIndices.size() - 1) / 3;
 
 					LoadedLights.push_back(light);
 				}
@@ -382,7 +382,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 				Indices.clear();
 			}
 
-			if(!replace_materials)
+			if (!replace_materials)
 				tempMaterial = &(*materials)[algorithm::tail(curline)];
 
 #ifdef OBJL_CONSOLE_OUTPUT
@@ -409,8 +409,8 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 			light.emission = tempMesh.MeshMaterial->emission;
 			//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-			light.first_index = LoadedIndices.size() - Indices.size();
-			light.last_index = LoadedIndices.size() - 1;
+			light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+			light.last_index = (LoadedIndices.size() - 1) / 3;
 
 			LoadedLights.push_back(light);
 		}

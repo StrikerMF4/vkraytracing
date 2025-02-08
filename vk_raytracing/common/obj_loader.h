@@ -61,7 +61,7 @@ namespace objl
 			clearcoat = 0.0f;
 			clearcoatGloss = 0.0f;
 			specTrans = 0.0f;
-			ior = 1.0f;
+			ior = 1.5f;
 			albedoTextureID = -1;
 			metallicRoughnessTextureID = -1;
 			normalTextureID = -1;
