@@ -43,5 +43,8 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.pdf = 1.0;
 	payload.bsdf_type = 0;
 	payload.surface_normal = vec3(0);
+	payload.surface_micronormal = vec3(0);
+	payload.theta = 0;
+	payload.backward_propagation = false;
 
 }
