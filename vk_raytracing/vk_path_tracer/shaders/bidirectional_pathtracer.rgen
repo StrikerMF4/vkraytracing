@@ -168,7 +168,7 @@ void main()
 			eye_hits[eye_max_index].pdf = temp_pdf;
 			eye_hits[eye_max_index].color = alpha_E;
 
-			float g = geometric_term(eye_hits[eye_max_index - 1].point, eye_hits[eye_max_index].normal,
+			float g = geometric_term(eye_hits[eye_max_index - 1].point, eye_hits[eye_max_index - 1].normal,
 										payload.origin, payload.surface_normal);
 			
 			temp_pdf *= payload.pdf * g;
@@ -212,7 +212,7 @@ void main()
 			light_hits[light_max_index].color = alpha_L;
 			light_hits[light_max_index].pdf = temp_pdf;
 
-			float g = geometric_term(light_hits[light_max_index - 1].point, light_hits[light_max_index].normal,
+			float g = geometric_term(light_hits[light_max_index - 1].point, light_hits[light_max_index - 1].normal,
 										payload.origin, payload.surface_normal);
 
 			temp_pdf *= payload.pdf * g;
