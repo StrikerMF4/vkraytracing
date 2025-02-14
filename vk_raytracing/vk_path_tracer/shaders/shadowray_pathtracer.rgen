@@ -56,7 +56,7 @@ vec3 random_point_in_light(uint light_index){
 	Vertex v1 = vertices.v[light_triangle_index + 1];
 	Vertex v2 = vertices.v[light_triangle_index + 2];
 
-	vec3 barycentric = randomBarycentricPointInTriangle(payload.random_seed, v0.pos, v1.pos, v2.pos);
+	vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
     return barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
 	//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
@@ -136,7 +136,7 @@ void main()
 		//defocus blur
 		float Aperture = settings.camAperture;
 		float focus_dist = settings.focusDist;
-		vec2 offset = (Aperture/2) * RandomInUnitDisk(payload.random_seed);
+		vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
 		vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
 		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
 		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;

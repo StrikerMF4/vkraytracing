@@ -1,3 +1,5 @@
+#ifndef RAYCOMMON
+#define RAYCOMMON
 
 #include "host_device.h"
 
@@ -9,6 +11,11 @@ const uint RAY_ABSORBED = 4;
 const uint BSDF_DIFFUSE = 1;
 const uint BSDF_REFLECTION = 2;
 const uint BSDF_TRANSMISSION = 3;
+
+const float PI = 3.14159265;
+const float TWO_PI = 2*3.14159265;
+const float INV_PI = 1/3.14159265;
+const float EPSILON = 1e-10;
 
 struct rayPayload
 {
@@ -48,3 +55,5 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.backward_propagation = false;
 
 }
+
+#endif

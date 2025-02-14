@@ -7,8 +7,9 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
 
+#include "lights.glsl"
 #include "wavefront.glsl"
-//#include "raycommon.glsl"
+#include "raycommon.glsl"
 //#include "host_device.h"
 //#include "random.glsl"
 
@@ -44,46 +45,62 @@ const float tMin     = 0.001;
 const float tMax     = 10000.0;
 
 
-void random_point_in_light(inout vec3 point, inout vec3 emission, inout vec3 surface_normal){
+uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf){
 	// Pick a random light
 	uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
 
-	// Pick a triangle in the light
-	Light light = lights.i[light_index];
-	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
+	//Choose between lights
+	if(true){ //Area Light
+		// Pick a triangle in the light
+		Light light = lights.i[light_index];
+		emission = light.emission;
+		light.area = 1.93; //calcularlo en scene loader
 
-	// Get buffers for the light object
-	ObjDesc objResource = objDesc.i[light.object_id];
-	Indices    indices     = Indices(objResource.indexAddress);
-	Vertices   vertices    = Vertices(objResource.vertexAddress);
+		uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
 
-	// Indices of the triangle
-	//ivec3 ind = indices.i[light.first_index + light_triangle_index];
-	// Vertex of the triangle
-	light_triangle_index = (light.first_index + light_triangle_index) * 3;
-	Vertex v0 = vertices.v[light_triangle_index];
-	Vertex v1 = vertices.v[light_triangle_index + 1];
-	Vertex v2 = vertices.v[light_triangle_index + 2];
+		// Get buffers for the light object
+		ObjDesc objResource = objDesc.i[light.object_id];
+		Indices    indices     = Indices(objResource.indexAddress);
+		Vertices   vertices    = Vertices(objResource.vertexAddress);
 
-	//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+		// Vertex of the triangle
+		light_triangle_index = (light.first_index + light_triangle_index) * 3;
+		Vertex v0 = vertices.v[light_triangle_index];
+		Vertex v1 = vertices.v[light_triangle_index + 1];
+		Vertex v2 = vertices.v[light_triangle_index + 2];
 
-	vec3 barycentric = randomBarycentricPointInTriangle(payload.random_seed, v0.pos, v1.pos, v2.pos);
+		//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
 
-	surface_normal = v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z;
+		vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
-	point = barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
-	emission = light.emission;
+		surface_normal = v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z;
+
+		point = barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
+
+		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
+		pdf = (1 / settings.light_count) * (1 / light.area);
+	}
+
+	return light_index;
 }
 
-vec3 connectionFactor(point_data light, point_data eye, vec3 direction, inout uint random_seed, out float pdf) 
+vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf){
+	Light light = lights.i[light_index];
+
+	if(true){ //Area Light
+		return sampleAreaLightDirection(normal, pdf, payload.random_seed);
+	}
+}
+
+vec3 connectionFactor(point_data light, point_data eye, vec3 direction, out float pdf) 
 {
 	vec3 eye_color = vec3(0);
 	float eye_pdf = 0;
-	disney_pdf(direction, eye.w_i, eye.normal, eye.material, eye_color, eye_pdf, random_seed);
+	disney_pdf(direction, eye.w_i, eye.normal, eye.material, eye_color, eye_pdf, payload.random_seed);
 
 	vec3 light_color = vec3(0);
 	float light_pdf = 0;
-	disney_pdf(light.w_i, -direction, light.normal, light.material, light_color, light_pdf, random_seed);
+	disney_pdf(light.w_i, -direction, light.normal, light.material, light_color, light_pdf, payload.random_seed);
 
 	float g = geometric_term(eye.point, eye.normal, light.point, light.normal);
 
@@ -118,7 +135,7 @@ void main()
 		//defocus blur
 		float Aperture = settings.camAperture;
 		float focus_dist = settings.focusDist;
-		vec2 offset = (Aperture/2) * RandomInUnitDisk(payload.random_seed);
+		vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
 		vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
 		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
 		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
@@ -182,14 +199,14 @@ void main()
 		if (payload.status == RAY_HIT_LIGHT || eye_max_index == 0) continue;
 
 		/* LIGHT */ 
-		random_point_in_light(light_hits[0].point, light_hits[0].color, light_hits[0].normal);
-		vec3 light_direction = RandomInUnitSemiSphere(payload.random_seed, light_hits[0].normal); //veach
-
-		light_hits[0].pdf = 1.0;
+		float light_point_pdf, light_dir_pdf;
+		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].color, light_hits[0].normal, light_point_pdf);
+		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
+		
+		light_hits[0].pdf = light_point_pdf * light_dir_pdf;
 		light_hits[0].w_i = vec3(0);
 		vec3 alpha_L = light_hits[0].color / light_hits[0].pdf;
 
-		//w = light_hits[0].color; //precargar con la funcion W_e de Veach (si es necesario)
 		temp_pdf = light_hits[0].pdf;
 		resetPayload(payload, light_hits[0].point, light_direction);
 
@@ -243,7 +260,7 @@ void main()
 				if (payload.status != RAY_MISS) continue;
 
 				float pdf = 0.0f;
-				vec3 contribution = connectionFactor(light_hits[j], eye_hits[i], direction, payload.random_seed, pdf);
+				vec3 contribution = connectionFactor(light_hits[j], eye_hits[i], direction, pdf);
 
                 if(isnan(contribution.r) || isnan(contribution.g) || isnan(contribution.b))
                     contribution = vec3(0.0, 0.0, 0.0);

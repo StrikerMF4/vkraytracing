@@ -136,12 +136,14 @@ namespace objl
 			object_id = -1;
 
 			emission = glm::vec3(0.0);
+			area = 1.0;
 			first_index = 0;
 			last_index = 0;
 		}
 
 		int object_id;
 		glm::vec3 emission;
+		float area;
 
 		unsigned int first_index;
 		unsigned int last_index;

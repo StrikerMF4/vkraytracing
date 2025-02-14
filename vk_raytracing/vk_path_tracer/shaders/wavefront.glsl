@@ -1,11 +1,8 @@
+#ifndef WAVEFRONT
+#define WAVEFRONT
 
 #include "raycommon.glsl"
 #include "random.glsl"
-
-const float PI = 3.14159265;
-const float TWO_PI = 2*3.14159265;
-const float INV_PI = 1/3.14159265;
-const float EPSILON = 1e-10;
 
 float geometric_term(vec3 xi, vec3 ni, vec3 xo, vec3 no){
     vec3 x_diff = normalize(xo - xi);
@@ -709,3 +706,4 @@ void disney_bsdf_sample(inout rayPayload payload) {
 }
 
 
+#endif

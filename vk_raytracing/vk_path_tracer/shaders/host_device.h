@@ -142,6 +142,7 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
 struct Light {
 	int object_id;
 	vec3 emission;
+	float area;
 
 	uint first_index;
 	uint last_index;
