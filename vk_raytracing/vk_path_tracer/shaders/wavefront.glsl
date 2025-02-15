@@ -5,9 +5,11 @@
 #include "random.glsl"
 
 float geometric_term(vec3 xi, vec3 ni, vec3 xo, vec3 no){
-    vec3 x_diff = normalize(xo - xi);
-    float cos_theta_i = dot(ni, x_diff);
-    float cos_theta_o = dot(no, x_diff);
+    vec3 x_diff = xo - xi;
+    vec3 x_diff_norm = normalize(x_diff);
+
+    float cos_theta_i = dot(ni, x_diff_norm);
+    float cos_theta_o = dot(no, x_diff_norm);
 
     return abs(cos_theta_o * cos_theta_i) / (dot(x_diff, x_diff) + EPSILON);
 }

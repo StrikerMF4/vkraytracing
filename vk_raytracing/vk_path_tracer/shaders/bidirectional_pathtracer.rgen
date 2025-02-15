@@ -170,14 +170,14 @@ void main()
 			// Manejar diferentes estados del rayo
 			if (payload.status == RAY_HIT_LIGHT) {
 				// Agregar radiancia emitida
-				output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+				//output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
 				break;
 			} else if (payload.status == RAY_MISS) {
 				// Manejar color de fondo o mapa de entorno
 				break;
 			}
 
-			alpha_E *= payload.bsdf_sample / payload.pdf;
+			alpha_E *= payload.bsdf_sample / (payload.pdf + EPSILON);
 
 			eye_max_index = depth + 1;
 			eye_hits[eye_max_index].point = payload.origin;
@@ -198,7 +198,7 @@ void main()
 		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
 			output_color = vec3(0.0, 0.0, 0.0);
 
-		if (payload.status == RAY_HIT_LIGHT || eye_max_index == 0) continue;
+		if (eye_max_index == 0) continue;
 
 		/* LIGHT */ 
 		float light_point_pdf, light_dir_pdf;
@@ -221,7 +221,7 @@ void main()
 				break;
 			}
 
-			alpha_L *= payload.bsdf_sample / payload.pdf;
+			alpha_L *= payload.bsdf_sample / (payload.pdf + EPSILON);
 
 			light_max_index = depth + 1;
 			light_hits[light_max_index].point = payload.origin;
@@ -269,6 +269,7 @@ void main()
 
 				pdf = pdf * pdf;
 				mis_paths[sample_count] = contribution;
+				mis_paths[sample_count] = eye_hits[i].color * contribution * light_hits[j].color;
 				mis_paths2[sample_count] = pdf;
 				
 				sum_pdf2 += pdf;
@@ -286,7 +287,7 @@ void main()
 		{
 			if(isnan(mis_paths[i].r) || isnan(mis_paths[i].g) || isnan(mis_paths[i].b))
 				mis_paths[i] = vec3(0.0);
-			output_color +=  mis_paths[i] * (mis_paths2[i] / sum_pdf2 + EPSILON);
+			output_color +=  mis_paths[i] * (mis_paths2[i] / (sum_pdf2 + EPSILON));
 		}
         if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
             output_color = vec3(0.0, 0.0, 0.0);
