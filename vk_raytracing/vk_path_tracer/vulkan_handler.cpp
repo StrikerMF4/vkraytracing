@@ -442,8 +442,6 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
     // Upload all entities from scene to Vulkan
     for (int i = 0; i < scene->entities.size(); i++) {
-        //TO-DO: Cuando la entidad sea de otro tipo posiblemente haya que seguir un procedimiento distinto, revisar
-
         SceneLoader::Entity* entity = scene->entities[i];
 
         if (dynamic_cast<SceneLoader::Sphere*>(entity) != nullptr)
@@ -487,24 +485,30 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
             SceneLoader::Shape* shape = (SceneLoader::Shape*)entity;
 
-            // Assign ObjectID
-            for (auto& light : shape->model_loader.LoadedLights)
-            {
-                Light result;
-
-                result.object_id = m_objDesc.size();
-                result.emission = light.emission;
-                result.first_index = light.first_index;
-                result.last_index = light.last_index;
-
-                m_lights.push_back(result);
-            }
 
             glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
             transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
             transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
             transform = glm::rotate(transform, shape->rotation.z, glm::vec3(0.0, 0.0, 1.0));
             transform = glm::translate(transform, shape->position);
+            
+            // Assign ObjectID
+            for (auto& light : shape->model_loader.LoadedLights)
+            {
+                Light result;
+
+                result.object_id = m_objDesc.size();
+                result.object_to_world = transform;
+                result.world_to_object = glm::inverse(transform);
+
+                result.emission = light.emission;
+
+                result.first_index = light.first_index;
+                result.last_index = light.last_index;
+                result.area = light.area;
+
+                m_lights.push_back(result);
+            }
 
             ObjModel model;
             model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());

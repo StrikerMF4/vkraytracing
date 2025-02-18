@@ -54,7 +54,6 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 		// Pick a triangle in the light
 		Light light = lights.i[light_index];
 		emission = light.emission;
-		light.area = 1.93; //calcularlo en scene loader
 
 		uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
 
@@ -73,9 +72,12 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 
 		vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
-		surface_normal = v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z;
+		vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
+		vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
 
-		point = barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
+		surface_normal = normalize((local_normal * light.world_to_object).xyz);
+
+		point = (light.object_to_world * local_point).xyz;
 
 		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
 		pdf = (1 / settings.light_count) * (1 / light.area);

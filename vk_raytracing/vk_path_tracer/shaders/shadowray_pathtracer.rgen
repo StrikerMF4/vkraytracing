@@ -58,8 +58,9 @@ vec3 random_point_in_light(uint light_index){
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
-    return barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos;
-	//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+	vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
+
+    return (light.object_to_world * local_point).xyz;
 }
 
 vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){

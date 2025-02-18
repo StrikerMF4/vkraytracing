@@ -141,6 +141,8 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
 
 struct Light {
 	int object_id;
+	mat4 object_to_world;
+	mat4 world_to_object;
 	vec3 emission;
 	float area;
 
