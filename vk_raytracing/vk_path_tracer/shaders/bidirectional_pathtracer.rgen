@@ -75,9 +75,9 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 		vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
 		vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
 
-		surface_normal = normalize((local_normal * light.world_to_object).xyz);
+		surface_normal = local_normal.xyz;//-normalize((local_normal * light.world_to_object).xyz);
 
-		point = (light.object_to_world * local_point).xyz;
+		point = local_point.xyz;//(light.object_to_world * local_point).xyz;
 
 		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
 		pdf = (1 / settings.light_count) * (1 / light.area);
@@ -170,7 +170,8 @@ void main()
 			// Manejar diferentes estados del rayo
 			if (payload.status == RAY_HIT_LIGHT) {
 				// Agregar radiancia emitida
-				//output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+				output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+				//to-do: el Le hay que dividirlo entre la probabilidad de que ese rayo salga de la luz en esta direccion
 				break;
 			} else if (payload.status == RAY_MISS) {
 				// Manejar color de fondo o mapa de entorno
@@ -198,6 +199,7 @@ void main()
 		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
 			output_color = vec3(0.0, 0.0, 0.0);
 
+		//if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
 		if (eye_max_index == 0) continue;
 
 		/* LIGHT */ 
