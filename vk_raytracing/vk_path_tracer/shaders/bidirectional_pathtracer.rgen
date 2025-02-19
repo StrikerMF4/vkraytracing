@@ -199,8 +199,8 @@ void main()
 		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
 			output_color = vec3(0.0, 0.0, 0.0);
 
-		//if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
-		if (eye_max_index == 0) continue;
+		if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
+		//if (eye_max_index == 0) continue;
 
 		/* LIGHT */ 
 		float light_point_pdf, light_dir_pdf;
