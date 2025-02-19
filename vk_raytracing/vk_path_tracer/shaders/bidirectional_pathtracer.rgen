@@ -202,7 +202,7 @@ void main()
 
 		/* LIGHT */ 
 		float light_point_pdf, light_dir_pdf;
-		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].color, light_hits[0].normal, light_point_pdf);
+		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
 		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 		
 		light_hits[0].pdf = light_point_pdf * light_dir_pdf;
@@ -240,6 +240,7 @@ void main()
 			light_direction = payload.direction;
 		}
 
+		if (light_max_index == 0) continue;
 
 		uint sample_count = 0;
 		vec3 mis_paths[11*11];
