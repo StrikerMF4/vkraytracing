@@ -46,9 +46,15 @@ vec2 RandomDiskDirection(inout uint seed) {
 }
 
 vec3 RandomSphereDirection(inout uint seed) {
-	float xrand = rand(seed);
-	float yrand = rand(seed);
-	return vec3(sin(xrand)*cos(yrand), sin(xrand)*sin(yrand), cos(xrand));
+	for (;;) {
+        const vec3 p = 2 * vec3(rand(seed), rand(seed), rand(seed)) - 1;
+        if (dot(p, p) < 1) {
+            return normalize(p);
+        }
+    }
+//	float xrand = rand(seed);
+//	float yrand = rand(seed);
+//	return vec3(sin(xrand)*cos(yrand), sin(xrand)*sin(yrand), cos(xrand));
 }
 
 vec3 RandomHemisphereDirection(inout uint seed, vec3 normal) {
@@ -59,6 +65,23 @@ vec3 RandomHemisphereDirection(inout uint seed, vec3 normal) {
 vec3 RandomCosineHemisphereDirection(vec3 normal, inout uint seed) {
 	return normalize(RandomSphereDirection(seed)+normal);
 }
+
+/*
+def uniform_triangle(u, v):
+    while True:
+        s = random.random()
+        t = random.random()
+        in_triangle = s + t <= 1
+        p = s * u + t * v if in_triangle else (1 - s) * u + (1 - t) * v
+        yield p
+*/
+vec3 randomPointInTriangle(vec3 u, vec3 v, inout uint seed) {
+	float s = rand(seed);
+	float t = rand(seed);
+
+	return s + t <= 1 ? s * u + t * v : (1 - s) * u + (1 - t) * v;
+}
+
 
 vec3 randomBarycentricPointInTriangle(vec3 A, vec3 B, vec3 C, inout uint seed) {
 	float r1 = rand(seed);

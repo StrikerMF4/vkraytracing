@@ -55,7 +55,7 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 		Light light = lights.i[light_index];
 		emission = light.emission;
 
-		uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
+		uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
 		// Get buffers for the light object
 		ObjDesc objResource = objDesc.i[light.object_id];
@@ -75,9 +75,24 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 		vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
 		vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
 
-		surface_normal = local_normal.xyz;//-normalize((local_normal * light.world_to_object).xyz);
+//		vec3 u = v1.pos - v0.pos; 
+//		vec3 v = v2.pos - v0.pos;
+//
+//		vec3 local_point = randomPointInTriangle(u, v, payload.random_seed);
 
-		point = local_point.xyz;//(light.object_to_world * local_point).xyz;
+		surface_normal = normalize((local_normal * light.world_to_object).xyz);
+
+		point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
+
+//		float s = pcg_hash(payload.random_seed) % (3);
+//
+//		if (s == 0) {
+//			local_point = v0.pos;
+//		} else if (s == 1) {
+//			local_point = v1.pos;
+//		} else {
+//			local_point = v2.pos;
+//		}
 
 		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
 		pdf = (1 / settings.light_count) * (1 / light.area);
@@ -145,6 +160,22 @@ void main()
 		// Path Tracing
 		point_data eye_hits[11];
 		point_data light_hits[11];
+		float light_point_pdfq;
+		uint light_index2 = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdfq);
+		vec3 dir1 = normalize(direction);
+		vec3 dir2 = normalize(light_hits[0].point - origin);
+	
+		if (dot(dir1,dir2) >= 0.9999) {
+			output_color = vec3(1,0,0);
+			break;
+		}
+		vec3 light_direction2 = sampleLightDirection(light_index2, light_hits[0].normal, light_point_pdfq);
+
+		dir2 = normalize((light_hits[0].point + light_direction2 ) - origin);
+		if (dot(dir1,dir2) >= 0.9999) {
+			output_color = vec3(0,1,0);
+			break;
+		}
 
 		/* EYE */
 		uint eye_max_index = 0;
@@ -170,7 +201,7 @@ void main()
 			// Manejar diferentes estados del rayo
 			if (payload.status == RAY_HIT_LIGHT) {
 				// Agregar radiancia emitida
-				output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+				// output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
 				//to-do: el Le hay que dividirlo entre la probabilidad de que ese rayo salga de la luz en esta direccion
 				break;
 			} else if (payload.status == RAY_MISS) {
@@ -199,8 +230,8 @@ void main()
 		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
 			output_color = vec3(0.0, 0.0, 0.0);
 
-		if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
-		//if (eye_max_index == 0) continue;
+		// if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
+		if (eye_max_index == 0) continue;
 
 		/* LIGHT */ 
 		float light_point_pdf, light_dir_pdf;
@@ -212,7 +243,7 @@ void main()
 		vec3 alpha_L = light_hits[0].color / light_hits[0].pdf;
 
 		temp_pdf = light_hits[0].pdf;
-		resetPayload(payload, light_hits[0].point, light_direction);
+		resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
         for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
             payload.backward_propagation = false;
@@ -290,7 +321,7 @@ void main()
 		{
 			if(isnan(mis_paths[i].r) || isnan(mis_paths[i].g) || isnan(mis_paths[i].b))
 				mis_paths[i] = vec3(0.0);
-			output_color +=  mis_paths[i] * (mis_paths2[i] / (sum_pdf2 + EPSILON));
+			output_color +=  (mis_paths[i] * (mis_paths2[i] / (sum_pdf2 + EPSILON)));
 		}
         if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
             output_color = vec3(0.0, 0.0, 0.0);
