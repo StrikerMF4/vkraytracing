@@ -75,11 +75,6 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 		vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
 		vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
 
-//		vec3 u = v1.pos - v0.pos; 
-//		vec3 v = v2.pos - v0.pos;
-//
-//		vec3 local_point = randomPointInTriangle(u, v, payload.random_seed);
-
 		surface_normal = normalize((local_normal * light.world_to_object).xyz);
 
 		point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
