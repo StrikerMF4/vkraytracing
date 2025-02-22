@@ -108,11 +108,11 @@ vec3 connectionFactor(point_data light, point_data eye, vec3 direction, out floa
 {
 	vec3 eye_color = vec3(0);
 	float eye_pdf = 0;
-	disney_pdf(direction, eye.w_i, eye.normal, eye.material, eye_color, eye_pdf, payload.random_seed);
+	disney_pdf(eye.w_i, direction, eye.normal, eye.material, eye_color, eye_pdf, payload.random_seed);
 
 	vec3 light_color = vec3(0);
 	float light_pdf = 0;
-	disney_pdf(light.w_i, -direction, light.normal, light.material, light_color, light_pdf, payload.random_seed);
+	disney_pdf(-direction, light.w_i, light.normal, light.material, light_color, light_pdf, payload.random_seed);
 
 	float g = geometric_term(eye.point, eye.normal, light.point, light.normal);
 
@@ -149,6 +149,7 @@ void main()
 		float focus_dist = settings.focusDist;
 		vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
 		vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
+		vec3 cameraOrigin = origin;
 		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
 		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
 
@@ -160,26 +161,26 @@ void main()
 		vec3 dir1 = normalize(direction);
 		vec3 dir2 = normalize(light_hits[0].point - origin);
 	
-		if (dot(dir1,dir2) >= 0.9999) {
-			output_color = vec3(1,0,0);
-			break;
-		}
-		vec3 light_direction2 = sampleLightDirection(light_index2, light_hits[0].normal, light_point_pdfq);
+//		if (dot(dir1,dir2) >= 0.9999) {
+//			output_color = vec3(50,0,0);
+//			break;
+//		}
+//		vec3 light_direction2 = sampleLightDirection(light_index2, light_hits[0].normal, light_point_pdfq);
 
-		dir2 = normalize((light_hits[0].point + light_direction2 ) - origin);
-		if (dot(dir1,dir2) >= 0.9999) {
-			output_color = vec3(0,1,0);
-			break;
-		}
+//		dir2 = normalize((light_hits[0].point + light_direction2 ) - origin);
+//		if (dot(dir1,dir2) >= 0.9999) {
+//			output_color = vec3(0,1,0);
+//			break;
+//		}
 
 		/* EYE */
 		uint eye_max_index = 0;
 		uint light_max_index = 0;
 
-		vec3 alpha_E = vec3(1.0) / eye_hits[0].pdf;
 
 		eye_hits[0].point = origin;
 		eye_hits[0].pdf = 1.0; //probabilidad del rayo de la cámara
+		vec3 alpha_E = vec3(1.0) / eye_hits[0].pdf;
 		eye_hits[0].color = alpha_E;
 		eye_hits[0].w_i = -direction;
 		eye_hits[0].normal = normalize(target);
@@ -196,7 +197,7 @@ void main()
 			// Manejar diferentes estados del rayo
 			if (payload.status == RAY_HIT_LIGHT) {
 				// Agregar radiancia emitida
-				// output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
+				output_color += alpha_E * payload.Le; // No hacer mix con los caminos de la luz ya tenemos el color que queriamos calcular
 				//to-do: el Le hay que dividirlo entre la probabilidad de que ese rayo salga de la luz en esta direccion
 				break;
 			} else if (payload.status == RAY_MISS) {
@@ -225,7 +226,7 @@ void main()
 		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
 			output_color = vec3(0.0, 0.0, 0.0);
 
-		// if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
+		 if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
 		if (eye_max_index == 0) continue;
 
 		/* LIGHT */ 
@@ -233,9 +234,9 @@ void main()
 		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
 		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 		
-		light_hits[0].pdf = light_point_pdf * light_dir_pdf;
+		light_hits[0].pdf = light_point_pdf * light_dir_pdf + 0.001;
 		light_hits[0].w_i = vec3(0);
-		vec3 alpha_L = light_hits[0].color / light_hits[0].pdf;
+		vec3 alpha_L = light_hits[0].color ;
 
 		temp_pdf = light_hits[0].pdf;
 		resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
@@ -270,14 +271,37 @@ void main()
 
 		if (light_max_index == 0) continue;
 
+
+//		dir2 = normalize((eye_hits[2].point) - cameraOrigin);
+//		if (dot(dir1,dir2) >= 0.9999) {
+//			output_color = vec3(0,10,0);
+//			break;
+//		}
+//		dir2 = normalize((light_hits[2].point) - cameraOrigin);
+//		if (dot(dir1,dir2) >= 0.9999) {
+//			output_color = vec3(10,0,0);
+//			break;
+//		}
+//		dir2 = normalize((light_hits[3].point + (light_hits[3].w_i)*0.4) - cameraOrigin);
+//		if (dot(dir1,dir2) >= 0.9999) {
+//			output_color = vec3(0,0,100);
+//			break;
+//		}
+
 		uint sample_count = 0;
 		vec3 mis_paths[11*11];
 		float mis_paths2[11*11];
 		float sum_pdf2 = 0.0f;
+//
+//		if (eye_max_index < 2 || light_max_index < 3)
+//			continue;
 
-        for (int i = 1; i <= eye_max_index; i++) { // ver los casos bordes de  i y j = 0
-            for (int j = 1; j <= light_max_index; j++) {
-				
+        for (int i = 1; i <= 1; i++) { // ver los casos bordes de  i y j = 0
+            for (int j = 1; j <= 1; j++) {
+//		{
+//			{
+//				int i = 2;
+//				int j = 3;
 				vec3 eye_point = eye_hits[i].point;
 				vec3 light_point = light_hits[j].point;
 				origin = eye_point;
@@ -285,6 +309,12 @@ void main()
 
 				float dist = length(direction);
 				direction /= dist;
+
+//				if ((dot(-light_hits[j].w_i,light_hits[j].normal) >= 0 &&  dot(-direction,light_hits[j].normal) >= 0) ||
+//					(dot(-eye_hits[j].w_i,eye_hits[j].normal) >= 0 && dot(direction,eye_hits[j].normal) >= 0))
+//				{
+//					continue;
+//				}
 
 				resetPayload(payload, origin, direction);
 				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - EPSILON, 0);
@@ -298,7 +328,7 @@ void main()
 
 				pdf = pdf * pdf;
 				mis_paths[sample_count] = contribution;
-				mis_paths[sample_count] = eye_hits[i].color * contribution * light_hits[j].color;
+				mis_paths[sample_count] = eye_hits[i-1].color * contribution * light_hits[j-1].color;
 				mis_paths2[sample_count] = pdf;
 				
 				sum_pdf2 += pdf;
