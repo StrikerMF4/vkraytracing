@@ -5,8 +5,8 @@
 #include "random.glsl"
 
 vec3 sampleAreaLightDirection(vec3 normal, out float pdf, inout uint seed) {
-//    vec3 dir = RandomCosineHemisphereDirection(normal, seed);
-    vec3 dir = RandomHemisphereDirection(normal, seed);
+    vec3 dir = RandomCosineHemisphereDirection(normal, seed);
+//    vec3 dir = RandomHemisphereDirection(normal, seed);
     float cosTheta = dot(dir, normal);
 
     pdf = cosTheta * INV_PI;
