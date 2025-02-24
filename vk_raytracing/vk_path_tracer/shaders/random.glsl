@@ -46,9 +46,13 @@ vec2 RandomDiskDirection(inout uint seed) {
 }
 
 vec3 RandomSphereDirection(inout uint seed) {
-	float xrand = rand(seed) * TWO_PI;
-	float yrand = rand(seed) * TWO_PI;
-	return vec3(cos(yrand) * sin(xrand), sin(yrand) * sin(xrand), cos(xrand));
+	float theta = rand(seed) * TWO_PI;
+	float phi = acos((2 * rand(seed)) - 1);
+	return vec3(
+		sin(phi) * cos(theta), 
+		sin(phi) * sin(theta), 
+		cos(phi)
+	);
 }
 
 vec3 RandomHemisphereDirection(vec3 normal, inout uint seed) {
