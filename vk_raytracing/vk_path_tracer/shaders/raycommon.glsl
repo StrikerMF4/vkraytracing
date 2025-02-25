@@ -16,6 +16,7 @@ const float PI = 3.14159265;
 const float TWO_PI = 2*3.14159265;
 const float INV_PI = 1/3.14159265;
 const float EPSILON = 1e-10;
+const float INF = 1e10;
 
 struct rayPayload
 {
