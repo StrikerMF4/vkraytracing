@@ -336,7 +336,7 @@ int main(int argc, char** argv)
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
 
 	//Bidirectional
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/PatronDielectrico.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps.scn", defaultSearchPaths, true);
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
