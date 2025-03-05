@@ -331,6 +331,14 @@ vec3 EvalDisneyDiffuse(WaveFrontMaterial material, vec3 Csheen, vec3 w_i, vec3 w
     return INV_PI * material.baseColor * mix(Fd + Fretro, ss, material.subsurface) + Fsheen;
 }
 
+
+void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B)
+{
+    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
 vec3 EvalMicrofacetReflection(WaveFrontMaterial material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, out float pdf)
 {
     pdf = 0.0;
@@ -340,17 +348,19 @@ vec3 EvalMicrofacetReflection(WaveFrontMaterial material, vec3 w_i, vec3 w_o, ve
         return vec3(0.0);
 
     float IDotN = dot(normal, w_i);
+    vec3 T, B;
+    TangentVectors(normal, T, B);
 
     float aspect = sqrt(1.0 - material.anisotropic * 0.9);
     float ax = max(0.001, material.roughness * material.roughness / aspect);
     float ay = max(0.001, material.roughness * material.roughness * aspect);
 
-    float D = GGXAnisotropicD(H, ax, ay);
-    float G1 = SeparableSmithGGXG1(w_i, ax, ay);
-    float G2 = G1 * SeparableSmithGGXG1(w_o, ax, ay);
-//    float D = GTR2Aniso(H.z, H.x, H.y, ax, ay);
-//    float G1 = SmithGAniso(abs(V.z), V.x, V.y, ax, ay);
-//    float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, ax, ay);
+//    float D = GGXAnisotropicD(H, ax, ay);
+//    float G1 = SeparableSmithGGXG1(w_i, ax, ay);
+//    float G2 = G1 * SeparableSmithGGXG1(w_o, ax, ay);
+    float D = GTR2Aniso(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
+    float G1 = SmithGAniso(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay); // V.x - w_i dot T , V.y = w_i dot B , V.z = w_i dot N 
+    float G2 = G1 * SmithGAniso(abs(ODotN), dot(w_o, T), dot(w_o, T), ax, ay);
 
     pdf = G1 * D / (4.0 * IDotN);
     return F * D * G2 / (4.0 * ODotN * IDotN);
@@ -388,7 +398,7 @@ vec3 EvalMicrofacetReflection(WaveFrontMaterial material, vec3 w_i, vec3 w_o, ve
 //}
 
 // todo: define equation
-vec3 EvalMicrofacetRefraction(WaveFrontMaterial material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, float eta_i, float eta_t, out float pdf)
+vec3 EvalMicrofacetRefraction(WaveFrontMaterial material, vec3 w_i, vec3 w_o, vec3 normal, vec3 F, float eta_i, float eta_t, out float pdf)
 {
     pdf = 0.0;
     float ODotN = dot(normal, w_o);
@@ -541,12 +551,6 @@ vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V)
     return vec3(dot(V, X), dot(V, Y), dot(V, Z));
 }
 
-void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B)
-{
-    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-    T = normalize(cross(up, N));
-    B = cross(N, T);
-}
 
 void disney_pdf(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out vec3 outputColor, out float pdf, inout uint random_seed)
 {
@@ -643,12 +647,11 @@ void disney_pdf(vec3 w_o, vec3 w_i, vec3 normal, WaveFrontMaterial material, out
         }
         else
         {
-            f += EvalMicrofacetRefraction(material, w_i, w_o, normal, H, vec3(F), eta_i, eta_t, tmpPdf) * glassWt;
-//            pdf += tmpPdf * glassPr * (1.0 - F);
-            pdf += tmpPdf * glassPr;
+            f += EvalMicrofacetRefraction(material, w_i, w_o, normal, vec3(F), eta_i, eta_t, tmpPdf) * glassWt;
+            pdf += tmpPdf * glassPr * (1.0 - F);
         }
     }
-//
+
 //    if (clearCtPr > 0.0 && reflect) { // Clearcoat
 //        f += EvalClearcoat(material, V, L, H, tmpPdf) * 0.25 * material.clearcoat;
 //        pdf += tmpPdf * clearCtPr;
