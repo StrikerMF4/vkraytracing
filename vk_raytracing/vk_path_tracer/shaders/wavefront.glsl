@@ -756,7 +756,7 @@ vec3 disney_bsdf(vec3 w_i, vec3 normal, WaveFrontMaterial material, inout uint b
 }
 
 void disney_bsdf_sample(inout rayPayload payload) {
-    if (length(payload.material.emission) > 0) {
+    if (length(payload.material.emission) > 0 && dot(payload.surface_normal, -payload.direction) > 0) {
         // TO-DO: Cambiar esto por alguna aproximacion al L de Veach
         payload.bsdf_sample = payload.material.emission * payload.material.baseColor;
         payload.Le = payload.material.emission * payload.material.baseColor;
