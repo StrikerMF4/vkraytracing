@@ -207,6 +207,9 @@ void main()
 
 			alpha_E *= payload.bsdf_sample / (payload.pdf + EPSILON);
 
+			temp_pdf *= geometric_term(eye_hits[eye_max_index - 1].point, eye_hits[eye_max_index - 1].normal,
+										payload.origin, payload.surface_normal);
+
 			eye_max_index = depth + 1;
 			eye_hits[eye_max_index].point = payload.origin;
 			eye_hits[eye_max_index].normal = payload.surface_normal;
@@ -215,10 +218,7 @@ void main()
 			eye_hits[eye_max_index].pdf = temp_pdf;
 			eye_hits[eye_max_index].color = alpha_E;
 			
-			float g = geometric_term(eye_hits[eye_max_index - 1].point, eye_hits[eye_max_index - 1].normal,
-										payload.origin, payload.surface_normal);
-
-			temp_pdf *= payload.pdf * g;
+			temp_pdf *= payload.pdf;
 			direction = payload.direction;
 			resetPayload(payload, payload.origin, payload.direction);
 		}
@@ -252,6 +252,11 @@ void main()
 
 			alpha_L *= payload.bsdf_sample / (payload.pdf + EPSILON);
 
+			float g = geometric_term(light_hits[light_max_index - 1].point, light_hits[light_max_index - 1].normal,
+										payload.origin, payload.surface_normal);
+	
+			temp_pdf *= g;
+
 			light_max_index = depth + 1;
 			light_hits[light_max_index].point = payload.origin;
 			light_hits[light_max_index].normal = payload.surface_normal;
@@ -260,10 +265,7 @@ void main()
 			light_hits[light_max_index].color = alpha_L;
 			light_hits[light_max_index].pdf = temp_pdf;
 
-			float g = geometric_term(light_hits[light_max_index - 1].point, light_hits[light_max_index - 1].normal,
-										payload.origin, payload.surface_normal);
-
-			temp_pdf *= payload.pdf * g;
+			temp_pdf *= payload.pdf;
 
 			origin    = payload.origin;
 			light_direction = payload.direction;
