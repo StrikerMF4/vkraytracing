@@ -337,10 +337,11 @@ int main(int argc, char** argv)
 
 	//Bidirectional
 	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps_alt.scn", defaultSearchPaths, true);
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
@@ -348,7 +349,7 @@ int main(int argc, char** argv)
 
 
 	//Externas
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
 	/*const std::string scene_path = nvh::findFile("media/scenes/Externas/spaceship.scn", defaultSearchPaths, true);
 	const std::string scene_path = nvh::findFile("media/scenes/Externas/diningroom.scn", defaultSearchPaths, true);
 	const std::string scene_path = nvh::findFile("media/scenes/Externas/staircase.scn", defaultSearchPaths, true);
