@@ -1,0 +1,42 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.7, 2.2],
+        "lookat": [0.0, 0.7, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Lamp",
+			"color": [0.800513, 0.414076, 0.236675],
+            "roughness": 0.25,
+            "ior": 2.5
+        },
+        {
+            "name": "Paredes",
+			"color": [0.725, 0.71, 0.68]
+        },
+        {
+            "name": "Desk",
+			"color": [0.88, 0.72, 0.46]
+        },
+        {
+            "name": "Egg",
+			"color": [0.725, 0.71, 0.68],
+			"roughness": 0.0,
+			"opacity": 0.0,
+            "ior": 1.5
+        },
+        {
+            "name": "Light",
+            "emission": [10.0, 10.0, 10.0]
+        }
+    ],
+    "entities": [
+		{
+            "type": "mesh",
+            "file": "models/veach_lamps_alt.obj"
+        }
+    ]
+}
