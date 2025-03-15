@@ -181,7 +181,7 @@ void main()
 
 			vec3 bsdf_sample = payload.bsdf_sample;
 			vec3 Le = payload.Le;
-			float pdf = payload.pdf;
+			float pdf = payload.pdfF;
 			uint ray_status = payload.status;
 
 			origin    = payload.origin;
