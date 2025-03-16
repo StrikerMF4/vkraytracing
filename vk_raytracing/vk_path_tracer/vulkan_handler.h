@@ -88,6 +88,7 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
+    nvvk::Buffer LightIndexBuffer;  // Device buffer of array of 'Wavefront material'
   };
 
   struct ObjInstance
@@ -116,12 +117,14 @@ public:
   
   //implicit objects arrays/buffers
   std::vector<unsigned int> m_implicitObj_materials_idx;
+  std::vector<unsigned int> m_implicitObj_light_idx;
   std::vector<objl::Material> m_implicitObj_materials;
   std::vector<Sphere> m_spheres;
   nvvk::Buffer m_implicitObjBuffer;
   nvvk::Buffer m_implicitObj_AABBBuffer;
   nvvk::Buffer m_implicitObj_MatBuffer;
   nvvk::Buffer m_implicitObj_MatIndexBuffer;
+  nvvk::Buffer m_implicitObj_LightIndexBuffer;
   nvvk::Buffer m_spheresBuffer;
 
   // Graphic pipeline

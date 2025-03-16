@@ -34,6 +34,7 @@ struct rayPayload
 	float theta;
 	float pdfF;
 	float pdfB;
+	int light_id;
 
 	WaveFrontMaterial material;
 
@@ -52,6 +53,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.pdfF = 1.0;
 	payload.pdfB = 1.0;
 	payload.bsdf_type = 0;
+	payload.light_id = 0;
 	payload.surface_normal = vec3(0);
 	payload.surface_micronormal = vec3(0);
 	payload.theta = 0;
