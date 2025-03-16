@@ -177,6 +177,7 @@ bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, o
 	LoadedVertices.clear();
 	LoadedIndices.clear();
 	LoadedMaterialIndices.clear();
+	LoadedLightIDs.clear();
 	LoadedLights.clear();
 
 	std::vector<glm::vec3> Positions;
@@ -368,7 +369,7 @@ bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, o
 				tempMesh.MeshMaterial = tempMaterial; //El material anterior, a partir de este momento va a ser otro para el siguiente mesh
 				int i = 2;
 				while (1) {
-					tempMesh.MeshName = meshname + "_" + std::to_string(i);
+					tempMesh.MeshName = meshname + "_" + std::to_string(i++);
 
 					for (auto& m : LoadedMeshes)
 						if (m.MeshName == tempMesh.MeshName)

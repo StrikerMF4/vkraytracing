@@ -38,6 +38,7 @@ END_BINDING();
 
 #define KIND_SPHERE 0
 #define KIND_CUBE 1
+#define KIND_GEOMETRY 2
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc
@@ -47,6 +48,7 @@ struct ObjDesc
 	uint64_t indexAddress;          // Address of the index buffer
 	uint64_t materialAddress;       // Address of the material buffer
 	uint64_t materialIndexAddress;  // Address of the triangle material index buffer
+	uint64_t lightIndexAddress;  // Address of the triangle material index buffer
 };
 
 // Uniform buffer set at each frame
@@ -145,7 +147,8 @@ struct Light {
 	mat4 world_to_object;
 	vec3 emission;
 	float area;
-
+	uint mesh_type;
+	//If mesh_type is KIND_GEOMETRY, first_index is the index of the sphere in the implicit objects buffer
 	uint first_index;
 	uint last_index;
 };

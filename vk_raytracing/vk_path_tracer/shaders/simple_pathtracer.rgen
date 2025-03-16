@@ -82,7 +82,7 @@ void main()
             payload.origin = origin;
             payload.direction = direction;
             payload.bsdf_sample = vec3(1.0);
-            payload.pdf = 1.0;
+            payload.pdfF = 1.0;
             payload.Le = vec3(0.0);
             payload.surface_normal = vec3(0.0);
 
@@ -115,7 +115,7 @@ void main()
 
             // Actualizar throughput
             float cos_theta = abs(dot(payload.surface_normal, payload.direction));
-            w *= (payload.bsdf_sample * cos_theta) / (payload.pdf + EPSILON);
+            w *= (payload.bsdf_sample * cos_theta) / (payload.pdfF + EPSILON);
 
             // Actualizar origen y direccion para el siguiente rebote
             origin = payload.origin;

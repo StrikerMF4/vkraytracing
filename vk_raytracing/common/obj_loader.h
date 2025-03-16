@@ -230,6 +230,8 @@ namespace objl
 		std::vector<unsigned int> LoadedMaterialIndices;
 		// Loaded Emissive Objects
 		std::vector<Light> LoadedLights;
+		// Loaded Light indexes
+		std::vector<unsigned int> LoadedLightIDs;
 
 	private:
 		// Generate vertices from a list of positions, 
