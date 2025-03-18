@@ -140,7 +140,12 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 	ImGui::End();
 }
 
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {	
+float config_max_depth;
+int max_depth = 5;
+bool bidirectional_debug_technique = false;
+int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
+
+inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
 	if (ImGui::BeginMenuBar())
@@ -185,12 +190,39 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				if (current_technique != (TechniqueType)item_current_idx)
 				{
 					current_technique = (TechniqueType)item_current_idx;
-					if (current_technique != TechniqueType::RASTER)
+					if (current_technique != TechniqueType::RASTER) {
 						vulkanHandler.changeTechnique(current_technique);
+						vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
+					}
 
 					paused = false;
 					pause_timer_start = std::chrono::high_resolution_clock::now();
 					time_elapsed = 0;
+				}
+
+				if (ImGui::InputInt("Max Depth", &max_depth, 1) && max_depth > 0) {
+					vulkanHandler.m_pcRay.max_depth = max_depth;
+					vulkanHandler.resetFrame();
+				}
+
+				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
+
+					if (bidirectional_debug_technique) {
+						if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
+							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
+							vulkanHandler.resetFrame();
+						}
+						if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
+							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
+							vulkanHandler.resetFrame();
+						}
+					}
+					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
+						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
+						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+						vulkanHandler.resetFrame();
+					}
 				}
 
 				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
@@ -413,6 +445,7 @@ int main(int argc, char** argv)
 
 	TechniqueType current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
+	max_depth = vulkanHandler.current_technique->default_depth;
 
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
@@ -444,6 +477,8 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.shininess = 0.f;
 	vulkanHandler.m_pcRay.fuzziness = 0.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
+	vulkanHandler.m_pcRay.debug_technique_s = -1;
+	vulkanHandler.m_pcRay.debug_technique_t = -1;
 
 	vulkanHandler.setupGlfwCallbacks(window);
 	glfwSetKeyCallback(window, &key_cb);

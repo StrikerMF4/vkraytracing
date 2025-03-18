@@ -24,6 +24,7 @@ class Technique
 public:
     std::string codename;
     std::string formatted_name;
+	int default_depth;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
     VkPipelineLayout                                  m_rtPipelineLayout;
@@ -39,9 +40,10 @@ public:
 
 	Technique() = default;
 
-    Technique(std::string codename, std::string formatted_name) {
+    Technique(std::string codename, std::string formatted_name, int default_depth) {
         this->codename = codename;
 		this->formatted_name = formatted_name;
+		this->default_depth = default_depth;
     };
 
     void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
@@ -200,13 +202,13 @@ public:
   void setupTechnique(TechniqueType type) {
       switch (type) {
 	  case SHADOWRAY_PATHTRACER:
-          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer");
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer", 10);
 		  break;
 	  case SIMPLE_PATHTRACER:
-		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer");
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer", 10);
 		  break;
 	  case BIDIRECTIONAL_PATHTRACER:
-		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer");
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 4);
 		  break;
       }
   }

@@ -29,7 +29,6 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 // clang-format on
 
 const int NBSAMPLES = 1;
-const uint MAX_DEPTH = 10;
 
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 const float tMin     = 0.001;
@@ -77,7 +76,7 @@ void main()
 		vec3 w = vec3(1.0);
 
 		// Path tracing loop
-        for (int depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; ++depth) {
+        for (int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
             // Inicializar payload
             payload.origin = origin;
             payload.direction = direction;

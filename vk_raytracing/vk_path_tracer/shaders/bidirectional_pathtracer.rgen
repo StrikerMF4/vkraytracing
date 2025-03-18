@@ -55,7 +55,6 @@ struct mis_node {
 };
 
 const int NBSAMPLES = 1;
-const uint MAX_DEPTH = 4;
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 const float tMin     = 0.001;
 const float tMax     = 10000.0;
@@ -308,7 +307,7 @@ void main()
 //		float lastG = 1.0;
 		resetPayload(payload, eye_hits[0].point, direction);
 		bool hitLight = false;
-		for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+		for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
 			payload.backward_propagation = true;
 
 			// Trazar el rayo
@@ -378,7 +377,7 @@ void main()
 //		lastG = 1.0f;
 		resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
-        for(depth = 0; depth < MAX_DEPTH && payload.status == RAY_CONTINUE; depth++) {
+        for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
             payload.backward_propagation = false;
 
             traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
@@ -425,14 +424,15 @@ void main()
 		uvec2 s_t[11*11];
 
 		// iterar en k 
-		for (int pathLength = 1; pathLength <= MAX_DEPTH; pathLength++) {
+		for (int pathLength = 1; pathLength <= settings.max_depth; pathLength++) {
 			int pathVertexCount = pathLength + 1;
 			for (int s = 0; s <= pathVertexCount; s++) {
 				int t = pathVertexCount - s;
 				
-//				if ((s != DebugS) || (t != DebugT)) {
-//					continue;
-//				}
+				if (settings.debug_technique_s >= 0 && settings.debug_technique_t >= 0 && 
+					((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
+					continue;
+				}
 
 				if (s > light_max_index || (s != 0 && t > eye_max_index + 1) || (s == 0 && t != eye_max_index + 2)) {
 					continue;
