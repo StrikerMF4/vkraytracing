@@ -208,29 +208,32 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	return 1 / misWeightSum;
 }
 
-vec3 connectionFactor(inout point_data light, inout point_data eye, uint s, uint t, vec3 direction, out pdf_connection pdf, out float g, uint light_index) 
+vec3 connectionFactor(inout point_data light_point, inout point_data eye_point, uint s, uint t, vec3 direction, out pdf_connection pdf, out float g, uint light_index) 
 {
 	vec3 eye_color = vec3(0);
 	float eye_pdfF = 0;
 	float eye_pdfB = 0;
-	disney_pdf(eye.w_i, direction, eye.normal, eye.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
+	disney_pdf(eye_point.w_i, direction, eye_point.normal, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
 
 	vec3 light_color = vec3(0);
 	float light_pdfF = 0;
 	float light_pdfB = 0;
 	if ( s == 1 ) { // direct illumination
-		pdf.lightF = sampleLightDirectionPDF(lights.i[light_index], -direction, light.normal) / dot(light.normal, -direction); // todo: validar esto
+		Light light = lights.i[light_index];
+		light_color = light.emission;
+		pdf.lightF = sampleLightDirectionPDF(light, -direction, light_point.normal) / dot(light_point.normal, -direction); // todo: validar esto
 		pdf.lightB = light_hits[0].pdfB;
 	}
 	else {
-		disney_pdf(-direction, light.w_i, light.normal, light.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
-		pdf.lightF = light_pdfF;
-		pdf.lightB = light_pdfB;
+		disney_pdf(-direction, light_point.w_i, light_point.normal, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
+		pdf.lightF = light_pdfF / abs(dot(light_point.normal, -direction));
+		pdf.lightB = light_pdfB / abs(dot(light_point.normal, light_point.w_i));
 	}
-	pdf.eyeF = eye_pdfF;
-	pdf.eyeB = eye_pdfB;
 
-	g = geometric_term(eye.point, eye.normal, light.point, light.normal);
+	pdf.eyeF = eye_pdfF / abs(dot(eye_point.normal, direction));
+	pdf.eyeB = eye_pdfB / abs(dot(eye_point.normal, eye_point.w_i));
+
+	g = geometric_term(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 
 	return light_color * eye_color * g;
 }
@@ -342,9 +345,13 @@ void main()
 			eye_hits[eye_max_index].normal = payload.surface_normal;
 			eye_hits[eye_max_index].material = payload.material;
 			eye_hits[eye_max_index].w_i = -direction;
-			eye_hits[eye_max_index].pdfF = payload.pdfF;
-			eye_hits[eye_max_index].pdfB = payload.pdfB;
+			eye_hits[eye_max_index].pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
 			eye_hits[eye_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
+			if (eye_hits[eye_max_index].isSpecular) {
+				eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
+			} else {
+				eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+			}
 			eye_hits[eye_max_index].G = G;
 			eye_hits[eye_max_index].color = alpha_E;
 //
@@ -401,9 +408,15 @@ void main()
 			light_hits[light_max_index].material = payload.material;
 			light_hits[light_max_index].w_i = -light_direction;
 			light_hits[light_max_index].color = alpha_L;
-			light_hits[light_max_index].pdfF = payload.pdfF;
-			light_hits[light_max_index].pdfB = payload.pdfB;
+
+			light_hits[light_max_index].pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
 			light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
+			if (light_hits[light_max_index].isSpecular) {
+				light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
+			} else {
+				light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+			}
+
 			light_hits[light_max_index].G = G;
 
 //			temp_pdfF *= payload.pdfF;
@@ -444,7 +457,7 @@ void main()
 
 				// We dont support direct camera connections
 				// todo: ver que hacer con los casos donde se llega directo a la luz y conectar directo a la camara.
-				if ((t == 0) || (t == 1)) {
+				if ((t == 0)) {
 					continue;
 				}
 
@@ -472,6 +485,8 @@ void main()
 					float dist = length(direction);
 					direction /= dist;
 	
+					if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
+
 					resetPayload(payload, origin, direction);
 					traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - EPSILON, 0);
 					if (payload.status != RAY_MISS) continue;
