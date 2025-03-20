@@ -206,22 +206,21 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				}
 
 				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
-					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
-
-					if (bidirectional_debug_technique) {
-						if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
+					if (ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique)) {
+						vulkanHandler.m_pcRay.debug_technique = bidirectional_debug_technique;
+						if (bidirectional_debug_technique) {
+							if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
+								vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
+								vulkanHandler.resetFrame();
+							}
+							if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
+								vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
+								vulkanHandler.resetFrame();
+							}
+						}
+						else {
 							vulkanHandler.resetFrame();
 						}
-						if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
-							vulkanHandler.resetFrame();
-						}
-					}
-					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
-						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
-						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
-						vulkanHandler.resetFrame();
 					}
 				}
 

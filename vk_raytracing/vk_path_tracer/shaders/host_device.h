@@ -84,6 +84,7 @@ struct PushConstantRayTracer
 
 	int light_count;
 	int max_depth;
+	bool debug_technique;
 	int debug_technique_s;
 	int debug_technique_t;
 };
