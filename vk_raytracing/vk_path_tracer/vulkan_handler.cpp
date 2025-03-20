@@ -253,6 +253,7 @@ void VulkanHandler::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 	proj[1][1] *= -1;  // Inverting Y for Vulkan (not needed with perspectiveVK).
 
 	hostUBO.viewProj = proj * view;
+	hostUBO.proj = proj;
 	hostUBO.view = view;
 	hostUBO.viewInverse = glm::inverse(view);
 	hostUBO.projInverse = glm::inverse(proj);

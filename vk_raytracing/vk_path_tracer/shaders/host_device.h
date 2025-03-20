@@ -56,6 +56,7 @@ struct GlobalUniforms
 {
 	mat4 viewProj;     // Camera view * projection
 	mat4 view;  // Camera view matrix
+	mat4 proj;  // Camera proj matrix
 	mat4 viewInverse;  // Camera inverse view matrix
 	mat4 projInverse;  // Camera inverse projection matrix
 };
