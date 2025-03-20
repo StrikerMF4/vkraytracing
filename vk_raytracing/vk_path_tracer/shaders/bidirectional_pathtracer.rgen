@@ -442,7 +442,7 @@ void main()
 			for (int s = 0; s <= pathVertexCount; s++) {
 				int t = pathVertexCount - s;
 				
-				if (settings.debug_technique && 
+				if (settings.debug_technique_s >= 0 && settings.debug_technique_t >= 0 && 
 					((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
 					continue;
 				}
