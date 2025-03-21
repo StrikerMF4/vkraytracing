@@ -167,7 +167,7 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 			if (ImGui::BeginTabItem("Algoritmo"))
 			{
 				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster" };
-				static int item_current_idx = 0; // Here we store our selection data as an index.
+				static int item_current_idx = current_technique; // Here we store our selection data as an index.
 
 				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
 				const char* combo_preview_value = items[item_current_idx];
@@ -445,7 +445,7 @@ int main(int argc, char** argv)
 
 	TechniqueType current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
-	max_depth = vulkanHandler.current_technique->default_depth;
+	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
@@ -479,6 +479,7 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
+	vulkanHandler.m_pcRay.fov = scene.camera_fov;
 
 	vulkanHandler.setupGlfwCallbacks(window);
 	glfwSetKeyCallback(window, &key_cb);

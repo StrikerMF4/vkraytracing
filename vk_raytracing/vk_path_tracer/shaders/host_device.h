@@ -80,6 +80,7 @@ struct PushConstantRayTracer
 	int   frame;
 	float camAperture;
 	float focusDist;
+	float fov;
 	float shininess;
 	float fuzziness;
 	bool ambientLigth;

@@ -112,7 +112,7 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 	return light_index;
 }
 
-vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf){
+vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf) {
 	Light light = lights.i[light_index];
 
 	if(true){ //Area Light
@@ -120,10 +120,22 @@ vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf){
 	}
 }
 
-float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal){
+float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal) {
 	if(true){ //Area Light
 		return AreaLightPDFDirection(direction, normal) / light.area;
 	}
+}
+
+float eyeDirectionPDF(vec3 direction) {
+	vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
+	float cosTheta = dot(cameraForward, direction);
+
+	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
+	float filmHeight = 2.0f * settings.focusDist * tan(settings.fov * 0.5f);
+	float filmWidth = filmHeight * aspectRatio;
+	float filmArea = filmWidth * filmHeight;
+
+    return settings.focusDist * settings.focusDist / (filmArea * cosTheta * cosTheta * cosTheta);
 }
 
 float misWeight(int s, int t, pdf_connection pdf, float GConnect) 
@@ -208,16 +220,98 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	return 1 / misWeightSum;
 }
 
+vec3 worldToScreen(vec3 pWorld) {
+    vec4 pView = uni.view * vec4(pWorld, 1.0f);
+    vec4 pNDC = uni.viewProj * vec4(pWorld, 1.0f);
+    pNDC /= pNDC.w;
+    float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
+    float screenY = (1.0f - pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
+    return vec3(screenX, screenY, pView.z);
+}
+
+bool worldToScreen(vec3 pWorld, vec3 pLens) {
+    vec4 pView = uni.view * vec4(pWorld, 1.0f);
+    vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
+
+    if (pView.z > 0.0f) {
+        return false;  // Punto detrás de la cámara
+    }
+
+    float lensRadius = settings.camAperture / 2.0;
+    if (lensRadius > 0.0f &&
+        (pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
+         lensRadius * lensRadius)) {
+        return false;  // Punto fuera del área del lente
+    }
+
+    vec4 dir = pView - pLensLocal;
+    if (abs(dir.z) < 1e-7f) {
+        return false;  // Dirección casi paralela al plano del lente
+    }
+
+    vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
+    vec4 pNDC = uni.proj * pFocus;
+    pNDC /= pNDC.w;
+
+    float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
+    float screenY = (1 + pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
+
+	vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    vec2 screenCoord = vec2(screenX, screenY);
+    vec2 diff = abs(pixelCenter - screenCoord);
+
+    if (diff.x > 6 || diff.y > 6) {
+        return false;  // ahora sí robusto y exacto
+    }
+
+    return true;
+}
+
+float evalWe(vec3 pCamera, vec3 pWorld) {
+    if (!worldToScreen(pWorld, pCamera)) {
+        return 0.0f;
+    }
+    vec4 pView = uni.view * vec4(pWorld, 1.0f);
+    vec4 pLensLocal = uni.view * vec4(pCamera, 1.0f);
+    vec4 dir = pView - pLensLocal;
+    vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
+    vec3 lensToFilm = vec3(
+        pFocus.x - pLensLocal.x,
+        pFocus.y - pLensLocal.y,
+        pFocus.z - pLensLocal.z);
+    float lensToFilmDistance2 = dot(lensToFilm, lensToFilm);
+    float cosTheta = abs(normalize(lensToFilm).z);
+    float G = cosTheta * cosTheta / lensToFilmDistance2;
+	float lensRadius = settings.camAperture / 2;
+    float lensArea = lensRadius * lensRadius * PI;
+
+	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
+	float filmHeight = 2.0f * settings.focusDist * tan(settings.fov * 0.5f);
+	float filmWidth = filmHeight * aspectRatio;
+	float filmArea = filmWidth * filmHeight;
+
+    float We = lensRadius > 0.0f ?
+        1.0f / (filmArea * lensArea * G) :
+        1.0f / (filmArea * G);
+    return We;
+}
+
 vec3 connectionFactor(inout point_data light_point, inout point_data eye_point, uint s, uint t, vec3 direction, out pdf_connection pdf, out float g, uint light_index) 
 {
 	vec3 eye_color = vec3(0);
-	float eye_pdfF = 0;
-	float eye_pdfB = 0;
-	disney_pdf(eye_point.w_i, direction, eye_point.normal, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
-
+	if (t == 1) {
+		eye_color = vec3(evalWe(eye_point.point, light_point.point));
+		pdf.eyeF = eyeDirectionPDF(direction) / dot(eye_point.normal, direction);
+		pdf.eyeB = eye_hits[0].pdfB;
+	}
+	else {
+		float eye_pdfF = 0;
+		float eye_pdfB = 0;
+		disney_pdf(eye_point.w_i, direction, eye_point.normal, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
+		pdf.eyeF = eye_pdfF / abs(dot(eye_point.normal, direction));
+		pdf.eyeB = eye_pdfB / abs(dot(eye_point.normal, eye_point.w_i));
+	}
 	vec3 light_color = vec3(0);
-	float light_pdfF = 0;
-	float light_pdfB = 0;
 	if ( s == 1 ) { // direct illumination
 		Light light = lights.i[light_index];
 		light_color = light.emission;
@@ -225,13 +319,12 @@ vec3 connectionFactor(inout point_data light_point, inout point_data eye_point, 
 		pdf.lightB = light_hits[0].pdfB;
 	}
 	else {
+		float light_pdfF = 0;
+		float light_pdfB = 0;
 		disney_pdf(-direction, light_point.w_i, light_point.normal, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
 		pdf.lightF = light_pdfF / abs(dot(light_point.normal, -direction));
 		pdf.lightB = light_pdfB / abs(dot(light_point.normal, light_point.w_i));
 	}
-
-	pdf.eyeF = eye_pdfF / abs(dot(eye_point.normal, direction));
-	pdf.eyeB = eye_pdfB / abs(dot(eye_point.normal, eye_point.w_i));
 
 	g = geometric_term(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 
@@ -270,6 +363,20 @@ void main()
 		vec3 cameraOrigin = origin;
 		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
 		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
+		float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
+
+		// Ahora calculamos explícitamente pdfBackward usando exactamente tu dirección original:
+		vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
+		float lensToFilmDistance2 = (focus_dist * focus_dist) / dot(normalize(target.xyz), vec3(0,0,1));
+		float cosTheta = abs(dot(cameraForward, normalize(direction)));
+
+		float filmHeight = 2.0f * focus_dist * tan(settings.fov * 0.5f);
+		float filmWidth = filmHeight * aspectRatio;
+		float filmArea = filmWidth * filmHeight;
+		float lensArea = (PI * Aperture * Aperture) / 4;
+
+//		float pdfF = lensToFilmDistance2 / (filmArea * cosTheta + 1e-12);
+//		float pdfB = 4 / (PI * Aperture * Aperture);
 
 		// Path Tracing
 		float light_point_pdfq;
@@ -295,11 +402,15 @@ void main()
 
 
 		eye_hits[0].point = origin;
-		eye_hits[0].pdfF = 1.0; //probabilidad del rayo de la cámara
-		eye_hits[0].pdfB = 1.0; //probabilidad del rayo de la cámara
+		eye_hits[0].pdfF = lensToFilmDistance2 / (filmArea * cosTheta + EPSILON); //probabilidad del rayo de la cámara
+		eye_hits[0].pdfB = 4 / (PI * Aperture * Aperture); //probabilidad del rayo de la cámara
 		eye_hits[0].isSpecular = false;
 		eye_hits[0].G = 1.0;
-		vec3 alpha_E = vec3(1.0) / eye_hits[0].pdfF;
+		float G = cosTheta * cosTheta / lensToFilmDistance2;
+		float We = Aperture > 0 ?
+			1.0 / (filmArea * lensArea * G + EPSILON) :
+			1.0 / (filmArea * G + EPSILON);
+		vec3 alpha_E = vec3(We / eye_hits[0].pdfF);
 		eye_hits[0].color = alpha_E;
 		eye_hits[0].w_i = vec3(0);
 		eye_hits[0].normal = normalize(direction);
@@ -427,8 +538,6 @@ void main()
 			resetPayload(payload, payload.origin, payload.direction);
 		}
 
-		if (light_max_index == 0) continue;
-
 
 		uint sample_count = 0;
 		vec3 mis_paths[11*11];
@@ -484,7 +593,7 @@ void main()
 	
 					float dist = length(direction);
 					direction /= dist;
-	
+
 					if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
 					resetPayload(payload, origin, direction);
