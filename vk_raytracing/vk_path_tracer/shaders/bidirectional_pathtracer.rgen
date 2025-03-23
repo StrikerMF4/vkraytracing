@@ -63,7 +63,7 @@ point_data light_hits[11];
 
 uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf){
 	// Pick a random light
-	uint light_index = pcg_hash(payload.random_seed) % settings.light_count;
+	uint light_index = pcg_hash(payload.random_seed) % 1; // todo: volver a settings.light_count y probar que funcione
 
 	//Choose between lights
 	if(true){ //Area Light
@@ -170,7 +170,7 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	float pK = 1.0f;
     float misWeightSum = 1.0f;
 
-    for (int i = s; i <= k; ++i) {
+    for (int i = s; i <= k - 1; ++i) {
         if (i == 0) {
             pK *= misNodes[0].light / misNodes[1].light;
             // exception handling for specular case
@@ -220,15 +220,6 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	return 1 / misWeightSum;
 }
 
-vec3 worldToScreen(vec3 pWorld) {
-    vec4 pView = uni.view * vec4(pWorld, 1.0f);
-    vec4 pNDC = uni.viewProj * vec4(pWorld, 1.0f);
-    pNDC /= pNDC.w;
-    float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
-    float screenY = (1.0f - pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
-    return vec3(screenX, screenY, pView.z);
-}
-
 bool worldToScreen(vec3 pWorld, vec3 pLens) {
     vec4 pView = uni.view * vec4(pWorld, 1.0f);
     vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
@@ -261,7 +252,7 @@ bool worldToScreen(vec3 pWorld, vec3 pLens) {
     vec2 diff = abs(pixelCenter - screenCoord);
 
     if (diff.x > 6 || diff.y > 6) {
-        return false;  // ahora sí robusto y exacto
+        return false;
     }
 
     return true;
@@ -291,8 +282,8 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
 	float filmArea = filmWidth * filmHeight;
 
     float We = lensRadius > 0.0f ?
-        1.0f / (filmArea * lensArea * G) :
-        1.0f / (filmArea * G);
+        1.0f / (filmArea * lensArea * G + EPSILON) :
+        1.0f / (filmArea * G + EPSILON);
     return We;
 }
 
@@ -301,29 +292,29 @@ vec3 connectionFactor(inout point_data light_point, inout point_data eye_point, 
 	vec3 eye_color = vec3(0);
 	if (t == 1) {
 		eye_color = vec3(evalWe(eye_point.point, light_point.point));
-		pdf.eyeF = eyeDirectionPDF(direction) / dot(eye_point.normal, direction);
+		pdf.eyeF = eyeDirectionPDF(direction) / (abs(dot(eye_point.normal, direction)) + EPSILON);
 		pdf.eyeB = eye_hits[0].pdfB;
 	}
 	else {
 		float eye_pdfF = 0;
 		float eye_pdfB = 0;
 		disney_pdf(eye_point.w_i, direction, eye_point.normal, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
-		pdf.eyeF = eye_pdfF / abs(dot(eye_point.normal, direction));
-		pdf.eyeB = eye_pdfB / abs(dot(eye_point.normal, eye_point.w_i));
+		pdf.eyeF = eye_pdfF / (abs(dot(eye_point.normal, direction)) + EPSILON);
+		pdf.eyeB = eye_pdfB / (abs(dot(eye_point.normal, eye_point.w_i)) + EPSILON);
 	}
 	vec3 light_color = vec3(0);
 	if ( s == 1 ) { // direct illumination
 		Light light = lights.i[light_index];
 		light_color = light.emission;
-		pdf.lightF = sampleLightDirectionPDF(light, -direction, light_point.normal) / dot(light_point.normal, -direction); // todo: validar esto
+		pdf.lightF = sampleLightDirectionPDF(light, -direction, light_point.normal) / (abs(dot(light_point.normal, -direction)) + EPSILON); // todo: validar esto
 		pdf.lightB = light_hits[0].pdfB;
 	}
 	else {
 		float light_pdfF = 0;
 		float light_pdfB = 0;
 		disney_pdf(-direction, light_point.w_i, light_point.normal, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
-		pdf.lightF = light_pdfF / abs(dot(light_point.normal, -direction));
-		pdf.lightB = light_pdfB / abs(dot(light_point.normal, light_point.w_i));
+		pdf.lightF = light_pdfF / (abs(dot(light_point.normal, -direction)) + EPSILON);
+		pdf.lightB = light_pdfB / (abs(dot(light_point.normal, light_point.w_i)) + EPSILON);
 	}
 
 	g = geometric_term(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
@@ -367,7 +358,7 @@ void main()
 
 		// Ahora calculamos explícitamente pdfBackward usando exactamente tu dirección original:
 		vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
-		float lensToFilmDistance2 = (focus_dist * focus_dist) / dot(normalize(target.xyz), vec3(0,0,1));
+		float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
 		float cosTheta = abs(dot(cameraForward, normalize(direction)));
 
 		float filmHeight = 2.0f * focus_dist * tan(settings.fov * 0.5f);
@@ -375,21 +366,17 @@ void main()
 		float filmArea = filmWidth * filmHeight;
 		float lensArea = (PI * Aperture * Aperture) / 4;
 
-//		float pdfF = lensToFilmDistance2 / (filmArea * cosTheta + 1e-12);
-//		float pdfB = 4 / (PI * Aperture * Aperture);
-
-		// Path Tracing
-		float light_point_pdfq;
-		uint light_index2 = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdfq);
-		vec3 dir1 = normalize(direction);
-		vec3 dir2 = normalize(light_hits[0].point - origin);
-	
+//		float light_point_pdfq;
+//		uint light_index2 = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdfq);
+//		vec3 dir1 = normalize(direction);
+//		vec3 dir2 = normalize(light_hits[0].point - origin);
+//	
 //		if (dot(dir1,dir2) >= 0.9999) {
 //			output_color = vec3(50,0,0);
 //			break;
 //		}
 //		vec3 light_direction2 = sampleLightDirection(light_index2, light_hits[0].normal, light_point_pdfq);
-
+//
 //		dir2 = normalize((light_hits[0].point + light_direction2 ) - origin);
 //		if (dot(dir1,dir2) >= 0.9999) {
 //			output_color = vec3(0,1,0);
@@ -402,18 +389,19 @@ void main()
 
 
 		eye_hits[0].point = origin;
-		eye_hits[0].pdfF = lensToFilmDistance2 / (filmArea * cosTheta + EPSILON); //probabilidad del rayo de la cámara
-		eye_hits[0].pdfB = 4 / (PI * Aperture * Aperture); //probabilidad del rayo de la cámara
+		float pdfF = lensToFilmDistance2 / (filmArea * cosTheta + EPSILON);
+		eye_hits[0].pdfF = pdfF; //probabilidad del rayo de la cámara
+		eye_hits[0].pdfB = Aperture > 0 ? 4 / (PI * Aperture * Aperture) : 1.0; //probabilidad del rayo de la cámara
 		eye_hits[0].isSpecular = false;
-		eye_hits[0].G = 1.0;
 		float G = cosTheta * cosTheta / lensToFilmDistance2;
+		eye_hits[0].G = 1.0;
 		float We = Aperture > 0 ?
 			1.0 / (filmArea * lensArea * G + EPSILON) :
 			1.0 / (filmArea * G + EPSILON);
-		vec3 alpha_E = vec3(We / eye_hits[0].pdfF);
+		vec3 alpha_E = vec3(We / pdfF);
 		eye_hits[0].color = alpha_E;
 		eye_hits[0].w_i = vec3(0);
-		eye_hits[0].normal = normalize(direction);
+		eye_hits[0].normal = cameraForward;
 
 
 //		float temp_pdfF = 1.0f;
@@ -430,11 +418,11 @@ void main()
 			// Manejar diferentes estados del rayo
 			if (payload.status == RAY_HIT_LIGHT) {
 
-				Light light = lights.i[0];
-				eye_hits[depth + 1].pdfF = 1 / (settings.light_count * light.area);
-				eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal);
+				Light light = lights.i[payload.light_id];
+				eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
+				eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
 				eye_hits[depth + 1].color = payload.Le;
-				eye_hits[depth + 1].G = 1.0;
+				eye_hits[depth + 1].G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
 				hitLight = true;
 				break;
 			} else if (payload.status == RAY_MISS) {
@@ -482,7 +470,7 @@ void main()
 		float light_point_pdf, light_dir_pdf;
 		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
 		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
-		
+
 		light_hits[0].pdfF = light_dir_pdf;
 		light_hits[0].pdfB = light_point_pdf;
 		light_hits[0].isSpecular = false;
@@ -569,7 +557,7 @@ void main()
 				if ((t == 0)) {
 					continue;
 				}
-
+				
 				vec3 eye_point = eye_hits[t-1].point;
 				vec3 light_point;
 				pdf_connection pdf;
@@ -577,30 +565,32 @@ void main()
 				vec3 contribution = vec3(0.0);
 				float mis = 1.0;
 
-				if (s == 0 && hitLight) {
+				if (s == 0) {
+					if (!hitLight) continue;
 					pdf.eyeF = eye_hits[t-1].pdfF; // pdfTEndForward
 					pdf.eyeB = eye_hits[t-1].pdfB; // pdfTEndBackward
-					pdf.lightF = 1;
-					pdf.lightB = 1;
+					pdf.lightF = 0.0;
+					pdf.lightB = 0.0;
 					contribution = eye_hits[t-2].color * eye_hits[t-1].color;
 				}
-				else 
+				else
 				{
-	
 					light_point = light_hits[s-1].point;
 					origin = eye_point;
 					direction = light_point - eye_point;
-	
+
 					float dist = length(direction);
 					direction /= dist;
+
+					if ( t == 1 && !worldToScreen(light_point, eye_point)) continue;
 
 					if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
 					resetPayload(payload, origin, direction);
 					traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - EPSILON, 0);
 					if (payload.status != RAY_MISS) continue;
-	
-	
+
+
 					contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, pdf, GConnect, light_index);
 				}
 
@@ -616,7 +606,7 @@ void main()
 					contribution *=  light_hits[s-2].color;
 				}
 
-				output_color = mis * contribution;
+				output_color += vec3(mis);
 			}
 		}
 
