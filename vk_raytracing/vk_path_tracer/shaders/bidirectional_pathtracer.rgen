@@ -106,7 +106,8 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 //		}
 
 		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
-		pdf = 1 / (settings.light_count * light.area);
+//		pdf = 1 / (settings.light_count * light.area); 
+		pdf = 1.0 / (1.0 * light.area); // todo: revisar por que no anda setting.light_count
 	}
 
 	return light_index;
@@ -122,7 +123,7 @@ vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf) {
 
 float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal) {
 	if(true){ //Area Light
-		return AreaLightPDFDirection(direction, normal) / light.area;
+		return AreaLightPDFDirection(direction, normal);
 	}
 }
 
@@ -220,24 +221,24 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	return 1 / misWeightSum;
 }
 
-bool worldToScreen(vec3 pWorld, vec3 pLens) {
+ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
     vec4 pView = uni.view * vec4(pWorld, 1.0f);
     vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
 
     if (pView.z > 0.0f) {
-        return false;  // Punto detrás de la cámara
+        return ivec2(-1);  // Punto detrás de la cámara
     }
 
     float lensRadius = settings.camAperture / 2.0;
     if (lensRadius > 0.0f &&
         (pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
          lensRadius * lensRadius)) {
-        return false;  // Punto fuera del área del lente
+        return ivec2(-1);  // Punto fuera del área del lente
     }
 
     vec4 dir = pView - pLensLocal;
     if (abs(dir.z) < 1e-7f) {
-        return false;  // Dirección casi paralela al plano del lente
+        return ivec2(-1);  // Dirección casi paralela al plano del lente
     }
 
     vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
@@ -247,19 +248,29 @@ bool worldToScreen(vec3 pWorld, vec3 pLens) {
     float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
     float screenY = (1 + pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
 
-	vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 screenCoord = vec2(screenX, screenY);
-    vec2 diff = abs(pixelCenter - screenCoord);
-
-    if (diff.x > 6 || diff.y > 6) {
-        return false;
+	if (screenX < 0 || screenX > 1280 ||
+        screenY < 0 || screenY > 720) {
+        return ivec2(-1);
     }
 
-    return true;
+//	vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+//    vec2 screenCoord = vec2(screenX, screenY);
+//    vec2 diff = abs(pixelCenter - screenCoord);
+//
+//    if (diff.x > 6 || diff.y > 6) {
+//        return false;
+//    }
+
+    return ivec2(screenX, screenY);
+}
+
+bool worldToScreenBool(vec3 pWorld, vec3 pLens) {
+	ivec2 pixel = worldToScreen(pWorld, pLens);
+	return pixel != ivec2(-1);
 }
 
 float evalWe(vec3 pCamera, vec3 pWorld) {
-    if (!worldToScreen(pWorld, pCamera)) {
+    if (!worldToScreenBool(pWorld, pCamera)) {
         return 0.0f;
     }
     vec4 pView = uni.view * vec4(pWorld, 1.0f);
@@ -305,7 +316,7 @@ vec3 connectionFactor(inout point_data light_point, inout point_data eye_point, 
 	vec3 light_color = vec3(0);
 	if ( s == 1 ) { // direct illumination
 		Light light = lights.i[light_index];
-		light_color = light.emission;
+		light_color = dot(light_point.normal, -direction) > 0 ? light.emission : vec3(0.0);
 		pdf.lightF = sampleLightDirectionPDF(light, -direction, light_point.normal) / (abs(dot(light_point.normal, -direction)) + EPSILON); // todo: validar esto
 		pdf.lightB = light_hits[0].pdfB;
 	}
@@ -471,13 +482,54 @@ void main()
 		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
 		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 
-		light_hits[0].pdfF = light_dir_pdf;
+		light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
 		light_hits[0].pdfB = light_point_pdf;
 		light_hits[0].isSpecular = false;
 		light_hits[0].G = 1.0;
 		light_hits[0].w_i = vec3(0);
 		vec3 alpha_L = light_hits[0].color / light_hits[0].pdfF;
 
+//		vec3 pWorld = eye_hits[0].point;
+//		vec3 pLens = light_hits[0].point;
+//		vec4 pView = uni.view * vec4(pWorld, 1.0f);
+//		vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
+//
+//		if (pView.z > 0.0f) {
+//			output_color = vec3(10,0,0);
+//			break; // Punto detrás de la cámara
+//		}
+//
+//		float lensRadius = settings.camAperture / 2.0;
+//		if (lensRadius > 0.0f &&
+//			(pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
+//			 lensRadius * lensRadius)) {
+//			output_color = vec3(0,10,0);
+//			break; // Punto fuera del área del lente
+//		}
+//
+//		vec4 dir = pView - pLensLocal;
+//		if (abs(dir.z) < 1e-7f) {
+//			output_color = vec3(0, 10,10);
+//			break; // Dirección casi paralela al plano del lente
+//		}
+//
+//		vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
+//		vec4 pNDC = uni.proj * pFocus;
+//		pNDC /= pNDC.w;
+//
+//		float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
+//		float screenY = (1 + pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
+//
+//		if (screenX < 0 || screenX > 1280 ||
+//			screenY < 0 || screenY > 720) {
+//			output_color = vec3(0,0,10);
+//			break;
+//		}
+//
+//		output_color = vec3(1);
+//		break;
+//
+//
 //		temp_pdfF = light_hits[0].pdfF;
 //		temp_pdfB = light_hits[0].pdfB;
 //		lastG = 1.0f;
@@ -565,6 +617,8 @@ void main()
 				vec3 contribution = vec3(0.0);
 				float mis = 1.0;
 
+				ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
+
 				if (s == 0) {
 					if (!hitLight) continue;
 					pdf.eyeF = eye_hits[t-1].pdfF; // pdfTEndForward
@@ -581,8 +635,12 @@ void main()
 
 					float dist = length(direction);
 					direction /= dist;
-
-					if ( t == 1 && !worldToScreen(light_point, eye_point)) continue;
+					
+					if ( t == 1 ) 
+					{
+						pixel = worldToScreen(light_point, eye_point);
+						if (pixel == ivec2(-1)) continue; // invalid pixel
+					}
 
 					if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
@@ -607,6 +665,8 @@ void main()
 				}
 
 				output_color += vec3(mis);
+				imageStore(image, pixel, vec4(output_color, 1.f));
+				return;
 			}
 		}
 
