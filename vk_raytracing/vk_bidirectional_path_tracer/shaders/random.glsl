@@ -43,7 +43,7 @@ vec2 randomGaussian(inout uint rngState) {
   return r * vec2(cos(theta), sin(theta));
 }
 
-vec2 RandomInUnitDisk(inout uint seed) {
+vec2 RandomDiskDirection(inout uint seed) {
 	for (;;) {
 		const vec2 p = 2 * vec2(rnd(seed), rnd(seed)) - 1;
 		if (dot(p, p) < 1) {
@@ -52,7 +52,7 @@ vec2 RandomInUnitDisk(inout uint seed) {
 	}
 }
 
-vec3 RandomInUnitSphere(inout uint seed) {
+vec3 RandomSphereDirection(inout uint seed) {
 	for (;;) {
 		const vec3 p = 2 * vec3(rnd(seed), rnd(seed), rnd(seed)) - 1;
 		if (dot(p, p) < 1) {

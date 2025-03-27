@@ -14,35 +14,29 @@
             "ior": 2.5
         },
         {
-            "name": "Lamp2",
-			"color": [0.462675, 0.462675, 0.462675],
-            "roughness": 0.25,
-            "ior": 2.5
-        },
-        {
             "name": "Paredes",
 			"color": [0.725, 0.71, 0.68]
         },
         {
-            "name": "Wood",
+            "name": "Desk",
 			"color": [0.88, 0.72, 0.46]
         },
         {
-            "name": "egg",
+            "name": "Egg",
 			"color": [0.725, 0.71, 0.68],
 			"roughness": 0.0,
 			"opacity": 0.0,
             "ior": 1.5
         },
         {
-            "name": "light",
+            "name": "Light",
             "emission": [10.0, 10.0, 10.0]
         }
     ],
     "entities": [
 		{
             "type": "mesh",
-            "file": "models/veach_lamps.obj"
+            "file": "models/veach_lamps_alt.obj"
         }
     ]
 }

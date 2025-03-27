@@ -61,7 +61,7 @@ namespace objl
 			clearcoat = 0.0f;
 			clearcoatGloss = 0.0f;
 			specTrans = 0.0f;
-			ior = 1.0f;
+			ior = 1.5f;
 			albedoTextureID = -1;
 			metallicRoughnessTextureID = -1;
 			normalTextureID = -1;
@@ -136,12 +136,14 @@ namespace objl
 			object_id = -1;
 
 			emission = glm::vec3(0.0);
+			area = 1.0;
 			first_index = 0;
 			last_index = 0;
 		}
 
 		int object_id;
 		glm::vec3 emission;
+		float area;
 
 		unsigned int first_index;
 		unsigned int last_index;
@@ -216,7 +218,7 @@ namespace objl
 		//
 		// If the file is unable to be found
 		// or unable to be loaded return false
-		bool LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials = false);
+		bool LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials = false);
 
 		// Loaded Mesh Objects
 		std::vector<Mesh> LoadedMeshes;
@@ -228,6 +230,8 @@ namespace objl
 		std::vector<unsigned int> LoadedMaterialIndices;
 		// Loaded Emissive Objects
 		std::vector<Light> LoadedLights;
+		// Loaded Light indexes
+		std::vector<unsigned int> LoadedLightIDs;
 
 	private:
 		// Generate vertices from a list of positions, 

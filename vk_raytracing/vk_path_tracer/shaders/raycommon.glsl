@@ -1,5 +1,7 @@
+#ifndef RAYCOMMON
+#define RAYCOMMON
 
-#include "wavefront.glsl"
+#include "host_device.h"
 
 const uint RAY_CONTINUE = 1;
 const uint RAY_HIT_LIGHT = 2;
@@ -9,6 +11,12 @@ const uint RAY_ABSORBED = 4;
 const uint BSDF_DIFFUSE = 1;
 const uint BSDF_REFLECTION = 2;
 const uint BSDF_TRANSMISSION = 3;
+
+const float PI = 3.14159265;
+const float TWO_PI = 2*3.14159265;
+const float INV_PI = 1/3.14159265;
+const float EPSILON = 1e-10;
+const float INF = 1e10;
 
 struct rayPayload
 {
@@ -24,12 +32,15 @@ struct rayPayload
 	vec3 surface_normal;
 	vec3 surface_micronormal;
 	float theta;
+	float pdfF;
+	float pdfB;
+	int light_id;
 
 	WaveFrontMaterial material;
 
 	//Exchange
 	uint random_seed;
-
+	bool backward_propagation;
 };
 
 void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
@@ -39,7 +50,15 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 
 	payload.Le = vec3(0);
     payload.bsdf_sample = vec3(0);
+	payload.pdfF = 1.0;
+	payload.pdfB = 1.0;
 	payload.bsdf_type = 0;
+	payload.light_id = 0;
 	payload.surface_normal = vec3(0);
+	payload.surface_micronormal = vec3(0);
+	payload.theta = 0;
+	payload.backward_propagation = false;
 
 }
+
+#endif

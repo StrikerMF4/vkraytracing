@@ -126,7 +126,7 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 
 		ImGui::NewLine();
 
-		//Informaci�n
+		//Informaci�n
 		ImGui::TextColored(white, "ESC: mostrar menu");
 		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "F1: ocultar interfaz");
@@ -140,8 +140,13 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 	ImGui::End();
 }
 
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {	
-	ImGuiH::Panel::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
+float config_max_depth;
+int max_depth = 5;
+bool bidirectional_debug_technique = false;
+int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
+
+inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
+	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
 	if (ImGui::BeginMenuBar())
 	{
@@ -162,7 +167,7 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 			if (ImGui::BeginTabItem("Algoritmo"))
 			{
 				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster" };
-				static int item_current_idx = 0; // Here we store our selection data as an index.
+				static int item_current_idx = current_technique; // Here we store our selection data as an index.
 
 				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
 				const char* combo_preview_value = items[item_current_idx];
@@ -185,12 +190,39 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				if (current_technique != (TechniqueType)item_current_idx)
 				{
 					current_technique = (TechniqueType)item_current_idx;
-					if (current_technique != TechniqueType::RASTER)
+					if (current_technique != TechniqueType::RASTER) {
 						vulkanHandler.changeTechnique(current_technique);
+						vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
+					}
 
 					paused = false;
 					pause_timer_start = std::chrono::high_resolution_clock::now();
 					time_elapsed = 0;
+				}
+
+				if (ImGui::InputInt("Max Depth", &max_depth, 1) && max_depth > 0) {
+					vulkanHandler.m_pcRay.max_depth = max_depth;
+					vulkanHandler.resetFrame();
+				}
+
+				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
+
+					if (bidirectional_debug_technique) {
+						if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
+							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
+							vulkanHandler.resetFrame();
+						}
+						if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
+							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
+							vulkanHandler.resetFrame();
+						}
+					}
+					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
+						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
+						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+						vulkanHandler.resetFrame();
+					}
 				}
 
 				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
@@ -305,6 +337,16 @@ int main(int argc, char** argv)
 	contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);  // To use vkCmdTraceRaysKHR
 	contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
 
+	// Add extensions for atomic image manipulation (used in the bidirectional renderer)
+	VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures;
+	floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+	floatFeatures.shaderImageFloat32AtomicAdd = true; //atomic operations on images
+	//floatFeatures.shaderImageFloat32Atomics = true;
+	//To-Do: Revisar si sparseImage es más útil o eficiente en el caso de bidirectional, ya que no todos los pixeles tendrán información
+	//floatFeatures.sparseImageFloat32Atomics = true;
+	//floatFeatures.sparseImageFloat32AtomicAdd = true;
+	contextInfo.addDeviceExtension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, false, &floatFeatures);
+
 	// Creating Vulkan base application
 	nvvk::Context vkctx{};
 	vkctx.initInstance(contextInfo);
@@ -328,7 +370,7 @@ int main(int argc, char** argv)
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
 	// Load Scene
-	const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
 
 	//Escenas Walter
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronConductor.scn", defaultSearchPaths, true);
@@ -336,19 +378,33 @@ int main(int argc, char** argv)
 	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
 
 	//Bidirectional
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/PatronDielectrico.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps_alt.scn", defaultSearchPaths, true);
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
 
 
+	//Externas
+	//const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
+	/*const std::string scene_path = nvh::findFile("media/scenes/Externas/spaceship.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/diningroom.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/staircase.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/test_veach.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_distant_light.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_rect_lights.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/tropical_island.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_sphere_light.scn", defaultSearchPaths, true);
+	const std::string scene_path = nvh::findFile("media/scenes/Externas/renderman_teapot_all.scn", defaultSearchPaths, true);*/
+	
 	SceneLoader::Scene scene(scene_path);
 
-	// Setup camera - TODO, estaba mas arriba, funciona?
+	// Setup camera
 	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
 	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene.camera_fov);
@@ -394,10 +450,12 @@ int main(int argc, char** argv)
 	//-----------------------------------------------------------------------------------------------------------------------------------------
 
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
+	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER); 
+	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
-	TechniqueType current_technique = TechniqueType::SIMPLE_PATHTRACER;
+	TechniqueType current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
+	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
@@ -429,6 +487,9 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.shininess = 0.f;
 	vulkanHandler.m_pcRay.fuzziness = 0.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
+	vulkanHandler.m_pcRay.debug_technique_s = -1;
+	vulkanHandler.m_pcRay.debug_technique_t = -1;
+	vulkanHandler.m_pcRay.fov = scene.camera_fov;
 
 	vulkanHandler.setupGlfwCallbacks(window);
 	glfwSetKeyCallback(window, &key_cb);
@@ -517,7 +578,7 @@ int main(int argc, char** argv)
 		// 2nd rendering pass: tone mapper, UI
 		{
 			VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-			postRenderPassBeginInfo.clearValueCount = 2;
+			postRenderPassBeginInfo.clearValueCount = 3;
 			postRenderPassBeginInfo.pClearValues = clearValues.data();
 			postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
 			postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];

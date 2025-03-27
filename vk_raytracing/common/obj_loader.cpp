@@ -91,7 +91,7 @@ inline void algorithm::split(const std::string& in,
 				temp.clear();
 				i += (int)token.size() - 1;
 			}
-			else if(token != " ")
+			else if (token != " ")
 			{
 				out.push_back("");
 			}
@@ -161,7 +161,7 @@ inline const T& algorithm::getElement(const std::vector<T>& elements, std::strin
 
 
 
-bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials)
+bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials)
 {
 	// If the file is not an .obj file return false
 	if (Path.substr(Path.size() - 4, 4) != ".obj")
@@ -177,6 +177,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 	LoadedVertices.clear();
 	LoadedIndices.clear();
 	LoadedMaterialIndices.clear();
+	LoadedLightIDs.clear();
 	LoadedLights.clear();
 
 	std::vector<glm::vec3> Positions;
@@ -191,7 +192,6 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 	Mesh tempMesh;
 	Material* tempMaterial = default_material;
-
 
 #ifdef OBJL_CONSOLE_OUTPUT
 	const unsigned int outputEveryNth = 1000;
@@ -247,9 +247,23 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 						Light light;
 
 						light.emission = tempMesh.MeshMaterial->emission;
-						//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-						light.first_index = LoadedIndices.size() - Indices.size();
-						light.last_index = LoadedIndices.size() - 1;
+						light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+						light.last_index = (LoadedIndices.size() - 1) / 3;
+
+						float area = 0.0f;
+						for (int i = 0; i < Indices.size(); i += 3) {
+							glm::vec3 a = Vertices[Indices[i]].Position * scale;
+							glm::vec3 b = Vertices[Indices[i + 1]].Position * scale;
+							glm::vec3 c = Vertices[Indices[i + 2]].Position * scale;
+
+							glm::vec3 AB = b - a;
+							glm::vec3 AC = c - a;
+
+							area += (glm::length(glm::cross(AB, AC))) / 2;
+						}
+						light.area = area;
+
+						std::cout << "First index" << light.first_index << "/ last index " << light.last_index << std::endl;
 
 						LoadedLights.push_back(light);
 					}
@@ -340,7 +354,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 
 			}
 
-			for(int i = 0; i < iIndices.size() / 3; i++)
+			for (int i = 0; i < iIndices.size() / 3; i++)
 				LoadedMaterialIndices.push_back(tempMaterial->ID);
 		}
 		// Get Mesh Material Name
@@ -355,7 +369,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 				tempMesh.MeshMaterial = tempMaterial; //El material anterior, a partir de este momento va a ser otro para el siguiente mesh
 				int i = 2;
 				while (1) {
-					tempMesh.MeshName = meshname + "_" + std::to_string(i);
+					tempMesh.MeshName = meshname + "_" + std::to_string(i++);
 
 					for (auto& m : LoadedMeshes)
 						if (m.MeshName == tempMesh.MeshName)
@@ -367,9 +381,21 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 					Light light;
 
 					light.emission = tempMesh.MeshMaterial->emission;
-					//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-					light.first_index = LoadedIndices.size() - Indices.size();
-					light.last_index = LoadedIndices.size() - 1;
+					light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+					light.last_index = (LoadedIndices.size() - 1) / 3;
+
+					float area = 0.0f;
+					for (int i = 0; i < Indices.size(); i += 3) {
+						glm::vec3 a = Vertices[Indices[i]].Position * scale;
+						glm::vec3 b = Vertices[Indices[i + 1]].Position * scale;
+						glm::vec3 c = Vertices[Indices[i + 2]].Position * scale;
+
+						glm::vec3 AB = b - a;
+						glm::vec3 AC = c - a;
+
+						area += (glm::length(glm::cross(AB, AC))) / 2;
+					}
+					light.area = area;
 
 					LoadedLights.push_back(light);
 				}
@@ -382,7 +408,7 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 				Indices.clear();
 			}
 
-			if(!replace_materials)
+			if (!replace_materials)
 				tempMaterial = &(*materials)[algorithm::tail(curline)];
 
 #ifdef OBJL_CONSOLE_OUTPUT
@@ -408,9 +434,21 @@ bool Loader::LoadFile(std::string Path, std::map<std::string, objl::Material>* m
 			Light light;
 
 			light.emission = tempMesh.MeshMaterial->emission;
-			//TO-DO: Posible punto de fallo, revisar logica con alguna escena de prueba
-			light.first_index = LoadedIndices.size() - Indices.size();
-			light.last_index = LoadedIndices.size() - 1;
+			light.first_index = (LoadedIndices.size() - Indices.size()) / 3;
+			light.last_index = (LoadedIndices.size() - 1) / 3;
+			
+			float area = 0.0f;
+			for (int i = 0; i < Indices.size(); i += 3) {
+				glm::vec3 a = Vertices[Indices[i]].Position * scale;
+				glm::vec3 b = Vertices[Indices[i + 1]].Position * scale;
+				glm::vec3 c = Vertices[Indices[i + 2]].Position * scale;
+
+				glm::vec3 AB = b - a;
+				glm::vec3 AC = c - a;
+
+				area += (glm::length(glm::cross(AB, AC))) / 2;
+			}
+			light.area = area;
 
 			LoadedLights.push_back(light);
 		}

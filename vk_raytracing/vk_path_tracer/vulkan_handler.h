@@ -24,6 +24,7 @@ class Technique
 public:
     std::string codename;
     std::string formatted_name;
+	int default_depth;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
     VkPipelineLayout                                  m_rtPipelineLayout;
@@ -39,9 +40,10 @@ public:
 
 	Technique() = default;
 
-    Technique(std::string codename, std::string formatted_name) {
+    Technique(std::string codename, std::string formatted_name, int default_depth) {
         this->codename = codename;
 		this->formatted_name = formatted_name;
+		this->default_depth = default_depth;
     };
 
     void createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout);
@@ -88,6 +90,7 @@ public:
     nvvk::Buffer indexBuffer;     // Device buffer of the indices forming triangles
     nvvk::Buffer matColorBuffer;  // Device buffer of array of 'Wavefront material'
     nvvk::Buffer matIndexBuffer;  // Device buffer of array of 'Wavefront material'
+    nvvk::Buffer LightIndexBuffer;  // Device buffer of array of 'Wavefront material'
   };
 
   struct ObjInstance
@@ -96,6 +99,7 @@ public:
     uint32_t  objIndex{0};  // Model index reference
   };
 
+  PushConstantPost m_pcPost{};
 
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
@@ -116,12 +120,14 @@ public:
   
   //implicit objects arrays/buffers
   std::vector<unsigned int> m_implicitObj_materials_idx;
+  std::vector<unsigned int> m_implicitObj_light_idx;
   std::vector<objl::Material> m_implicitObj_materials;
   std::vector<Sphere> m_spheres;
   nvvk::Buffer m_implicitObjBuffer;
   nvvk::Buffer m_implicitObj_AABBBuffer;
   nvvk::Buffer m_implicitObj_MatBuffer;
   nvvk::Buffer m_implicitObj_MatIndexBuffer;
+  nvvk::Buffer m_implicitObj_LightIndexBuffer;
   nvvk::Buffer m_spheresBuffer;
 
   // Graphic pipeline
@@ -159,8 +165,10 @@ public:
   VkRenderPass                m_offscreenRenderPass{VK_NULL_HANDLE};
   VkFramebuffer               m_offscreenFramebuffer{VK_NULL_HANDLE};
   nvvk::Texture               m_offscreenColor;
+  nvvk::Texture               m_offscreenAuxColor;
   nvvk::Texture               m_offscreenDepth;
-  VkFormat                    m_offscreenColorFormat{VK_FORMAT_R32G32B32A32_SFLOAT};
+  VkFormat                    m_offscreenColorFormat{ VK_FORMAT_R16G16B16A16_SFLOAT }; //To-Do: ver si al cambiar a 16 bits es mas eficiente, al menos en memoria lo sería
+  VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R32_SFLOAT };
   VkFormat                    m_offscreenDepthFormat{VK_FORMAT_X8_D24_UNORM_PACK32};
 
   // #VKRay
@@ -197,19 +205,22 @@ public:
   void setupTechnique(TechniqueType type) {
       switch (type) {
 	  case SHADOWRAY_PATHTRACER:
-          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer");
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer", 10);
 		  break;
 	  case SIMPLE_PATHTRACER:
-		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer");
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer", 10);
 		  break;
 	  case BIDIRECTIONAL_PATHTRACER:
-		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer");
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 4);
 		  break;
       }
   }
 
   void changeTechnique(TechniqueType type) {
       current_technique = m_techniques[type];
+
+      m_pcPost.bidirectional_correction = type == BIDIRECTIONAL_PATHTRACER;
+
       resetFrame();
   }
 

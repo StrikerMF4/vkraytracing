@@ -22,6 +22,7 @@ layout(buffer_reference, scalar) buffer Vertices {Vertex v[]; }; // Positions of
 layout(buffer_reference, scalar) buffer Indices {ivec3 i[]; }; // Triangle indices
 layout(buffer_reference, scalar) buffer Materials {WaveFrontMaterial m[]; }; // Array of all materials on an object
 layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID for each triangle
+layout(buffer_reference, scalar) buffer LightIndices {int i[]; }; // Light ID for each triangle
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
@@ -29,11 +30,11 @@ layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-
 void main() {
     //Object data-------------------------------------------------------------------------------------------
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
     MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
+    LightIndices lightIndices = LightIndices(objResource.lightIndexAddress);
     Materials  materials   = Materials(objResource.materialAddress);
     Indices    indices     = Indices(objResource.indexAddress);
     Vertices   vertices    = Vertices(objResource.vertexAddress);
@@ -53,10 +54,11 @@ void main() {
     const vec3 local_normal = v0.nrm * barycentrics.x + v1.nrm * barycentrics.y + v2.nrm * barycentrics.z;
     payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
 
+    payload.light_id = lightIndices.i[gl_PrimitiveID];
     
     // Material of the object
-    int               matIdx = matIndices.i[gl_PrimitiveID];
-    payload.material    = materials.m[matIdx];
+    int matIdx = matIndices.i[gl_PrimitiveID];
+    payload.material = materials.m[matIdx];
 
     // Texture
     vec3 texture_color = vec3(1);
@@ -75,5 +77,4 @@ void main() {
 
     payload.origin = hit_position + payload.direction * 1e-4;
 }
-
 

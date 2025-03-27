@@ -48,19 +48,7 @@
     "entities": [
 		{
             "type": "mesh",
-            "file": "models/CornellBox-Empty.obj"
-        },
-		{
-            "type": "sphere",
-            "position": [-0.42, 0.33, -0.28],
-			"material": "leftSphere",
-			"radius": 0.33
-        },
-		{
-            "type": "sphere",
-            "position": [0.44, 0.33, 0.38],
-			"material": "rightSphere",
-			"radius": 0.33
+            "file": "models/CornellBox-Sphere.obj"
         }
     ]
 }

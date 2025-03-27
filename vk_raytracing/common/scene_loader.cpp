@@ -130,7 +130,32 @@ Scene::Scene(const std::string& filepath) {
 		json entities_data = data["entities"];
 
 		for (json::iterator it = entities_data.begin(); it != entities_data.end(); ++it) {
-			Entity* entity;
+			Entity* entity = nullptr;
+
+			glm::vec3 position = glm::vec3();
+			glm::vec3 rotation = glm::vec3();
+			glm::vec3 scale = glm::vec3(1.0);
+
+			if ((*it).contains("position"))
+				position = glm::vec3(
+					(*it)["position"][0].template get<double>(),
+					(*it)["position"][1].template get<double>(),
+					(*it)["position"][2].template get<double>()
+				);
+
+			if ((*it).contains("rotation"))
+				rotation = glm::vec3(
+					(*it)["rotation"][0].template get<double>(),
+					(*it)["rotation"][1].template get<double>(),
+					(*it)["rotation"][2].template get<double>()
+				);
+
+			if ((*it).contains("scale"))
+				scale = glm::vec3(
+					(*it)["scale"][0].template get<double>(),
+					(*it)["scale"][1].template get<double>(),
+					(*it)["scale"][2].template get<double>()
+				);
 
 			std::string entity_type = (*it)["type"].template get<std::string>();
 
@@ -155,7 +180,7 @@ Scene::Scene(const std::string& filepath) {
 
 				Shape* shape = new Shape();
 
-				shape->model_loader.LoadFile(path.string(), &materials_map, default_material, replace_materials);
+				shape->model_loader.LoadFile(path.string(), scale, &materials_map, default_material, replace_materials);
 
 				entity = shape;
 			}
@@ -165,33 +190,18 @@ Scene::Scene(const std::string& filepath) {
 				sphere->radius = (*it)["radius"].template get<double>();
 				sphere->material_idx = materials_map[(*it)["material"].template get<std::string>()].ID;
 				if ((*it).contains("inverted_normal"))
-					sphere->inverted_normal = (*it)["inverted_normal"].template get<bool>();
+					sphere->inverted_normal = (*it)["inverted_normal"].template get<int>();
 
 				entity = sphere;
 			} else {
 				LOGI("SCENE_LOADER::UNRECOGNISED_ENTITY_TYPE:: received type: ",entity_type);
 			}
 
-			if ((*it).contains("position"))
-				entity->position = glm::vec3(
-					(*it)["position"][0].template get<double>(),
-					(*it)["position"][1].template get<double>(),
-					(*it)["position"][2].template get<double>()
-				);
-
-			if ((*it).contains("rotation"))
-				entity->rotation = glm::vec3(
-					(*it)["rotation"][0].template get<double>(),
-					(*it)["rotation"][1].template get<double>(),
-					(*it)["rotation"][2].template get<double>()
-				);
-
-			if ((*it).contains("scale"))
-				entity->scale = glm::vec3(
-					(*it)["scale"][0].template get<double>(),
-					(*it)["scale"][1].template get<double>(),
-					(*it)["scale"][2].template get<double>()
-				);
+			if (entity != nullptr) {
+				entity->position = position;
+				entity->rotation = rotation;
+				entity->scale = scale;
+			}
 
 			entities.push_back(entity);
 		}

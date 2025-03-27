@@ -18,21 +18,45 @@ struct Ray
   vec3 direction;
 };
 
-// Ray-Sphere intersection
-// http://viclw17.github.io/2018/07/16/raytracing-ray-sphere-intersection/
-float hitSphere(const Sphere s, const Ray r)
+//https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection.html#
+float hitSphere(const Sphere s, const Ray ray)
 {
-    vec3  oc           = r.origin - s.center;
-    float a            = dot(r.direction, r.direction);
-    float b            = 2.0 * dot(oc, r.direction);
-    float c            = dot(oc, oc) - s.radius * s.radius;
-    float discriminant = b * b - 4 * a * c;
+    float t0, t1; // Solutions for t if the ray intersects the sphere
 
-    if(discriminant < 0)
-        return -1.0;
-    else
-        return (-b - sqrt(discriminant)) / (2.0 * a);
+    // Geometric solution
+    vec3 L = s.center - ray.origin;
+    float tca = dot(L, ray.direction);
+    // if (tca < 0) return false;
+    float d2 = dot(L,L) - tca * tca;
+    if (d2 > s.radius * s.radius) return -1;
+    float thc = sqrt(s.radius * s.radius - d2);
+    t0 = tca - thc;
+    t1 = tca + thc;
+
+
+    // //Sin branching, ver cual es mas rápido
+    // float test_1 = step(0.0, t0);
+    // float test_2 = step(0.0, t1);
+    // float test = step(0.01, test_1 + test_2);
+
+    // t0 = mix(INF, t0, test_1);
+    // t1 = mix(INF, t1, test_2);
+    // return mix(-1.0, min(t0, t1), test);
+
+    if (t0 > t1) {
+        float temp = t0;
+        t0 = t1;
+        t1 = temp;
+    }
+
+    if (t0 < 0) {
+        t0 = t1; // If t0 is negative, let's use t1 instead.
+        if (t0 < 0) return -1; // Both t0 and t1 are negative.
+    }
+
+    return t0;
 }
+
 
 void main()
 {

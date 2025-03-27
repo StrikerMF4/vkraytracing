@@ -32,12 +32,20 @@ END_BINDING();
 
 START_BINDING(RtxBindings)
 eTlas = 0,  // Top-level acceleration structure
-eOutImage = 1   // Ray tracer output image
+eOutImage = 1,   // Ray tracer output image
+eBidirectionalLightImage = 2   // Ray tracer bidirectional image for light tracing
 END_BINDING();
+
+START_BINDING(PostBindings)
+eRenderedImage = 0,   // Ray tracer output image
+eRenderedLightImage = 1   // Ray tracer bidirectional image for light tracing
+END_BINDING();
+
 // clang-format on
 
 #define KIND_SPHERE 0
 #define KIND_CUBE 1
+#define KIND_GEOMETRY 2
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc
@@ -47,14 +55,26 @@ struct ObjDesc
 	uint64_t indexAddress;          // Address of the index buffer
 	uint64_t materialAddress;       // Address of the material buffer
 	uint64_t materialIndexAddress;  // Address of the triangle material index buffer
+	uint64_t lightIndexAddress;  // Address of the triangle material index buffer
 };
 
 // Uniform buffer set at each frame
 struct GlobalUniforms
 {
 	mat4 viewProj;     // Camera view * projection
+	mat4 view;  // Camera view matrix
+	mat4 proj;  // Camera proj matrix
 	mat4 viewInverse;  // Camera inverse view matrix
 	mat4 projInverse;  // Camera inverse projection matrix
+};
+
+// Push constant structure for the raster
+struct PushConstantPost
+{
+	uint image_width;
+	uint image_height;
+	bool bidirectional_correction;
+	int   frame;
 };
 
 // Push constant structure for the raster
@@ -76,11 +96,15 @@ struct PushConstantRayTracer
 	int   frame;
 	float camAperture;
 	float focusDist;
+	float fov;
 	float shininess;
 	float fuzziness;
 	bool ambientLigth;
 
 	int light_count;
+	int max_depth;
+	int debug_technique_s;
+	int debug_technique_t;
 };
 
 struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device
@@ -98,7 +122,7 @@ struct ImplicitObj {
 struct Sphere {
 	vec3 center;
 	float radius;
-	bool inverted_normal;
+	int inverted_normal;
 };
 
 struct AABB {
@@ -141,8 +165,12 @@ struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compre
 
 struct Light {
 	int object_id;
+	mat4 object_to_world;
+	mat4 world_to_object;
 	vec3 emission;
-
+	float area;
+	uint mesh_type;
+	//If mesh_type is KIND_GEOMETRY, first_index is the index of the sphere in the implicit objects buffer
 	uint first_index;
 	uint last_index;
 };
