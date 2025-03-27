@@ -6,6 +6,7 @@
 
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_atomic_float : enable
 
 #include "lights.glsl"
 #include "wavefront.glsl"
@@ -20,7 +21,8 @@ layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions o
 layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
+layout(set = 0, binding = eOutImage, rgba16f) uniform image2D output_image;
+layout(set = 0, binding = eBidirectionalLightImage, r32f) uniform image2D light_output_image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
@@ -664,9 +666,18 @@ void main()
 					contribution *=  light_hits[s-2].color;
 				}
 
+				if(t == 1) {
+					vec3 light_contribution = vec3(contribution);
+
+					imageAtomicAdd(light_output_image, pixel, light_contribution.r); //r
+					imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), light_contribution.g); //g
+					imageAtomicAdd(light_output_image, ivec2(pixel.x, pixel.y + gl_LaunchSizeEXT.y), light_contribution.b); //b
+					imageAtomicAdd(light_output_image, pixel + ivec2(gl_LaunchSizeEXT), 1); //count
+
+					continue;
+				}
+
 				output_color += vec3(mis);
-				imageStore(image, pixel, vec4(output_color, 1.f));
-				return;
 			}
 		}
 
@@ -679,11 +690,11 @@ void main()
 	if(settings.frame > 0)
 	{   //Accumulation over time
 		float a         = 1.0f / float(settings.frame + 1);
-		vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
-		imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
+		vec3  old_color = imageLoad(output_image, ivec2(gl_LaunchIDEXT.xy)).xyz;
+		imageStore(output_image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
 	}
 	else
 	{   // First frame, replace the value in the buffer
-		imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
+		imageStore(output_image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
 	}
 }

@@ -99,6 +99,7 @@ public:
     uint32_t  objIndex{0};  // Model index reference
   };
 
+  PushConstantPost m_pcPost{};
 
   // Information pushed at each draw call
   PushConstantRaster m_pcRaster{
@@ -164,8 +165,10 @@ public:
   VkRenderPass                m_offscreenRenderPass{VK_NULL_HANDLE};
   VkFramebuffer               m_offscreenFramebuffer{VK_NULL_HANDLE};
   nvvk::Texture               m_offscreenColor;
+  nvvk::Texture               m_offscreenAuxColor;
   nvvk::Texture               m_offscreenDepth;
-  VkFormat                    m_offscreenColorFormat{VK_FORMAT_R32G32B32A32_SFLOAT};
+  VkFormat                    m_offscreenColorFormat{ VK_FORMAT_R16G16B16A16_SFLOAT }; //To-Do: ver si al cambiar a 16 bits es mas eficiente, al menos en memoria lo sería
+  VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R32_SFLOAT };
   VkFormat                    m_offscreenDepthFormat{VK_FORMAT_X8_D24_UNORM_PACK32};
 
   // #VKRay
@@ -215,6 +218,9 @@ public:
 
   void changeTechnique(TechniqueType type) {
       current_technique = m_techniques[type];
+
+      m_pcPost.bidirectional_correction = type == BIDIRECTIONAL_PATHTRACER;
+
       resetFrame();
   }
 

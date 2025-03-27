@@ -337,6 +337,16 @@ int main(int argc, char** argv)
 	contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);  // To use vkCmdTraceRaysKHR
 	contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
 
+	// Add extensions for atomic image manipulation (used in the bidirectional renderer)
+	VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures;
+	floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+	floatFeatures.shaderImageFloat32AtomicAdd = true; //atomic operations on images
+	//floatFeatures.shaderImageFloat32Atomics = true;
+	//To-Do: Revisar si sparseImage es más útil o eficiente en el caso de bidirectional, ya que no todos los pixeles tendrán información
+	//floatFeatures.sparseImageFloat32Atomics = true;
+	//floatFeatures.sparseImageFloat32AtomicAdd = true;
+	contextInfo.addDeviceExtension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, false, &floatFeatures);
+
 	// Creating Vulkan base application
 	nvvk::Context vkctx{};
 	vkctx.initInstance(contextInfo);
@@ -568,7 +578,7 @@ int main(int argc, char** argv)
 		// 2nd rendering pass: tone mapper, UI
 		{
 			VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-			postRenderPassBeginInfo.clearValueCount = 2;
+			postRenderPassBeginInfo.clearValueCount = 3;
 			postRenderPassBeginInfo.pClearValues = clearValues.data();
 			postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
 			postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];
