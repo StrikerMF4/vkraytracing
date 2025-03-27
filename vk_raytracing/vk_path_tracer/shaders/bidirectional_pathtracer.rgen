@@ -21,7 +21,7 @@ layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions o
 layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = eOutImage, rgba32f) uniform image2D output_image;
+layout(set = 0, binding = eOutImage, rgba16f) uniform image2D output_image;
 layout(set = 0, binding = eBidirectionalLightImage, r32f) uniform image2D light_output_image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
 
@@ -666,10 +666,9 @@ void main()
 					contribution *=  light_hits[s-2].color;
 				}
 
-				if(t == 1){
-					//imageStore(light_output_image, pixel, vec4(mis * contribution, 1.f));
-					
-					vec3 light_contribution = mis * contribution;
+				if(t == 1) {
+					vec3 light_contribution = vec3(contribution);
+
 					imageAtomicAdd(light_output_image, pixel, light_contribution.r); //r
 					imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), light_contribution.g); //g
 					imageAtomicAdd(light_output_image, ivec2(pixel.x, pixel.y + gl_LaunchSizeEXT.y), light_contribution.b); //b
