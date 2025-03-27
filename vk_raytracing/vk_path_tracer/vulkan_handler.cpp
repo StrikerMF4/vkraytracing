@@ -958,6 +958,7 @@ void VulkanHandler::destroyResources()
 
 	//#Post
 	m_alloc.destroy(m_offscreenColor);
+	m_alloc.destroy(m_offscreenAuxColor);
 	m_alloc.destroy(m_offscreenDepth);
 	vkDestroyPipeline(m_device, m_postPipeline, nullptr);
 	vkDestroyPipelineLayout(m_device, m_postPipelineLayout, nullptr);
@@ -1031,6 +1032,7 @@ void VulkanHandler::onResize(int /*w*/, int /*h*/)
 void VulkanHandler::createOffscreenRender()
 {
 	m_alloc.destroy(m_offscreenColor);
+	m_alloc.destroy(m_offscreenAuxColor);
 	m_alloc.destroy(m_offscreenDepth);
 
 	// Creating the color image
@@ -1045,6 +1047,20 @@ void VulkanHandler::createOffscreenRender()
 		VkSamplerCreateInfo   sampler{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 		m_offscreenColor = m_alloc.createTexture(image, ivInfo, sampler);
 		m_offscreenColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	}
+
+	// Creating the auxiliary color image (used in bidirectional)
+	{
+		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenAuxColorFormat,
+			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+			| VK_IMAGE_USAGE_STORAGE_BIT);
+
+
+		nvvk::Image           image = m_alloc.createImage(colorCreateInfo);
+		VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, colorCreateInfo);
+		VkSamplerCreateInfo   sampler{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+		m_offscreenAuxColor = m_alloc.createTexture(image, ivInfo, sampler);
+		m_offscreenAuxColor.descriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 
 	// Creating the depth buffer
@@ -1067,6 +1083,7 @@ void VulkanHandler::createOffscreenRender()
 		nvvk::CommandPool genCmdBuf(m_device, m_graphicsQueueIndex);
 		auto              cmdBuf = genCmdBuf.createCommandBuffer();
 		nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenColor.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+		nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenAuxColor.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 		nvvk::cmdBarrierImageLayout(cmdBuf, m_offscreenDepth.image, VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_ASPECT_DEPTH_BIT);
 
@@ -1082,12 +1099,12 @@ void VulkanHandler::createOffscreenRender()
 
 
 	// Creating the frame buffer for offscreen
-	std::vector<VkImageView> attachments = { m_offscreenColor.descriptor.imageView, m_offscreenDepth.descriptor.imageView };
+	std::vector<VkImageView> attachments = { m_offscreenColor.descriptor.imageView, m_offscreenDepth.descriptor.imageView, m_offscreenAuxColor.descriptor.imageView };
 
 	vkDestroyFramebuffer(m_device, m_offscreenFramebuffer, nullptr);
 	VkFramebufferCreateInfo info{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	info.renderPass = m_offscreenRenderPass;
-	info.attachmentCount = 2;
+	info.attachmentCount = 3;
 	info.pAttachments = attachments.data();
 	info.width = m_size.width;
 	info.height = m_size.height;
@@ -1101,7 +1118,7 @@ void VulkanHandler::createOffscreenRender()
 void VulkanHandler::createPostPipeline()
 {
 	// Push constants in the fragment shader
-	VkPushConstantRange pushConstantRanges = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) };
+	VkPushConstantRange pushConstantRanges = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantPost) };
 
 	// Creating the pipeline layout
 	VkPipelineLayoutCreateInfo createInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
@@ -1127,10 +1144,20 @@ void VulkanHandler::createPostPipeline()
 //
 void VulkanHandler::createPostDescriptor()
 {
-	m_postDescSetLayoutBind.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+	m_postDescSetLayoutBind.addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);  // Output image
+	m_postDescSetLayoutBind.addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);  // Bidirectional light tracing image
+
 	m_postDescSetLayout = m_postDescSetLayoutBind.createLayout(m_device);
 	m_postDescPool = m_postDescSetLayoutBind.createPool(m_device);
 	m_postDescSet = nvvk::allocateDescriptorSet(m_device, m_postDescPool, m_postDescSetLayout);
+
+	VkDescriptorImageInfo outImageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo bidirectionalImageInfo{ {}, m_offscreenAuxColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+
+	std::vector<VkWriteDescriptorSet> writes;
+	writes.emplace_back(m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &outImageInfo));
+	writes.emplace_back(m_postDescSetLayoutBind.makeWrite(m_postDescSet, 1, &bidirectionalImageInfo));
+	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 
@@ -1139,8 +1166,16 @@ void VulkanHandler::createPostDescriptor()
 //
 void VulkanHandler::updatePostDescriptorSet()
 {
-	VkWriteDescriptorSet writeDescriptorSets = m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &m_offscreenColor.descriptor);
-	vkUpdateDescriptorSets(m_device, 1, &writeDescriptorSets, 0, nullptr);
+	VkDescriptorImageInfo outImageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo bidirectionalImageInfo{ {}, m_offscreenAuxColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+
+	m_pcPost.image_width = m_size.width;
+	m_pcPost.image_height = m_size.height;
+
+	std::vector<VkWriteDescriptorSet> writes;
+	writes.emplace_back(m_postDescSetLayoutBind.makeWrite(m_postDescSet, 0, &outImageInfo));
+	writes.emplace_back(m_postDescSetLayoutBind.makeWrite(m_postDescSet, 1, &bidirectionalImageInfo));
+	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1152,8 +1187,11 @@ void VulkanHandler::drawPost(VkCommandBuffer cmdBuf)
 
 	setViewport(cmdBuf);
 
-	auto aspectRatio = static_cast<float>(m_size.width) / static_cast<float>(m_size.height);
-	vkCmdPushConstants(cmdBuf, m_postPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &aspectRatio);
+	m_pcPost.image_width = m_size.width;
+	m_pcPost.image_height = m_size.height;
+
+	vkCmdPushConstants(cmdBuf, current_technique->m_rtPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantPost), &m_pcPost);
+
 	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_postPipeline);
 	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_postPipelineLayout, 0, 1, &m_postDescSet, 0, nullptr);
 	vkCmdDraw(cmdBuf, 3, 1, 0, 0);
@@ -1321,6 +1359,8 @@ void VulkanHandler::createRtDescriptorSet()
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);  // TLAS
 	m_rtDescSetLayoutBind.addBinding(RtxBindings::eOutImage, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR);  // Output image
+	m_rtDescSetLayoutBind.addBinding(RtxBindings::eBidirectionalLightImage, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1,
+		VK_SHADER_STAGE_RAYGEN_BIT_KHR);  // Bidirectional light tracing image
 
 	m_rtDescPool = m_rtDescSetLayoutBind.createPool(m_device);
 	m_rtDescSetLayout = m_rtDescSetLayoutBind.createLayout(m_device);
@@ -1336,11 +1376,13 @@ void VulkanHandler::createRtDescriptorSet()
 	VkWriteDescriptorSetAccelerationStructureKHR descASInfo{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR };
 	descASInfo.accelerationStructureCount = 1;
 	descASInfo.pAccelerationStructures = &tlas;
-	VkDescriptorImageInfo imageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo outImageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo bidirectionalImageInfo{ {}, m_offscreenAuxColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
 
 	std::vector<VkWriteDescriptorSet> writes;
 	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eTlas, &descASInfo));
-	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo));
+	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &outImageInfo));
+	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eBidirectionalLightImage, &bidirectionalImageInfo));
 	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
@@ -1352,9 +1394,13 @@ void VulkanHandler::createRtDescriptorSet()
 void VulkanHandler::updateRtDescriptorSet()
 {
 	// (1) Output buffer
-	VkDescriptorImageInfo imageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
-	VkWriteDescriptorSet  wds = m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &imageInfo);
-	vkUpdateDescriptorSets(m_device, 1, &wds, 0, nullptr);
+	VkDescriptorImageInfo outImageInfo{ {}, m_offscreenColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+	VkDescriptorImageInfo bidirectionalImageInfo{ {}, m_offscreenAuxColor.descriptor.imageView, VK_IMAGE_LAYOUT_GENERAL };
+
+	std::vector<VkWriteDescriptorSet> writes;
+	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eOutImage, &outImageInfo));
+	writes.emplace_back(m_rtDescSetLayoutBind.makeWrite(m_rtDescSet, RtxBindings::eBidirectionalLightImage, &bidirectionalImageInfo));
+	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 
@@ -1434,12 +1480,12 @@ void VulkanHandler::updateFrame()
 		lastCamAperture = m_pcRay.camAperture;
 		lastFocusDist = m_pcRay.focusDist;
 	}
-	m_pcRay.frame++;
+	m_pcPost.frame = ++m_pcRay.frame;
 }
 
 void VulkanHandler::resetFrame()
 {
-	m_pcRay.frame = -1;
+	m_pcPost.frame = m_pcRay.frame = -1;
 }
 
 void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)

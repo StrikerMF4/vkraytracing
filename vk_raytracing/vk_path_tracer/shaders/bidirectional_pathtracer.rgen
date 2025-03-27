@@ -20,7 +20,8 @@ layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions o
 layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
+layout(set = 0, binding = eOutImage, rgba32f) uniform image2D output_image;
+layout(set = 0, binding = eBidirectionalLightImage, rgba32f) uniform image2D light_output_image;
 layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
@@ -664,9 +665,13 @@ void main()
 					contribution *=  light_hits[s-2].color;
 				}
 
+				if(t == 1){
+					//To-Do: replace with atomic add
+					imageStore(light_output_image, pixel, vec4(mis * contribution, 1.f));
+					continue;
+				}
+
 				output_color += vec3(mis);
-				imageStore(image, pixel, vec4(output_color, 1.f));
-				return;
 			}
 		}
 
@@ -679,11 +684,11 @@ void main()
 	if(settings.frame > 0)
 	{   //Accumulation over time
 		float a         = 1.0f / float(settings.frame + 1);
-		vec3  old_color = imageLoad(image, ivec2(gl_LaunchIDEXT.xy)).xyz;
-		imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
+		vec3  old_color = imageLoad(output_image, ivec2(gl_LaunchIDEXT.xy)).xyz;
+		imageStore(output_image, ivec2(gl_LaunchIDEXT.xy), vec4(mix(old_color, output_color, a), 1.f));
 	}
 	else
 	{   // First frame, replace the value in the buffer
-		imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
+		imageStore(output_image, ivec2(gl_LaunchIDEXT.xy), vec4(output_color, 1.f));
 	}
 }

@@ -32,8 +32,15 @@ END_BINDING();
 
 START_BINDING(RtxBindings)
 eTlas = 0,  // Top-level acceleration structure
-eOutImage = 1   // Ray tracer output image
+eOutImage = 1,   // Ray tracer output image
+eBidirectionalLightImage = 2   // Ray tracer bidirectional image for light tracing
 END_BINDING();
+
+START_BINDING(PostBindings)
+eRenderedImage = 0,   // Ray tracer output image
+eRenderedLightImage = 1   // Ray tracer bidirectional image for light tracing
+END_BINDING();
+
 // clang-format on
 
 #define KIND_SPHERE 0
@@ -59,6 +66,15 @@ struct GlobalUniforms
 	mat4 proj;  // Camera proj matrix
 	mat4 viewInverse;  // Camera inverse view matrix
 	mat4 projInverse;  // Camera inverse projection matrix
+};
+
+// Push constant structure for the raster
+struct PushConstantPost
+{
+	uint image_width;
+	uint image_height;
+	bool bidirectional_correction;
+	int   frame;
 };
 
 // Push constant structure for the raster
