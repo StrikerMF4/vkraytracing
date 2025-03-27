@@ -1051,7 +1051,12 @@ void VulkanHandler::createOffscreenRender()
 
 	// Creating the auxiliary color image (used in bidirectional)
 	{
-		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenAuxColorFormat,
+		auto size = VkExtent2D();
+		
+		size.width = m_size.width * 2;
+		size.height = m_size.height * 2;
+
+		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(size, m_offscreenAuxColorFormat,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
 			| VK_IMAGE_USAGE_STORAGE_BIT);
 
