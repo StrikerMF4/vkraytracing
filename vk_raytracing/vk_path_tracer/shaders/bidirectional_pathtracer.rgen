@@ -272,9 +272,7 @@ bool worldToScreenBool(vec3 pWorld, vec3 pLens) {
 }
 
 float evalWe(vec3 pCamera, vec3 pWorld) {
-    if (!worldToScreenBool(pWorld, pCamera)) {
-        return 0.0f;
-    }
+
     vec4 pView = uni.view * vec4(pWorld, 1.0f);
     vec4 pLensLocal = uni.view * vec4(pCamera, 1.0f);
     vec4 dir = pView - pLensLocal;
@@ -290,7 +288,7 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     float lensArea = lensRadius * lensRadius * PI;
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
-	float filmHeight = 2.0f * settings.focusDist * tan(settings.fov * 0.5f);
+	float filmHeight = 2.0f * settings.focusDist * tan(radians(settings.fov) * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
 
@@ -374,7 +372,7 @@ void main()
 		float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
 		float cosTheta = abs(dot(cameraForward, normalize(direction)));
 
-		float filmHeight = 2.0f * focus_dist * tan(settings.fov * 0.5f);
+		float filmHeight = 2.0f * focus_dist * tan(radians(settings.fov) * 0.5f);
 		float filmWidth = filmHeight * aspectRatio;
 		float filmArea = filmWidth * filmHeight;
 		float lensArea = (PI * Aperture * Aperture) / 4;
@@ -402,7 +400,7 @@ void main()
 
 
 		eye_hits[0].point = origin;
-		float pdfF = lensToFilmDistance2 / (filmArea * cosTheta + EPSILON);
+		float pdfF = lensToFilmDistance2 / (filmArea + EPSILON);
 		eye_hits[0].pdfF = pdfF; //probabilidad del rayo de la cámara
 		eye_hits[0].pdfB = Aperture > 0 ? 4 / (PI * Aperture * Aperture) : 1.0; //probabilidad del rayo de la cámara
 		eye_hits[0].isSpecular = false;
@@ -443,7 +441,8 @@ void main()
 				break;
 			}
 
-			alpha_E *= payload.bsdf_sample / (payload.pdfF + EPSILON);
+			float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+			alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
 
 			float G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal,
 							payload.origin, payload.surface_normal);
@@ -457,7 +456,7 @@ void main()
 			eye_hits[eye_max_index].normal = payload.surface_normal;
 			eye_hits[eye_max_index].material = payload.material;
 			eye_hits[eye_max_index].w_i = -direction;
-			eye_hits[eye_max_index].pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+			eye_hits[eye_max_index].pdfF = pdfF;
 			eye_hits[eye_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
 			if (eye_hits[eye_max_index].isSpecular) {
 				eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
@@ -545,8 +544,8 @@ void main()
 			if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT){
 				break;
 			}
-
-			alpha_L *= payload.bsdf_sample / (payload.pdfF + EPSILON);
+			float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+			alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
 
 			float G = geometric_term(light_hits[light_max_index].point, light_hits[light_max_index].normal,
 										payload.origin, payload.surface_normal);
@@ -561,8 +560,8 @@ void main()
 			light_hits[light_max_index].material = payload.material;
 			light_hits[light_max_index].w_i = -light_direction;
 			light_hits[light_max_index].color = alpha_L;
+			light_hits[light_max_index].pdfF = pdfF;
 
-			light_hits[light_max_index].pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
 			light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
 			if (light_hits[light_max_index].isSpecular) {
 				light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
@@ -640,7 +639,7 @@ void main()
 					
 					if ( t == 1 ) 
 					{
-						pixel = worldToScreen(light_point, eye_point);
+						pixel = worldToScreen(light_point, eye_point); // todo: verificar que el punto de la camara tiene que ser eye_point y no el origen.
 						if (pixel == ivec2(-1)) continue; // invalid pixel
 					}
 
@@ -663,11 +662,11 @@ void main()
 					contribution *= eye_hits[t-2].color;
 				}
 				if (s > 1) {
-					contribution *=  light_hits[s-2].color;
+					contribution *= light_hits[s-2].color;
 				}
 
 				if(t == 1) {
-					vec3 light_contribution = vec3(contribution);
+					vec3 light_contribution = mis * contribution;
 
 					imageAtomicAdd(light_output_image, pixel, light_contribution.r); //r
 					imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), light_contribution.g); //g
@@ -677,7 +676,7 @@ void main()
 					continue;
 				}
 
-				output_color += vec3(mis);
+				output_color += mis * contribution;
 			}
 		}
 

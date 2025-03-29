@@ -483,7 +483,7 @@ int main(int argc, char** argv)
 	bool      useRaytracer = true;
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
-	vulkanHandler.m_pcRay.focusDist = 3.f;
+	vulkanHandler.m_pcRay.focusDist = 1.f;
 	vulkanHandler.m_pcRay.shininess = 0.f;
 	vulkanHandler.m_pcRay.fuzziness = 0.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();

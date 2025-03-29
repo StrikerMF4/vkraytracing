@@ -29,7 +29,7 @@ void main()
 			float bidirectional_output_b = imageLoad(bidirectional_lights_output_image, ivec2(pixel.x, pixel.y + settings.image_height)).x;
 
 			// Calculate average color from bidirectional output
-			vec3 fixed_color = vec3(bidirectional_output_r, bidirectional_output_g, bidirectional_output_b) / (bidirectional_output_count * (settings.frame + 1));
+			vec3 fixed_color = vec3(bidirectional_output_r, bidirectional_output_g, bidirectional_output_b) / (settings.frame + 1);
 			if(isnan(fixed_color.r) || isnan(fixed_color.g) || isnan(fixed_color.b))
 				fixed_color = vec3(0.0);
 			// We use the same total for the average as in the raygen, beacause the light sample can't be added in that step
@@ -47,4 +47,5 @@ void main()
 	vec2  uv    = outUV;
 	float gamma = 1. / 2.2;
 	fragColor   = pow(vec4(output_color, 1.f), vec4(gamma));
+//	fragColor   = vec4(output_color, 1.f);
 }

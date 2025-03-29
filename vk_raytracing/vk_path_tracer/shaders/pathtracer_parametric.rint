@@ -12,58 +12,41 @@
 layout(set = 1, binding = eImplicit, scalar) buffer implicitObjs_ { ImplicitObj i[]; } implicitObjs;
 layout(set = 1, binding = eImplicitSpheres, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
-struct Ray
+// https://www.mathematik.uni-marburg.de/~thormae/lectures/graphics2/graphics_2_2_eng_web.html#10
+float hitSphere(const Sphere sphere)
 {
-  vec3 origin;
-  vec3 direction;
-};
+    vec3 b = gl_ObjectRayOriginEXT - sphere.center;
+    vec3 r = gl_ObjectRayDirectionEXT; // not normalized
+    float rr = dot(r, r);
+    float p = 2.0 * dot(r, b) / rr;
+    float q = (dot(b, b) - sphere.radius * sphere.radius) / rr;
 
-//https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-sphere-intersection.html#
-float hitSphere(const Sphere s, const Ray ray)
-{
-    float t0, t1; // Solutions for t if the ray intersects the sphere
+    // discriminant of the quadratic equation
+    float d = (p * p / 4.0) - q;
 
-    // Geometric solution
-    vec3 L = s.center - ray.origin;
-    float tca = dot(L, ray.direction);
-    // if (tca < 0) return false;
-    float d2 = dot(L,L) - tca * tca;
-    if (d2 > s.radius * s.radius) return -1;
-    float thc = sqrt(s.radius * s.radius - d2);
-    t0 = tca - thc;
-    t1 = tca + thc;
+    // if no solution, cancel computation
+    if(d < 0.0) return -1;
 
+    // two solutions for quadratic equation
+    float tmin = -p / 2.0 - sqrt(d);
+    float tmax = -p / 2.0 + sqrt(d);
 
-    // //Sin branching, ver cual es mas rápido
-    // float test_1 = step(0.0, t0);
-    // float test_2 = step(0.0, t1);
-    // float test = step(0.01, test_1 + test_2);
-
-    // t0 = mix(INF, t0, test_1);
-    // t1 = mix(INF, t1, test_2);
-    // return mix(-1.0, min(t0, t1), test);
-
-    if (t0 > t1) {
-        float temp = t0;
-        t0 = t1;
-        t1 = temp;
+    // intersection at tmin or tmax?
+    float t = tmax;
+    if(tmin < tmax && tmin >= gl_RayTminEXT && tmin <= gl_RayTmaxEXT) {
+        t = tmin;
     }
-
-    if (t0 < 0) {
-        t0 = t1; // If t0 is negative, let's use t1 instead.
-        if (t0 < 0) return -1; // Both t0 and t1 are negative.
+    if(t >= gl_RayTminEXT && t <= gl_RayTmaxEXT) {
+        vec3 hitPoint = gl_ObjectRayOriginEXT + t * gl_ObjectRayDirectionEXT;
+        vec3 n = normalize(hitPoint - sphere.center);
+        return t;
     }
-
-    return t0;
+    return -1;
 }
 
 
 void main()
 {
-    Ray ray;
-    ray.origin    = gl_WorldRayOriginEXT;
-    ray.direction = gl_WorldRayDirectionEXT;
-
     //Object data
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
@@ -75,7 +58,7 @@ void main()
         Sphere sphere = allSpheres.i[object.kind_id];
 
         // Sphere intersection
-        tHit = hitSphere(sphere, ray);
+        tHit = hitSphere(sphere);
     }
     
 
