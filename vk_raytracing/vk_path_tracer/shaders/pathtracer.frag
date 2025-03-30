@@ -9,7 +9,7 @@
 layout(location = 0) in vec2 outUV;
 layout(location = 0) out vec4 fragColor;
 
-layout(set = 0, binding = eRenderedImage, rgba32f) uniform image2D output_image;
+layout(set = 0, binding = eRenderedImage, rgba16f) uniform image2D output_image;
 layout(set = 0, binding = eRenderedLightImage, r32f) uniform image2D bidirectional_lights_output_image;
 
 layout(push_constant) uniform _PushConstantPost { PushConstantPost settings; };

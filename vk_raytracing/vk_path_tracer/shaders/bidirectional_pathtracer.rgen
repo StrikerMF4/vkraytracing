@@ -65,7 +65,7 @@ point_data light_hits[11];
 
 uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf){
 	// Pick a random light
-	uint light_index = pcg_hash(payload.random_seed) % 1; // todo: volver a settings.light_count y probar que funcione
+	uint light_index = pcg_hash(payload.random_seed) % 2; // todo: volver a settings.light_count y probar que funcione
 
 	//Choose between lights
 	if(true){ //Area Light
@@ -148,26 +148,26 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
     for (int i = 0; i < s - 1; ++i) {
         misNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
         misNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
-//        misNodes[i].isSpecular = light_hits[i].isSpecular;
-        misNodes[i].isSpecular = false;
+        misNodes[i].isSpecular = light_hits[i].isSpecular;
+//        misNodes[i].isSpecular = false;
     }
     if (s > 0) {
         misNodes[s - 1].light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
         misNodes[s - 1].eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * GConnect;
-//        misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
-        misNodes[s - 1].isSpecular = false;
+        misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
+//        misNodes[s - 1].isSpecular = false;
     }
     for (int i = 0; i < t - 1; ++i) {
         misNodes[k - i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
         misNodes[k - i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
-//        misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
-        misNodes[k - i].isSpecular = false;
+        misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
+//        misNodes[k - i].isSpecular = false;
     }
     if (t > 0) {
         misNodes[k - (t - 1)].eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
         misNodes[k - (t - 1)].light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * GConnect;
-//        misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
-        misNodes[k - (t - 1)].isSpecular = false;
+        misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
+//        misNodes[k - (t - 1)].isSpecular = false;
     }
 
 	float pK = 1.0f;
