@@ -168,7 +168,7 @@ public:
   nvvk::Texture               m_offscreenAuxColor;
   nvvk::Texture               m_offscreenDepth;
   VkFormat                    m_offscreenColorFormat{ VK_FORMAT_R16G16B16A16_SFLOAT }; //To-Do: ver si al cambiar a 16 bits es mas eficiente, al menos en memoria lo sería
-  VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R32_SFLOAT };
+  VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R64_UINT };
   VkFormat                    m_offscreenDepthFormat{VK_FORMAT_X8_D24_UNORM_PACK32};
 
   // #VKRay

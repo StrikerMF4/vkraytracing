@@ -338,14 +338,20 @@ int main(int argc, char** argv)
 	contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
 
 	// Add extensions for atomic image manipulation (used in the bidirectional renderer)
-	VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures;
-	floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
-	floatFeatures.shaderImageFloat32AtomicAdd = true; //atomic operations on images
+	//VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures;
+	//floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+	//floatFeatures.shaderImageFloat32AtomicAdd = true; //atomic operations on images
 	//floatFeatures.shaderImageFloat32Atomics = true;
 	//To-Do: Revisar si sparseImage es más útil o eficiente en el caso de bidirectional, ya que no todos los pixeles tendrán información
 	//floatFeatures.sparseImageFloat32Atomics = true;
 	//floatFeatures.sparseImageFloat32AtomicAdd = true;
-	contextInfo.addDeviceExtension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, false, &floatFeatures);
+	//contextInfo.addDeviceExtension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, false, &floatFeatures);
+
+	//uint64
+	VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT intFeatures;
+	intFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT;
+	intFeatures.shaderImageInt64Atomics = true; //atomic operations on images
+	contextInfo.addDeviceExtension(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME, false, &intFeatures);
 
 	// Creating Vulkan base application
 	nvvk::Context vkctx{};
