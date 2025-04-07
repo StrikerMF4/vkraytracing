@@ -165,7 +165,6 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	//from 0 to s - 1, all light
 	//from s to k, all eye
 	// s-1 is the connected node in light path, s is the connected node in eye path
-
 	//uses from s to k - 1
     for (int i = s; i <= k - 1; ++i) {
         if (i == 0) { //s = 0, so no light nodes
@@ -186,7 +185,13 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
             if (misEyeNodes[0].isSpecular || misEyeNodes[1].isSpecular) {
                 continue;
             }
-        } else { //k = s + t - 1,  k - (s + 1) = k - s - 1 = t - 2
+		} else if (i == s + 1) { 	
+			pK *= last_eye_node.eye / misEyeNodes[t - 2].light; //i - 1 can be the last node in light path when i = s and s != 0
+            // exception handling for specular case
+            if (misEyeNodes[t - 2].isSpecular || misEyeNodes[t - 3].isSpecular) {
+                continue;
+            }
+        } else { //k = s + t - 1,  k - (s + 1) + 1 = s + t - 1 - s - 1 = t - 2
             pK *= misEyeNodes[k - i + 1].eye / misEyeNodes[k - i - 1].light; //i - 1 can be the last node in light path when i = s and s != 0
             // exception handling for specular case
             if (misEyeNodes[k - i].isSpecular || misEyeNodes[k - i - 1].isSpecular) {
@@ -216,6 +221,13 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
             if (misLightNodes[s - 1].isSpecular || misLightNodes[s - 2].isSpecular) {
                 continue;
             }
+		} else if (i == s - 1) {
+            pK *= last_light_node.light / misLightNodes[i - 2].eye; //i can be the last node in eye path when i = s and s != 0
+//             exception handling for specular case
+            if (misLightNodes[i - 1].isSpecular || misLightNodes[i - 2].isSpecular) {
+                continue;
+            }
+        }
         } else {
             pK *= misLightNodes[i].light / misLightNodes[i - 2].eye; //i can be the last node in eye path when i = s and s != 0
 //             exception handling for specular case
