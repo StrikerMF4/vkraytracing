@@ -141,43 +141,38 @@ float eyeDirectionPDF(vec3 direction) {
     return settings.focusDist * settings.focusDist / (filmArea * cosTheta * cosTheta * cosTheta);
 }
 
+mis_node misEyeNodes[11];
+mis_node misLightNodes[11];
+
 float misWeight(int s, int t, pdf_connection pdf, float GConnect) 
 {
-	mis_node misNodes[11]; // misNodes.x = towardEye - misNodes.y = towardLight
 	uint k = s + t - 1;
-    for (int i = 0; i < s - 1; ++i) {
-        misNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
-        misNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
-        misNodes[i].isSpecular = light_hits[i].isSpecular;
-//        misNodes[i].isSpecular = false;
+	mis_node last_light_node, last_eye_node;
+	if (s > 0) {
+        last_light_node.light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
+        last_light_node.eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * GConnect;
+        last_light_node.isSpecular = light_hits[s - 1].isSpecular;
     }
-    if (s > 0) {
-        misNodes[s - 1].light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
-        misNodes[s - 1].eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * GConnect;
-        misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
-//        misNodes[s - 1].isSpecular = false;
-    }
-    for (int i = 0; i < t - 1; ++i) {
-        misNodes[k - i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
-        misNodes[k - i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
-        misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
-//        misNodes[k - i].isSpecular = false;
-    }
-    if (t > 0) {
-        misNodes[k - (t - 1)].eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
-        misNodes[k - (t - 1)].light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * GConnect;
-        misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
-//        misNodes[k - (t - 1)].isSpecular = false;
+	if (t > 0) {
+        last_eye_node.eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
+        last_eye_node.light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * GConnect;
+        last_eye_node.isSpecular = eye_hits[t - 1].isSpecular;
     }
 
 	float pK = 1.0f;
     float misWeightSum = 1.0f;
 
+	//from 0 to s - 1, all light
+	//from s to k, all eye
+	// s-1 is the connected node in light path, s is the connected node in eye path
+
+
+	//uses from s to k - 1
     for (int i = s; i <= k - 1; ++i) {
-        if (i == 0) {
-            pK *= misNodes[0].light / misNodes[1].light;
+        if (i == 0) { //s = 0, so no light nodes
+            pK *= last_eye_node.light / misEyeNodes[t - 2].light;
             // exception handling for specular case
-            if (misNodes[1].isSpecular) {
+            if (misEyeNodes[t - 2].isSpecular) {
                 continue;
             }
         } else if (i == k) {
@@ -185,11 +180,17 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 //            if (camera->isDelta()) {
 //                break;
 //            }
-            pK *= misNodes[k - 1].eye / misNodes[k].eye;
-        } else {
-            pK *= misNodes[i - 1].eye / misNodes[i + 1].light;
+            pK *= misEyeNodes[1].eye / misEyeNodes[0].eye;
+		} else if (i == s && s != 0) {
+			pK *= last_light_node.eye / misEyeNodes[i - s + 1].light; //i - 1 can be the last node in light path when i = s and s != 0
             // exception handling for specular case
-            if (misNodes[i].isSpecular || misNodes[i + 1].isSpecular) {
+            if (misEyeNodes[0].isSpecular || misEyeNodes[1].isSpecular) {
+                continue;
+            }
+        } else { //k = s + t, 
+            pK *= misEyeNodes[t - 1 - (i - s - 1)].eye / misEyeNodes[t - 1 - (i - s + 1)].light; //i - 1 can be the last node in light path when i = s and s != 0
+            // exception handling for specular case
+            if (misEyeNodes[t - 1 - (i - s)].isSpecular || misEyeNodes[t - 1 - (i - s + 1)].isSpecular) {
                 continue;
             }
         }
@@ -198,10 +199,10 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 
     pK = 1.0f;
     for (int i = s; i > 0; --i) {
-        if (i == (k + 1)) {
-            pK *= misNodes[k].eye / misNodes[k - 1].eye;
+        if (i == (k + 1)) { // k = s + t - 1 => i == s + t => t = 0
+            pK *= last_light_node.eye / misLightNodes[s - 2].eye;
 //             exception handling for specular case
-            if (misNodes[k - 1].isSpecular) {
+            if (misLightNodes[s - 2].isSpecular) {
                 continue;
             }
         } else if (i == 1) {
@@ -209,11 +210,17 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 //            if (lightPath[0].light->isDelta()) {
 //                break;
 //            }
-            pK *= misNodes[1].light / misNodes[0].light;
-        } else {
-            pK *= misNodes[i].light / misNodes[i - 2].eye;
+            pK *= misLightNodes[1].light / misLightNodes[0].light;
+		} else if (i == s && s != 0) {
+			pK *= last_eye_node.light / misLightNodes[s - 2].eye; //i can be the last node in eye path when i = s and s != 0
 //             exception handling for specular case
-            if (misNodes[i - 1].isSpecular || misNodes[i - 2].isSpecular) {
+            if (misLightNodes[s - 1].isSpecular || misLightNodes[s - 2].isSpecular) {
+                continue;
+            }
+        } else {
+            pK *= misLightNodes[i].light / misLightNodes[i - 2].eye; //i can be the last node in eye path when i = s and s != 0
+//             exception handling for specular case
+            if (misLightNodes[i - 1].isSpecular || misLightNodes[i - 2].isSpecular) {
                 continue;
             }
         }
@@ -585,6 +592,17 @@ void main()
 		float mis_paths2[11*11];
 		float sum_pdf2 = 0.0f;
 		uvec2 s_t[11*11];
+
+		for (int i = 0; i < light_max_index; ++i) {
+			misLightNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
+			misLightNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
+			misLightNodes[i].isSpecular = light_hits[i].isSpecular;
+		}
+		for (int i = 0; i < eye_max_index; ++i) {
+			misEyeNodes[i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
+			misEyeNodes[i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
+			misEyeNodes[i].isSpecular = eye_hits[i].isSpecular;
+		}
 
 		// iterar en k 
 		for (int pathLength = 1; pathLength <= settings.max_depth; pathLength++) {
