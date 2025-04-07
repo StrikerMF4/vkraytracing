@@ -1195,7 +1195,7 @@ void VulkanHandler::drawPost(VkCommandBuffer cmdBuf)
 	m_pcPost.image_width = m_size.width;
 	m_pcPost.image_height = m_size.height;
 
-	vkCmdPushConstants(cmdBuf, current_technique->m_rtPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantPost), &m_pcPost);
+	vkCmdPushConstants(cmdBuf, m_postPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantPost), &m_pcPost);
 
 	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_postPipeline);
 	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_postPipelineLayout, 0, 1, &m_postDescSet, 0, nullptr);
