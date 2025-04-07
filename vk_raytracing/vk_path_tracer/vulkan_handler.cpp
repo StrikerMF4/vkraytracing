@@ -1057,8 +1057,7 @@ void VulkanHandler::createOffscreenRender()
 		size.height = m_size.height * 2;
 
 		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(size, m_offscreenAuxColorFormat,
-			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-			| VK_IMAGE_USAGE_STORAGE_BIT);
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
 
 		nvvk::Image           image = m_alloc.createImage(colorCreateInfo);
@@ -1109,7 +1108,7 @@ void VulkanHandler::createOffscreenRender()
 	vkDestroyFramebuffer(m_device, m_offscreenFramebuffer, nullptr);
 	VkFramebufferCreateInfo info{ VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	info.renderPass = m_offscreenRenderPass;
-	info.attachmentCount = 3;
+	info.attachmentCount = 2;
 	info.pAttachments = attachments.data();
 	info.width = m_size.width;
 	info.height = m_size.height;
