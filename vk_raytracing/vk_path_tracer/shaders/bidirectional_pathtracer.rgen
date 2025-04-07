@@ -166,7 +166,6 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 	//from s to k, all eye
 	// s-1 is the connected node in light path, s is the connected node in eye path
 
-
 	//uses from s to k - 1
     for (int i = s; i <= k - 1; ++i) {
         if (i == 0) { //s = 0, so no light nodes
@@ -182,15 +181,15 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
 //            }
             pK *= misEyeNodes[1].eye / misEyeNodes[0].eye;
 		} else if (i == s && s != 0) {
-			pK *= last_light_node.eye / misEyeNodes[i - s + 1].light; //i - 1 can be the last node in light path when i = s and s != 0
+			pK *= last_light_node.eye / misEyeNodes[1].light; //i - 1 can be the last node in light path when i = s and s != 0
             // exception handling for specular case
             if (misEyeNodes[0].isSpecular || misEyeNodes[1].isSpecular) {
                 continue;
             }
-        } else { //k = s + t, 
-            pK *= misEyeNodes[t - 1 - (i - s - 1)].eye / misEyeNodes[t - 1 - (i - s + 1)].light; //i - 1 can be the last node in light path when i = s and s != 0
+        } else { //k = s + t - 1,  k - (s + 1) = k - s - 1 = t - 2
+            pK *= misEyeNodes[k - i + 1].eye / misEyeNodes[k - i - 1].light; //i - 1 can be the last node in light path when i = s and s != 0
             // exception handling for specular case
-            if (misEyeNodes[t - 1 - (i - s)].isSpecular || misEyeNodes[t - 1 - (i - s + 1)].isSpecular) {
+            if (misEyeNodes[k - i].isSpecular || misEyeNodes[k - i - 1].isSpecular) {
                 continue;
             }
         }
