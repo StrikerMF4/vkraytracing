@@ -242,13 +242,6 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				{
 					vulkanHandler.resetFrame();
 				}
-					
-				if (!paused) {
-					auto now = std::chrono::high_resolution_clock::now();
-					std::chrono::duration<float> elapsed = now - pause_timer_start;
-					time_elapsed += elapsed.count();
-					pause_timer_start = now;
-				}
 
 				ImGui::EndTabItem();
 			}
@@ -525,6 +518,13 @@ int main(int argc, char** argv)
 			if (menu_visible) {
 				drawConfigWindow(current_technique, pause_timer_start, time_limit, time_elapsed);
 			}
+		}
+
+		if (!paused) {
+			auto now = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<float> elapsed = now - pause_timer_start;
+			time_elapsed += elapsed.count();
+			pause_timer_start = now;
 		}
 
 		// Start rendering the scene
