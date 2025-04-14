@@ -215,7 +215,7 @@ void Technique::raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m
 		(uint32_t)descSets->size(), descSets->data(), 0, nullptr);
 	vkCmdPushConstants(cmdBuf, m_rtPipelineLayout,
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-		0, sizeof(PushConstantRayTracer), &m_pcRay);
+		0, sizeof(PushConstantRayTracer), m_pcRay);
 
 	vkCmdTraceRaysKHR(cmdBuf, &m_rgenRegion, &m_missRegion, &m_hitRegion, &m_callRegion, m_size->width, m_size->height, 1);
 }
@@ -1440,23 +1440,10 @@ void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& cle
 	updateFrame();
 
 	m_debug.beginLabel(cmdBuf, "Ray trace");
-	// Initializing push constant values
-	m_pcRay.clearColor = clearColor;
-	//m_pcRay
 
 	std::vector<VkDescriptorSet> descSets{ m_rtDescSet, m_descSet };
 
-	//TO-DO: Pasaje por referencia no funciona, pero es lo mas prolijo
-	//current_technique->raytrace(cmdBuf, &m_pcRay, &descSets, &m_size);
-
-	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, current_technique->m_rtPipeline);
-	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, current_technique->m_rtPipelineLayout, 0,
-		(uint32_t)descSets.size(), descSets.data(), 0, nullptr);
-	vkCmdPushConstants(cmdBuf, current_technique->m_rtPipelineLayout,
-		VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR,
-		0, sizeof(PushConstantRayTracer), &m_pcRay);
-
-	vkCmdTraceRaysKHR(cmdBuf, &current_technique->m_rgenRegion, &current_technique->m_missRegion, &current_technique->m_hitRegion, &current_technique->m_callRegion, m_size.width, m_size.height, 1);
+	current_technique->raytrace(cmdBuf, &m_pcRay, &descSets, &m_size);
 
 	m_debug.endLabel(cmdBuf);
 }

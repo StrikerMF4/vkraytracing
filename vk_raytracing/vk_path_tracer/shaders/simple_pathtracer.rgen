@@ -105,7 +105,7 @@ void main()
                 break;
             } else if (payload.status == RAY_MISS) {
                 // Manejar color de fondo o mapa de entorno
-                output_color += w * settings.clearColor.rgb;
+                output_color += w * vec3(0);
                 break;
             } else if (payload.status == RAY_ABSORBED) {
                 // Camino terminado por absorcion

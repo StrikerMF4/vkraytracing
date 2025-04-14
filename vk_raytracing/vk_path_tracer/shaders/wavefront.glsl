@@ -766,7 +766,7 @@ void disney_bsdf_sample(inout rayPayload payload) {
         payload.direction = normalize(payload.direction);
         vec3 new_direction = disney_bsdf(-payload.direction, payload.surface_normal, payload.material, payload.bsdf_type, payload.random_seed);
         new_direction = normalize(new_direction);
-        if(!payload.backward_propagation) {
+        if(payload.backward_propagation == 0) {
             disney_pdf(new_direction, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
         }
         else{

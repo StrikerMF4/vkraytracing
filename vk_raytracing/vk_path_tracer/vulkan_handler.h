@@ -21,11 +21,6 @@ enum TechniqueType
 
 class Technique
 {
-public:
-    std::string codename;
-    std::string formatted_name;
-	int default_depth;
-
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
     VkPipelineLayout                                  m_rtPipelineLayout;
     VkPipeline                                        m_rtPipeline;
@@ -37,6 +32,10 @@ public:
     VkStridedDeviceAddressRegionKHR m_hitRegion{};
     VkStridedDeviceAddressRegionKHR m_callRegion{};
 
+public:
+    std::string codename;
+    std::string formatted_name;
+	int default_depth;
 
 	Technique() = default;
 

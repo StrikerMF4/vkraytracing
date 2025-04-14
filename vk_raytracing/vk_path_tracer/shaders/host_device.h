@@ -91,17 +91,14 @@ struct PushConstantRaster
 // Push constant structure for the ray tracer
 struct PushConstantRayTracer
 {
-	vec4  clearColor;
-
+	uint light_count;
 	int   frame;
 	float camAperture;
 	float focusDist;
 	float fov;
 	float shininess;
 	float fuzziness;
-	bool ambientLigth;
 
-	int light_count;
 	int max_depth;
 	int debug_technique_s;
 	int debug_technique_t;

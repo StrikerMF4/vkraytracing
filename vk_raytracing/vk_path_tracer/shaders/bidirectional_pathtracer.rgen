@@ -11,8 +11,6 @@
 #include "lights.glsl"
 #include "wavefront.glsl"
 #include "raycommon.glsl"
-//#include "host_device.h"
-//#include "random.glsl"
 
 // clang-format off
 layout(location = 0) rayPayloadEXT rayPayload payload;
@@ -28,7 +26,7 @@ layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
 
-layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
+layout(push_constant, std430) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
 struct point_data {
@@ -63,54 +61,45 @@ const float tMax     = 10000.0;
 point_data eye_hits[11];
 point_data light_hits[11];
 
+uint rand_xorshift(inout uint seed)
+{
+	seed = seed + 1;
+	return seed;
+}
+
 uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf){
 	// Pick a random light
-	uint light_index = pcg_hash(payload.random_seed) % 2; // todo: volver a settings.light_count y probar que funcione
+	const uint lightCount = settings.light_count;
+	uint light_index = pcg_hash(payload.random_seed) % lightCount;
 
-	//Choose between lights
-	if(true){ //Area Light
-		// Pick a triangle in the light
-		Light light = lights.i[light_index];
-		emission = light.emission;
+	// Pick a triangle in the light
+	Light light = lights.i[light_index];
+	emission = light.emission;
 
-		uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
+	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
-		// Get buffers for the light object
-		ObjDesc objResource = objDesc.i[light.object_id];
-		Indices    indices     = Indices(objResource.indexAddress);
-		Vertices   vertices    = Vertices(objResource.vertexAddress);
+	// Get buffers for the light object
+	ObjDesc objResource = objDesc.i[light.object_id];
+	Indices    indices     = Indices(objResource.indexAddress);
+	Vertices   vertices    = Vertices(objResource.vertexAddress);
 
-		// Vertex of the triangle
-		light_triangle_index = (light.first_index + light_triangle_index) * 3;
-		Vertex v0 = vertices.v[light_triangle_index];
-		Vertex v1 = vertices.v[light_triangle_index + 1];
-		Vertex v2 = vertices.v[light_triangle_index + 2];
+	// Vertex of the triangle
+	light_triangle_index = (light.first_index + light_triangle_index) * 3;
+	Vertex v0 = vertices.v[light_triangle_index];
+	Vertex v1 = vertices.v[light_triangle_index + 1];
+	Vertex v2 = vertices.v[light_triangle_index + 2];
 
-		//const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0)); TO-DO: matrices por objeto
+	vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
-		vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
+	vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
+	vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
 
-		vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
-		vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
+	surface_normal = normalize((local_normal * light.world_to_object).xyz);
 
-		surface_normal = normalize((local_normal * light.world_to_object).xyz);
+	point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
 
-		point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
-
-//		float s = pcg_hash(payload.random_seed) % (3);
-//
-//		if (s == 0) {
-//			local_point = v0.pos;
-//		} else if (s == 1) {
-//			local_point = v1.pos;
-//		} else {
-//			local_point = v2.pos;
-//		}
-
-		//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
-//		pdf = 1 / (settings.light_count * light.area); 
-		pdf = 1.0 / (1.0 * light.area); // todo: revisar por que no anda setting.light_count
-	}
+	//PDF = (Prob. of choosing this light) x (Prob. of choosing this point)
+	pdf = 1.0 / (lightCount * light.area);
 
 	return light_index;
 }
@@ -118,15 +107,11 @@ uint random_point_in_light(out vec3 point, out vec3 surface_normal, out vec3 emi
 vec3 sampleLightDirection(uint light_index, vec3 normal, out float pdf) {
 	Light light = lights.i[light_index];
 
-	if(true){ //Area Light
-		return sampleAreaLightDirection(normal, pdf, payload.random_seed);
-	}
+	return sampleAreaLightDirection(normal, pdf, payload.random_seed);
 }
 
 float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal) {
-	if(true){ //Area Light
-		return AreaLightPDFDirection(direction, normal);
-	}
+	return AreaLightPDFDirection(direction, normal);
 }
 
 float eyeDirectionPDF(vec3 direction) {
@@ -143,31 +128,27 @@ float eyeDirectionPDF(vec3 direction) {
 
 float misWeight(int s, int t, pdf_connection pdf, float GConnect) 
 {
-	mis_node misNodes[11]; // misNodes.x = towardEye - misNodes.y = towardLight
+	mis_node misNodes[11];
 	uint k = s + t - 1;
     for (int i = 0; i < s - 1; ++i) {
         misNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
         misNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
         misNodes[i].isSpecular = light_hits[i].isSpecular;
-//        misNodes[i].isSpecular = false;
     }
     if (s > 0) {
         misNodes[s - 1].light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
         misNodes[s - 1].eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * GConnect;
         misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
-//        misNodes[s - 1].isSpecular = false;
     }
     for (int i = 0; i < t - 1; ++i) {
         misNodes[k - i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
         misNodes[k - i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
         misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
-//        misNodes[k - i].isSpecular = false;
     }
     if (t > 0) {
         misNodes[k - (t - 1)].eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
         misNodes[k - (t - 1)].light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * GConnect;
         misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
-//        misNodes[k - (t - 1)].isSpecular = false;
     }
 
 	float pK = 1.0f;
@@ -181,10 +162,6 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
                 continue;
             }
         } else if (i == k) {
-            // there is no way that light path can hit a delta camera
-//            if (camera->isDelta()) {
-//                break;
-//            }
             pK *= misNodes[k - 1].eye / misNodes[k].eye;
         } else {
             pK *= misNodes[i - 1].eye / misNodes[i + 1].light;
@@ -205,10 +182,6 @@ float misWeight(int s, int t, pdf_connection pdf, float GConnect)
                 continue;
             }
         } else if (i == 1) {
-//             there is no way that eye path can hit a delta light
-//            if (lightPath[0].light->isDelta()) {
-//                break;
-//            }
             pK *= misNodes[1].light / misNodes[0].light;
         } else {
             pK *= misNodes[i].light / misNodes[i - 2].eye;
@@ -254,14 +227,6 @@ ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
         screenY < 0 || screenY > 720) {
         return ivec2(-1);
     }
-
-//	vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-//    vec2 screenCoord = vec2(screenX, screenY);
-//    vec2 diff = abs(pixelCenter - screenCoord);
-//
-//    if (diff.x > 6 || diff.y > 6) {
-//        return false;
-//    }
 
     return ivec2(screenX, screenY);
 }
@@ -340,344 +305,257 @@ void main()
 	vec3 output_color = vec3(0);
 	uint depth = 0;
 
-	for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++){
-		// gaussian AA
-		vec2 rndvec = randomGaussian(payload.random_seed);
-		float r1 = rndvec.x;
-		float r2 = rndvec.y;
+	// gaussian AA
+	vec2 rndvec = randomGaussian(payload.random_seed);
+	float r1 = rndvec.x;
+	float r2 = rndvec.y;
 
-		// square AA
-		//float r1 = rand(payload.random_seed);
-		//float r2 = rand(payload.random_seed);
+	// Subpixel jitter: send the ray through a different position inside the pixel
+	// each time, to provide antialiasing.
+	vec2 subpixel_jitter = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
+	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
+	const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+	vec2       d           = inUV * 2.0 - 1.0;
 
-		// Subpixel jitter: send the ray through a different position inside the pixel
-		// each time, to provide antialiasing.
-		vec2 subpixel_jitter = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
-		const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5) + 0.375 *subpixel_jitter;
-		const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-		vec2       d           = inUV * 2.0 - 1.0;
+	//defocus blur
+	float Aperture = settings.camAperture;
+	float focus_dist = settings.focusDist;
+	vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
+	vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
+	vec3 cameraOrigin = origin;
+	vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+	vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
+	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
 
-		//defocus blur
-		float Aperture = settings.camAperture;
-		float focus_dist = settings.focusDist;
-		vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
-		vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
-		vec3 cameraOrigin = origin;
-		vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
-		vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
-		float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
+	// Ahora calculamos explícitamente pdfBackward usando exactamente tu dirección original:
+	vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
+	float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
+	float cosTheta = abs(dot(cameraForward, normalize(direction)));
 
-		// Ahora calculamos explícitamente pdfBackward usando exactamente tu dirección original:
-		vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
-		float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
-		float cosTheta = abs(dot(cameraForward, normalize(direction)));
+	float filmHeight = 2.0f * focus_dist * tan(radians(settings.fov) * 0.5f);
+	float filmWidth = filmHeight * aspectRatio;
+	float filmArea = filmWidth * filmHeight;
+	float lensArea = (PI * Aperture * Aperture) / 4;
 
-		float filmHeight = 2.0f * focus_dist * tan(radians(settings.fov) * 0.5f);
-		float filmWidth = filmHeight * aspectRatio;
-		float filmArea = filmWidth * filmHeight;
-		float lensArea = (PI * Aperture * Aperture) / 4;
-
-//		float light_point_pdfq;
-//		uint light_index2 = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdfq);
-//		vec3 dir1 = normalize(direction);
-//		vec3 dir2 = normalize(light_hits[0].point - origin);
-//	
-//		if (dot(dir1,dir2) >= 0.9999) {
-//			output_color = vec3(50,0,0);
-//			break;
-//		}
-//		vec3 light_direction2 = sampleLightDirection(light_index2, light_hits[0].normal, light_point_pdfq);
-//
-//		dir2 = normalize((light_hits[0].point + light_direction2 ) - origin);
-//		if (dot(dir1,dir2) >= 0.9999) {
-//			output_color = vec3(0,1,0);
-//			break;
-//		}
-
-		/* EYE */
-		uint eye_max_index = 0;
-		uint light_max_index = 0;
+	/* EYE */
+	uint eye_max_index = 0;
+	uint light_max_index = 0;
 
 
-		eye_hits[0].point = origin;
-		float pdfF = lensToFilmDistance2 / (filmArea + EPSILON);
-		eye_hits[0].pdfF = pdfF; //probabilidad del rayo de la cámara
-		eye_hits[0].pdfB = Aperture > 0 ? 4 / (PI * Aperture * Aperture) : 1.0; //probabilidad del rayo de la cámara
-		eye_hits[0].isSpecular = false;
-		float G = cosTheta * cosTheta / lensToFilmDistance2;
-		eye_hits[0].G = 1.0;
-		float We = Aperture > 0 ?
-			1.0 / (filmArea * lensArea * G + EPSILON) :
-			1.0 / (filmArea * G + EPSILON);
-		vec3 alpha_E = vec3(We / pdfF);
-		eye_hits[0].color = alpha_E;
-		eye_hits[0].w_i = vec3(0);
-		eye_hits[0].normal = cameraForward;
+	eye_hits[0].point = origin;
+	float pdfF = lensToFilmDistance2 / (filmArea + EPSILON);
+	eye_hits[0].pdfF = pdfF; // probabilidad del rayo de la cámara
+	eye_hits[0].pdfB = Aperture > 0 ? 4 / (PI * Aperture * Aperture) : 1.0; // probabilidad del rayo de la cámara
+	eye_hits[0].isSpecular = false;
+	float G = cosTheta * cosTheta / lensToFilmDistance2;
+	eye_hits[0].G = 1.0;
+	float We = Aperture > 0 ?
+		1.0 / (filmArea * lensArea * G + EPSILON) :
+		1.0 / (filmArea * G + EPSILON);
+	vec3 alpha_E = vec3(We / pdfF);
+	eye_hits[0].color = alpha_E;
+	eye_hits[0].w_i = vec3(0);
+	eye_hits[0].normal = cameraForward;
 
+	resetPayload(payload, eye_hits[0].point, direction);
+	bool hitLight = false;
+	for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
+		payload.backward_propagation = 1;
 
-//		float temp_pdfF = 1.0f;
-//		float temp_pdfB = 1.0f;
-//		float lastG = 1.0;
-		resetPayload(payload, eye_hits[0].point, direction);
-		bool hitLight = false;
-		for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
-			payload.backward_propagation = true;
+		// Trazar el rayo
+		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-			// Trazar el rayo
-			traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, tMin, payload.direction, tMax, 0);
+		// Manejar diferentes estados del rayo
+		if (payload.status == RAY_HIT_LIGHT) {
 
-			// Manejar diferentes estados del rayo
-			if (payload.status == RAY_HIT_LIGHT) {
-
-				Light light = lights.i[payload.light_id];
-				eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
-				eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-				eye_hits[depth + 1].color = payload.Le;
-				eye_hits[depth + 1].G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
-				hitLight = true;
-				break;
-			} else if (payload.status == RAY_MISS) {
-				// Manejar color de fondo o mapa de entorno
-				break;
-			}
-
-			float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
-			alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
-
-			float G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal,
-							payload.origin, payload.surface_normal);
-
-//			temp_pdfF *= G;
-//			temp_pdfB *= lastG;
-//			lastG = G;
-
-			eye_max_index = depth + 1;
-			eye_hits[eye_max_index].point = payload.origin;
-			eye_hits[eye_max_index].normal = payload.surface_normal;
-			eye_hits[eye_max_index].material = payload.material;
-			eye_hits[eye_max_index].w_i = -direction;
-			eye_hits[eye_max_index].pdfF = pdfF;
-			eye_hits[eye_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
-			if (eye_hits[eye_max_index].isSpecular) {
-				eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
-			} else {
-				eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
-			}
-			eye_hits[eye_max_index].G = G;
-			eye_hits[eye_max_index].color = alpha_E;
-//
-//			temp_pdfF *= payload.pdfF;
-//			temp_pdfB *= payload.pdfB;
-			direction = payload.direction;
-			resetPayload(payload, payload.origin, payload.direction);
+			Light light = lights.i[payload.light_id];
+			eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
+			eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
+			eye_hits[depth + 1].color = payload.Le;
+			eye_hits[depth + 1].G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
+			hitLight = true;
+			break;
+		} else if (payload.status == RAY_MISS) {
+			// Manejar color de fondo o mapa de entorno
+			break;
 		}
 
-		if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
-			output_color = vec3(0.0, 0.0, 0.0);
+		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+		alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
 
-		// if (eye_max_index == 0 || payload.status == RAY_HIT_LIGHT) continue;
-//		if (eye_max_index == 0) continue;
+		float G = geometric_term(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal,
+						payload.origin, payload.surface_normal);
 
-		/* LIGHT */ 
-		float light_point_pdf, light_dir_pdf;
-		uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
-		vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
+		eye_max_index = depth + 1;
+		eye_hits[eye_max_index].point = payload.origin;
+		eye_hits[eye_max_index].normal = payload.surface_normal;
+		eye_hits[eye_max_index].material = payload.material;
+		eye_hits[eye_max_index].w_i = -direction;
+		eye_hits[eye_max_index].pdfF = pdfF;
+		eye_hits[eye_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
+		if (eye_hits[eye_max_index].isSpecular) {
+			eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
+		} else {
+			eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+		}
+		eye_hits[eye_max_index].G = G;
+		eye_hits[eye_max_index].color = alpha_E;
 
-		light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
-		light_hits[0].pdfB = light_point_pdf;
-		light_hits[0].isSpecular = false;
-		light_hits[0].G = 1.0;
-		light_hits[0].w_i = vec3(0);
-		vec3 alpha_L = light_hits[0].color / light_hits[0].pdfF;
+		direction = payload.direction;
+		resetPayload(payload, payload.origin, payload.direction);
+	}
 
-//		vec3 pWorld = eye_hits[0].point;
-//		vec3 pLens = light_hits[0].point;
-//		vec4 pView = uni.view * vec4(pWorld, 1.0f);
-//		vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
-//
-//		if (pView.z > 0.0f) {
-//			output_color = vec3(10,0,0);
-//			break; // Punto detrás de la cámara
-//		}
-//
-//		float lensRadius = settings.camAperture / 2.0;
-//		if (lensRadius > 0.0f &&
-//			(pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
-//			 lensRadius * lensRadius)) {
-//			output_color = vec3(0,10,0);
-//			break; // Punto fuera del área del lente
-//		}
-//
-//		vec4 dir = pView - pLensLocal;
-//		if (abs(dir.z) < 1e-7f) {
-//			output_color = vec3(0, 10,10);
-//			break; // Dirección casi paralela al plano del lente
-//		}
-//
-//		vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
-//		vec4 pNDC = uni.proj * pFocus;
-//		pNDC /= pNDC.w;
-//
-//		float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
-//		float screenY = (1 + pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
-//
-//		if (screenX < 0 || screenX > 1280 ||
-//			screenY < 0 || screenY > 720) {
-//			output_color = vec3(0,0,10);
-//			break;
-//		}
-//
-//		output_color = vec3(1);
-//		break;
-//
-//
-//		temp_pdfF = light_hits[0].pdfF;
-//		temp_pdfB = light_hits[0].pdfB;
-//		lastG = 1.0f;
-		resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
+	if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+		output_color = vec3(0.0, 0.0, 0.0);
 
-        for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
-            payload.backward_propagation = false;
+	/* LIGHT */ 
+	float light_point_pdf, light_dir_pdf;
+	uint light_index = random_point_in_light(light_hits[0].point, light_hits[0].normal, light_hits[0].color, light_point_pdf);
+	vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 
-            traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
+	light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
+	light_hits[0].pdfB = light_point_pdf;
+	light_hits[0].isSpecular = false;
+	light_hits[0].G = 1.0;
+	light_hits[0].w_i = vec3(0);
+	vec3 alpha_L = light_hits[0].color / light_hits[0].pdfF;
 
-			if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT){
-				break;
-			}
-			float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
-			alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
+	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
-			float G = geometric_term(light_hits[light_max_index].point, light_hits[light_max_index].normal,
-										payload.origin, payload.surface_normal);
-	
-//			temp_pdfF *= G;
-//			temp_pdfB *= lastG;
-//			lastG = G;
+    for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
+        payload.backward_propagation = 0;
 
-			light_max_index = depth + 1;
-			light_hits[light_max_index].point = payload.origin;
-			light_hits[light_max_index].normal = payload.surface_normal;
-			light_hits[light_max_index].material = payload.material;
-			light_hits[light_max_index].w_i = -light_direction;
-			light_hits[light_max_index].color = alpha_L;
-			light_hits[light_max_index].pdfF = pdfF;
+        traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, tMin, payload.direction, tMax, 0);
 
-			light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
-			if (light_hits[light_max_index].isSpecular) {
-				light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
-			} else {
-				light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
-			}
+		if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT){
+			break;
+		}
+		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+		alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
 
-			light_hits[light_max_index].G = G;
+		float G = geometric_term(light_hits[light_max_index].point, light_hits[light_max_index].normal,
+									payload.origin, payload.surface_normal);
 
-//			temp_pdfF *= payload.pdfF;
-//			temp_pdfB *= payload.pdfB;
+		light_max_index = depth + 1;
+		light_hits[light_max_index].point = payload.origin;
+		light_hits[light_max_index].normal = payload.surface_normal;
+		light_hits[light_max_index].material = payload.material;
+		light_hits[light_max_index].w_i = -light_direction;
+		light_hits[light_max_index].color = alpha_L;
+		light_hits[light_max_index].pdfF = pdfF;
 
-			origin    = payload.origin;
-			light_direction = payload.direction;
-			resetPayload(payload, payload.origin, payload.direction);
+		light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
+		if (light_hits[light_max_index].isSpecular) {
+			light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
+		} else {
+			light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
 		}
 
+		light_hits[light_max_index].G = G;
 
-		uint sample_count = 0;
-		vec3 mis_paths[11*11];
-		float mis_paths2[11*11];
-		float sum_pdf2 = 0.0f;
-		uvec2 s_t[11*11];
+		origin    = payload.origin;
+		light_direction = payload.direction;
+		resetPayload(payload, payload.origin, payload.direction);
+	}
 
-		// iterar en k 
-		for (int pathLength = 1; pathLength <= settings.max_depth; pathLength++) {
-			int pathVertexCount = pathLength + 1;
-			for (int s = 0; s <= pathVertexCount; s++) {
-				int t = pathVertexCount - s;
+
+	uint sample_count = 0;
+	vec3 mis_paths[11*11];
+	float mis_paths2[11*11];
+	float sum_pdf2 = 0.0f;
+	uvec2 s_t[11*11];
+
+	// iterar en k 
+	for (int pathLength = 1; pathLength <= settings.max_depth; pathLength++) {
+		int pathVertexCount = pathLength + 1;
+		for (int s = 0; s <= pathVertexCount; s++) {
+			int t = pathVertexCount - s;
 				
-				if (settings.debug_technique_s >= 0 && settings.debug_technique_t >= 0 && 
-					((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
-					continue;
-				}
+			if (settings.debug_technique_s >= 0 && settings.debug_technique_t >= 0 && 
+				((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
+				continue;
+			}
 
-				if (s > light_max_index || (s != 0 && t > eye_max_index + 1) || (s == 0 && t != eye_max_index + 2)) {
-					continue;
-				}
-				// can not form a path with 0 or 1 vertex
-				if ((s == 0 && t < 2) || (t == 0 && s < 2) || (s + t) < 2) {
-					continue;
-				}
+			if (s > light_max_index || (s != 0 && t > eye_max_index + 1) || (s == 0 && t != eye_max_index + 2)) {
+				continue;
+			}
+			// can not form a path with 0 or 1 vertex
+			if ((s == 0 && t < 2) || (t == 0 && s < 2) || (s + t) < 2) {
+				continue;
+			}
 
-				// We dont support direct camera connections
-				// todo: ver que hacer con los casos donde se llega directo a la luz y conectar directo a la camara.
-				if ((t == 0)) {
-					continue;
-				}
+			// We dont support direct camera connections
+			// todo: ver que hacer con los casos donde se llega directo a la camara.
+			if ((t == 0)) {
+				continue;
+			}
 				
-				vec3 eye_point = eye_hits[t-1].point;
-				vec3 light_point;
-				pdf_connection pdf;
-				float GConnect = 1.0;
-				vec3 contribution = vec3(0.0);
-				float mis = 1.0;
+			vec3 eye_point = eye_hits[t-1].point;
+			vec3 light_point;
+			pdf_connection pdf;
+			float GConnect = 1.0;
+			vec3 contribution = vec3(0.0);
+			float mis = 1.0;
 
-				ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
+			ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
 
-				if (s == 0) {
-					if (!hitLight) continue;
-					pdf.eyeF = eye_hits[t-1].pdfF; // pdfTEndForward
-					pdf.eyeB = eye_hits[t-1].pdfB; // pdfTEndBackward
-					pdf.lightF = 0.0;
-					pdf.lightB = 0.0;
-					contribution = eye_hits[t-2].color * eye_hits[t-1].color;
-				}
-				else
-				{
-					light_point = light_hits[s-1].point;
-					origin = eye_point;
-					direction = light_point - eye_point;
+			if (s == 0) {
+				if (!hitLight) continue;
+				pdf.eyeF = eye_hits[t-1].pdfF; // pdfTEndForward
+				pdf.eyeB = eye_hits[t-1].pdfB; // pdfTEndBackward
+				pdf.lightF = 0.0;
+				pdf.lightB = 0.0;
+				contribution = eye_hits[t-2].color * eye_hits[t-1].color;
+			}
+			else
+			{
+				light_point = light_hits[s-1].point;
+				origin = eye_point;
+				direction = light_point - eye_point;
 
-					float dist = length(direction);
-					direction /= dist;
+				float dist = length(direction);
+				direction /= dist;
 					
-					if ( t == 1 ) 
-					{
-						pixel = worldToScreen(light_point, eye_point); // todo: verificar que el punto de la camara tiene que ser eye_point y no el origen.
-						if (pixel == ivec2(-1)) continue; // invalid pixel
-					}
-
-					if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
-
-					resetPayload(payload, origin, direction);
-					traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - EPSILON, 0);
-					if (payload.status != RAY_MISS) continue;
-
-
-					contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, pdf, GConnect, light_index);
+				if ( t == 1 ) 
+				{
+					pixel = worldToScreen(light_point, eye_point);
+					if (pixel == ivec2(-1)) continue; // invalid pixel
 				}
 
-				if(isnan(contribution.r) || isnan(contribution.g) || isnan(contribution.b))
-					contribution = vec3(0.0, 0.0, 0.0);
+				if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
-				mis = misWeight(s, t, pdf, GConnect);
+				resetPayload(payload, origin, direction);
+				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, direction, dist - EPSILON, 0);
+				if (payload.status != RAY_MISS) continue;
 
-				if (t > 1 && s != 0) {
-					contribution *= eye_hits[t-2].color;
-				}
-				if (s > 1) {
-					contribution *= light_hits[s-2].color;
-				}
 
-				if(t == 1) {
-					vec3 light_contribution = mis * contribution;
-
-					imageAtomicAdd(light_output_image, pixel, light_contribution.r); //r
-					imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), light_contribution.g); //g
-					imageAtomicAdd(light_output_image, ivec2(pixel.x, pixel.y + gl_LaunchSizeEXT.y), light_contribution.b); //b
-					imageAtomicAdd(light_output_image, pixel + ivec2(gl_LaunchSizeEXT), 1); //count
-
-					continue;
-				}
-
-				output_color += mis * contribution;
+				contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, pdf, GConnect, light_index);
 			}
+
+			if(isnan(contribution.r) || isnan(contribution.g) || isnan(contribution.b))
+				contribution = vec3(0.0, 0.0, 0.0);
+
+			mis = misWeight(s, t, pdf, GConnect);
+
+			if (t > 1 && s != 0) {
+				contribution *= eye_hits[t-2].color;
+			}
+			if (s > 1) {
+				contribution *= light_hits[s-2].color;
+			}
+
+			if(t == 1) {
+				vec3 light_contribution = mis * contribution;
+
+				imageAtomicAdd(light_output_image, pixel, light_contribution.r); //r
+				imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), light_contribution.g); //g
+				imageAtomicAdd(light_output_image, ivec2(pixel.x, pixel.y + gl_LaunchSizeEXT.y), light_contribution.b); //b
+				imageAtomicAdd(light_output_image, pixel + ivec2(gl_LaunchSizeEXT), 1); //count
+
+				continue;
+			}
+
+			output_color += mis * contribution;
 		}
 
         if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))

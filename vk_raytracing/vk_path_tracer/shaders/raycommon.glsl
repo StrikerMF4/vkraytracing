@@ -34,13 +34,13 @@ struct rayPayload
 	float theta;
 	float pdfF;
 	float pdfB;
-	int light_id;
+	uint light_id;
 
 	WaveFrontMaterial material;
 
 	//Exchange
 	uint random_seed;
-	bool backward_propagation;
+	uint backward_propagation;
 };
 
 void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
@@ -57,7 +57,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.surface_normal = vec3(0);
 	payload.surface_micronormal = vec3(0);
 	payload.theta = 0;
-	payload.backward_propagation = false;
+	payload.backward_propagation = 0;
 
 }
 
