@@ -34,7 +34,7 @@ const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 const float tMin     = 0.001;
 const float tMax     = 10000.0;
 
-vec3 random_point_in_light(uint light_index){
+vec3 random_point_in_light(uint light_index, out vec3 surface_normal){
 	// Pick a triangle in the light
 	Light light = lights.i[light_index];
 	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
@@ -54,51 +54,42 @@ vec3 random_point_in_light(uint light_index){
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.pos, v1.pos, v2.pos, payload.random_seed);
 
+	vec4 local_normal = vec4(v0.nrm * barycentric.x + v1.nrm * barycentric.y + v2.nrm * barycentric.z, 1.0);
 	vec4 local_point = vec4(barycentric.x * v0.pos + barycentric.y * v1.pos + barycentric.z * v2.pos, 1.0);
+
+	surface_normal = normalize((local_normal * light.world_to_object).xyz);
 
     return (light.object_to_world * local_point).xyz;
 }
 
-vec3 shadow_ray(vec3 origin, vec3 bsdf, vec3 N){
-	vec3 color = vec3(0);
-	for (uint light_index = 0; light_index < settings.light_count; light_index++){
-		vec3 L = random_point_in_light(light_index) - origin;
-		float lightdist = length(L);
-		L /= lightdist; // Normalize
-
-		resetPayload(payload, origin, L);
-		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
-
-		if (payload.status == RAY_MISS) {
-			float cost = dot(N, L);
-			Light light = lights.i[light_index];
-			if (cost > 0) {
-				color += bsdf * (light.emission / (dot(L, L) * 4 * PI)) * cost;
-			}
-		}
-	}
-	return color;
-}
-
-vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, vec3 point_color){
+vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 m, WaveFrontMaterial material, inout uint random_seed){
 	float IOR = payload.material.ior;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
 
 	vec3 color = vec3(0);
 	for (uint light_index = 0; light_index < settings.light_count; light_index++){
-		vec3 L = random_point_in_light(light_index) - origin;
+		vec3 light_normal;
+		vec3 light_point = random_point_in_light(light_index, light_normal);
+		vec3 L = light_point - origin;
 		float lightdist = length(L);
 		L /= lightdist; // Normalize
+
+		if (dot(-L, light_normal) <= 0) continue; 
 
 		resetPayload(payload, origin, L);
 		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, tMin, L, lightdist - 0.001f, 0);
 
 		if (payload.status == RAY_MISS) {
-			Light light = lights.i[light_index];
-
-			float bsdf = CT_brdf(L, viewer, N, m, IOR, roughness, theta);
-			color += light.emission * dot(N, L) * bsdf * point_color;
+			float cost = dot(N, L);
+			if (cost > 0) {
+				Light light = lights.i[light_index];
+				vec3 bsdf = vec3(0);
+				float pdfF, pdfB;
+				float g = geometric_term(origin, N, light_point, light_normal);
+				disney_pdf(viewer, L, N, material, bsdf, pdfF, pdfB, random_seed);
+				color += light.emission * g * bsdf * pdfF;
+			}
 		}
 	}
 	return color;
@@ -186,7 +177,7 @@ void main()
 
 			if(payload.bsdf_type == BSDF_DIFFUSE && payload.status != RAY_HIT_LIGHT){
 				//c = (shadow_ray(origin, bsdf_sample, normal) + Le) * w / prob;
-				c += (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, bsdf_sample) + Le) * w;
+				c += (GGX_shadow_ray(origin, viewer, normal, payload.surface_micronormal, payload.material, payload.random_seed) + Le) * w;
 			}else {
 				c += Le * w;
 			}

@@ -444,7 +444,7 @@ int main(int argc, char** argv)
 	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER); 
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
-	TechniqueType current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
+	TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
 	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
