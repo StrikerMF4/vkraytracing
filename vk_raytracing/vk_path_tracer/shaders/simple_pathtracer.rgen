@@ -28,7 +28,7 @@ layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-const int NBSAMPLES = 1;
+const int NBSAMPLES = 10;
 
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 const float tMin     = 0.001;
@@ -44,7 +44,7 @@ void main()
 	vec3 output_color = vec3(0);
 
 	uint depth = 0;
-	for(int pixel_sample = 0; pixel_sample < 1; pixel_sample++){
+	for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++){
 		// gaussian AA
 		vec2 randvec = randomGaussian(payload.random_seed);
 		float r1 = randvec.x;
@@ -114,7 +114,7 @@ void main()
 
             // Actualizar throughput
             if (payload.pdfF > 0) {
-                float cos_theta = abs(dot(payload.surface_normal, payload.direction));
+            float cos_theta = abs(dot(payload.surface_normal, payload.direction));
                 w *= (payload.bsdf_sample * cos_theta) / (payload.pdfF + EPSILON);
             }
             else break;
@@ -122,9 +122,9 @@ void main()
             // Actualizar origen y direccion para el siguiente rebote
             origin = payload.origin;
             direction = payload.direction;
-            if (depth >= 2)
+            if (depth >= MIN_DEPTH_ABSORPTION)
             {
-                float q = min(max(w.x, max(w.y, w.z)) + 0.001, 0.95);
+                float q = min(max(w.x, max(w.y, w.z)) + EPSILON, 1);
                 if (rand(payload.random_seed) > q)
                     break;
                 w /= q;

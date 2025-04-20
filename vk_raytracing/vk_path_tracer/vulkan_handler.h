@@ -204,13 +204,13 @@ public:
   void setupTechnique(TechniqueType type) {
       switch (type) {
 	  case SHADOWRAY_PATHTRACER:
-          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer", 10);
+          m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer", 5);
 		  break;
 	  case SIMPLE_PATHTRACER:
-		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer", 10);
+		  m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer", 5);
 		  break;
 	  case BIDIRECTIONAL_PATHTRACER:
-		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 4);
+		  m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 5);
 		  break;
       }
   }

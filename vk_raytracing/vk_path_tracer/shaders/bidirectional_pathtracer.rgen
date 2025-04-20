@@ -223,8 +223,8 @@ ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
     float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
     float screenY = (1 + pNDC.y) * 0.5f * gl_LaunchSizeEXT.y;
 
-	if (screenX < 0 || screenX > 1280 ||
-        screenY < 0 || screenY > 720) {
+	if (screenX < 0 || screenX > gl_LaunchSizeEXT.x ||
+        screenY < 0 || screenY > gl_LaunchSizeEXT.y) {
         return ivec2(-1);
     }
 
@@ -562,7 +562,6 @@ void main()
             output_color = vec3(0.0);
 
 	}
-	output_color  = output_color / NBSAMPLES;
 
 	if(settings.frame > 0)
 	{   //Accumulation over time

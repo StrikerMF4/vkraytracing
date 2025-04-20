@@ -11,6 +11,7 @@ const uint RAY_ABSORBED = 4;
 const uint BSDF_DIFFUSE = 1;
 const uint BSDF_REFLECTION = 2;
 const uint BSDF_TRANSMISSION = 3;
+const uint MIN_DEPTH_ABSORPTION = 3;
 
 const float PI = 3.14159265;
 const float TWO_PI = 2*3.14159265;
