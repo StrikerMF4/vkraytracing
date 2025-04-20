@@ -489,10 +489,11 @@ void main() {
 				final_contribution = vec3(0.0, 0.0, 0.0);
 
 			if(t == 1) {
+				pixel.x = pixel.x * 4;
 				imageAtomicAdd(light_output_image, pixel, final_contribution.r); //r
-				imageAtomicAdd(light_output_image, ivec2(pixel.x + gl_LaunchSizeEXT.x, pixel.y), final_contribution.g); //g
-				imageAtomicAdd(light_output_image, ivec2(pixel.x, pixel.y + gl_LaunchSizeEXT.y), final_contribution.b); //b
-				imageAtomicAdd(light_output_image, pixel + ivec2(gl_LaunchSizeEXT), 1); //count
+				imageAtomicAdd(light_output_image, pixel + ivec2(1,0), final_contribution.g); //g
+				imageAtomicAdd(light_output_image, pixel + ivec2(2,0), final_contribution.b); //b
+				imageAtomicAdd(light_output_image, pixel + ivec2(3,0), 1); //count
 				continue;
 			}
 

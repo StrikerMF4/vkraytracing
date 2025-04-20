@@ -9,7 +9,7 @@
 layout(location = 0) in vec2 outUV;
 layout(location = 0) out vec4 fragColor;
 
-layout(set = 0, binding = eRenderedImage, rgba16f) uniform image2D output_image;
+layout(set = 0, binding = eRenderedImage, rgba32f) uniform image2D output_image;
 layout(set = 0, binding = eRenderedLightImage, r32f) uniform image2D bidirectional_lights_output_image;
 
 layout(push_constant) uniform _PushConstantPost { PushConstantPost settings; };
@@ -19,12 +19,13 @@ void main() {
 	vec3 output_color = imageLoad(output_image, pixel).xyz;
 
 	if(settings.bidirectional_correction) {
-		float bidirectional_output_count = imageLoad(bidirectional_lights_output_image, ivec2(pixel.x + settings.image_width, pixel.y + settings.image_height)).x;
+		ivec2 pixel_alt = ivec2(pixel.x * 4, pixel.y);
+		float bidirectional_output_count = imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(3,0)).x;
 
 		if (bidirectional_output_count > 0) {
-			float bidirectional_output_r = imageLoad(bidirectional_lights_output_image, pixel).x;
-			float bidirectional_output_g = imageLoad(bidirectional_lights_output_image, ivec2(pixel.x + settings.image_width, pixel.y)).x;
-			float bidirectional_output_b = imageLoad(bidirectional_lights_output_image, ivec2(pixel.x, pixel.y + settings.image_height)).x;
+			float bidirectional_output_r = imageLoad(bidirectional_lights_output_image, pixel_alt).x;
+			float bidirectional_output_g = imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(1,0)).x;
+			float bidirectional_output_b = imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(2,0)).x;
 
 			// Calculate average color from bidirectional output
 			vec3 fixed_color = vec3(bidirectional_output_r, bidirectional_output_g, bidirectional_output_b) / (settings.frame + 1);
@@ -36,10 +37,10 @@ void main() {
 			imageStore(output_image, pixel, vec4(output_color, 1.f));
 
 			//reset the bidirectional output before tracing the next frame
-			imageStore(bidirectional_lights_output_image, pixel, vec4(0)); //r
-			imageStore(bidirectional_lights_output_image, ivec2(pixel.x + settings.image_width, pixel.y), vec4(0)); //g
-			imageStore(bidirectional_lights_output_image, ivec2(pixel.x, pixel.y + settings.image_height), vec4(0)); //b
-			imageStore(bidirectional_lights_output_image, pixel + ivec2(settings.image_width, settings.image_height), vec4(0)); //count
+			imageStore(bidirectional_lights_output_image, pixel_alt, vec4(0)); //r
+			imageStore(bidirectional_lights_output_image, pixel_alt + ivec2(1,0), vec4(0)); //g
+			imageStore(bidirectional_lights_output_image, pixel_alt + ivec2(2,0), vec4(0)); //b
+			imageStore(bidirectional_lights_output_image, pixel_alt + ivec2(3,0), vec4(0)); //count
 		}
 	}
 

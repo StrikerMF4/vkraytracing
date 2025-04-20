@@ -905,8 +905,8 @@ void VulkanHandler::createOffscreenRender()
 	{
 		auto size = VkExtent2D();
 		
-		size.width = m_size.width * 2;
-		size.height = m_size.height * 2;
+		size.width = m_size.width * 4;
+		size.height = m_size.height;
 
 		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(size, m_offscreenAuxColorFormat,
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
