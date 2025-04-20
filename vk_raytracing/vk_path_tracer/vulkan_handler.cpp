@@ -356,41 +356,6 @@ void VulkanHandler::updateDescriptorSet()
 	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
-
-//--------------------------------------------------------------------------------------------------
-// Creating the pipeline layout
-//
-void VulkanHandler::createGraphicsPipeline()
-{
-	VkPushConstantRange pushConstantRanges = { VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantRaster) };
-
-	// Creating the Pipeline Layout
-	VkPipelineLayoutCreateInfo createInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	createInfo.setLayoutCount = 1;
-	createInfo.pSetLayouts = &m_descSetLayout;
-	createInfo.pushConstantRangeCount = 1;
-	createInfo.pPushConstantRanges = &pushConstantRanges;
-	vkCreatePipelineLayout(m_device, &createInfo, nullptr, &m_pipelineLayout);
-
-
-	// Creating the Pipeline
-	std::vector<std::string>                paths = defaultSearchPaths;
-	nvvk::GraphicsPipelineGeneratorCombined gpb(m_device, m_pipelineLayout, m_offscreenRenderPass);
-	gpb.depthStencilState.depthTestEnable = true;
-	gpb.addShader(nvh::loadFile("spv/raster.vert.spv", true, paths, true), VK_SHADER_STAGE_VERTEX_BIT);
-	gpb.addShader(nvh::loadFile("spv/raster.frag.spv", true, paths, true), VK_SHADER_STAGE_FRAGMENT_BIT);
-	gpb.addBindingDescription({ 0, sizeof(objl::Vertex) });
-	gpb.addAttributeDescriptions({
-		{0, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Position))},
-		{1, 0, VK_FORMAT_R32G32B32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, Normal))},
-		{2, 0, VK_FORMAT_R32G32_SFLOAT, static_cast<uint32_t>(offsetof(objl::Vertex, TextureCoordinate))}
-		//TO-DO: Revisar si no rompe el raster
-		});
-
-	m_graphicsPipeline = gpb.createPipeline();
-	m_debug.setObjectName(m_graphicsPipeline, "Graphics");
-}
-
 //--------------------------------------------------------------------------------------------------
 // Loading the OBJ file and setting up all buffers
 //
@@ -686,87 +651,6 @@ void VulkanHandler::uploadImplicitObjects() {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Loading the OBJ file and setting up all buffers
-//
-//void VulkanHandler::loadModel(const std::string& filename, glm::mat4 transform)
-//{
-//  LOGI("Loading File:  %s \n", filename.c_str());
-//  ObjLoader loader;
-//  loader.loadModel(filename);
-//
-//  // Converting from Srgb to linear
-//  for(auto& m : loader.m_materials)
-//  {
-//    m.color  = glm::pow(m.color, glm::vec3(2.2f));
-//  }
-//  /*for(auto& m : loader.m_materials)
-//  {
-//    m.ambient  = glm::pow(m.ambient, glm::vec3(2.2f));
-//    m.diffuse  = glm::pow(m.diffuse, glm::vec3(2.2f));
-//    m.specular = glm::pow(m.specular, glm::vec3(2.2f));
-//  }*/
-//
-//  // Assign ObjectID
-//  for (auto& light : loader.m_lights)
-//  {
-//      Light result;
-//
-//      result.object_id = m_objDesc.size();
-//      result.emission = light.emission;
-//      result.first_index = light.first_index / 3;
-//      result.last_index = light.last_index / 3;
-//
-//      m_lights.push_back(result);
-//  }
-//
-//  ObjModel model;
-//  model.nbIndices  = static_cast<uint32_t>(loader.m_indices.size());
-//  model.nbVertices = static_cast<uint32_t>(loader.m_vertices.size());
-//
-//  // Create the buffers on Device and copy vertices, indices and materials
-//  nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
-//  VkCommandBuffer    cmdBuf          = cmdBufGet.createCommandBuffer();
-//  VkBufferUsageFlags flag            = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-//  VkBufferUsageFlags rayTracingFlags =  // used also for building acceleration structures
-//      flag | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-//  model.vertexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | rayTracingFlags);
-//  model.indexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | rayTracingFlags);
-//  model.matColorBuffer = m_alloc.createBuffer(cmdBuf, loader.m_materials, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
-//  model.matIndexBuffer = m_alloc.createBuffer(cmdBuf, loader.m_matIndx, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | flag);
-//
-//  // Creates all textures found and find the offset for this model
-//  auto txtOffset = static_cast<uint32_t>(m_textures.size());
-//  createTextureImages(cmdBuf, loader.m_textures);
-//  cmdBufGet.submitAndWait(cmdBuf);
-//  m_alloc.finalizeAndReleaseStaging();
-//
-//  std::string objNb = std::to_string(m_objModel.size());
-//  m_debug.setObjectName(model.vertexBuffer.buffer, (std::string("vertex_" + objNb)));
-//  m_debug.setObjectName(model.indexBuffer.buffer, (std::string("index_" + objNb)));
-//  m_debug.setObjectName(model.matColorBuffer.buffer, (std::string("mat_" + objNb)));
-//  m_debug.setObjectName(model.matIndexBuffer.buffer, (std::string("matIdx_" + objNb)));
-//
-//  // Keeping transformation matrix of the instance
-//  ObjInstance instance;
-//  instance.transform = transform;
-//  instance.objIndex  = static_cast<uint32_t>(m_objModel.size());
-//  m_instances.push_back(instance);
-//
-//  // Creating information for device access
-//  ObjDesc desc;
-//  desc.txtOffset            = txtOffset;
-//  desc.vertexAddress        = nvvk::getBufferDeviceAddress(m_device, model.vertexBuffer.buffer);
-//  desc.indexAddress         = nvvk::getBufferDeviceAddress(m_device, model.indexBuffer.buffer);
-//  desc.materialAddress      = nvvk::getBufferDeviceAddress(m_device, model.matColorBuffer.buffer);
-//  desc.materialIndexAddress = nvvk::getBufferDeviceAddress(m_device, model.matIndexBuffer.buffer);
-//
-//  // Keeping the obj host model and device description
-//  m_objModel.emplace_back(model);
-//  m_objDesc.emplace_back(desc);
-//}
-
-
-//--------------------------------------------------------------------------------------------------
 // Creating the uniform buffer holding the camera matrices
 // - Buffer is host visible
 //
@@ -974,38 +858,6 @@ void VulkanHandler::destroyResources()
 	vkDestroyDescriptorSetLayout(m_device, m_rtDescSetLayout, nullptr);
 
 	m_alloc.deinit();
-}
-
-//--------------------------------------------------------------------------------------------------
-// Drawing the scene in raster mode
-//
-void VulkanHandler::rasterize(const VkCommandBuffer& cmdBuf)
-{
-	VkDeviceSize offset{ 0 };
-
-	m_debug.beginLabel(cmdBuf, "Rasterize");
-
-	// Dynamic Viewport
-	setViewport(cmdBuf);
-
-	// Drawing all triangles
-	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline);
-	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descSet, 0, nullptr);
-
-
-	for (const VulkanHandler::ObjInstance& inst : m_instances)
-	{
-		auto& model = m_objModel[inst.objIndex];
-		m_pcRaster.objIndex = inst.objIndex;  // Telling which object is drawn
-		m_pcRaster.modelMatrix = inst.transform;
-
-		vkCmdPushConstants(cmdBuf, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-			sizeof(PushConstantRaster), &m_pcRaster);
-		vkCmdBindVertexBuffers(cmdBuf, 0, 1, &model.vertexBuffer.buffer, &offset);
-		vkCmdBindIndexBuffer(cmdBuf, model.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cmdBuf, model.nbIndices, 1, 0, 0, 0);
-	}
-	m_debug.endLabel(cmdBuf);
 }
 
 //--------------------------------------------------------------------------------------------------

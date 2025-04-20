@@ -16,7 +16,6 @@ enum TechniqueType
 	SIMPLE_PATHTRACER = 0,
 	SHADOWRAY_PATHTRACER = 1,
 	BIDIRECTIONAL_PATHTRACER = 2,
-    RASTER = 3
 };
 
 class Technique
@@ -54,20 +53,12 @@ public:
     void destroyResources(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc);
 };
 
-//--------------------------------------------------------------------------------------------------
-// Simple rasterizer of OBJ objects
-// - Each OBJ loaded are stored in an `ObjModel` and referenced by a `ObjInstance`
-// - It is possible to have many `ObjInstance` referencing the same `ObjModel`
-// - Rendering is done in an offscreen framebuffer
-// - The image of the framebuffer is displayed in post-process in a full-screen quad
-//
+
 class VulkanHandler : public nvvkhl::AppBaseVk
 {
 public:
   void setup(const VkInstance& instance, const VkDevice& device, const VkPhysicalDevice& physicalDevice, uint32_t queueFamily) override;
   void createDescriptorSetLayout();
-  void createGraphicsPipeline();
-  void loadModel(const std::string& filename, glm::mat4 transform = glm::mat4(1));
   void loadScene(SceneLoader::Scene* scene, std::string scene_path);
   void uploadImplicitObjects();
   void updateDescriptorSet();
@@ -78,7 +69,6 @@ public:
   void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
   void onResize(int /*w*/, int /*h*/) override;
   void destroyResources();
-  void rasterize(const VkCommandBuffer& cmdBuff);
 
   // The OBJ model
   struct ObjModel
@@ -99,15 +89,6 @@ public:
   };
 
   PushConstantPost m_pcPost{};
-
-  // Information pushed at each draw call
-  PushConstantRaster m_pcRaster{
-      {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1},  // Identity matrix
-      {0.f, 0.9f, 0.f},                                 // light position
-      0,                                                 // instance Id
-      1.f,                                             // light intensity
-      0                                                  // light type
-  };
 
   // Array of objects and instances in the scene
   std::vector<ObjModel>    m_objModel;   // Model on host

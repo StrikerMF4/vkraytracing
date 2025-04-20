@@ -7,14 +7,12 @@
 #extension GL_EXT_buffer_reference2 : require
 
 #include "raycommon.glsl"
-//#include "wavefront.glsl"
 
 layout(set = 1, binding = eImplicit, scalar) buffer implicitObjs_ { ImplicitObj i[]; } implicitObjs;
 layout(set = 1, binding = eImplicitSpheres, scalar) buffer allSpheres_ { Sphere i[]; } allSpheres;
 
 // https://www.mathematik.uni-marburg.de/~thormae/lectures/graphics2/graphics_2_2_eng_web.html#10
-float hitSphere(const Sphere sphere)
-{
+float hitSphere(const Sphere sphere) {
     vec3 b = gl_ObjectRayOriginEXT - sphere.center;
     vec3 r = gl_ObjectRayDirectionEXT; // not normalized
     float rr = dot(r, r);
@@ -33,31 +31,27 @@ float hitSphere(const Sphere sphere)
 
     // intersection at tmin or tmax?
     float t = tmax;
-    if(tmin < tmax && tmin >= gl_RayTminEXT && tmin <= gl_RayTmaxEXT) {
+    if(tmin < tmax && tmin >= gl_RayTminEXT && tmin <= gl_RayTmaxEXT)
         t = tmin;
-    }
+
     if(t >= gl_RayTminEXT && t <= gl_RayTmaxEXT) {
         vec3 hitPoint = gl_ObjectRayOriginEXT + t * gl_ObjectRayDirectionEXT;
         vec3 n = normalize(hitPoint - sphere.center);
         return t;
     }
+
     return -1;
 }
 
 
-void main()
-{
+void main() {
     //Object data
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
     
     float tHit    = -1;
-    if(object.kind == KIND_SPHERE)
-    {
-        // Sphere data
+    if(object.kind == KIND_SPHERE) {
         Sphere sphere = allSpheres.i[object.kind_id];
-
-        // Sphere intersection
         tHit = hitSphere(sphere);
     }
     

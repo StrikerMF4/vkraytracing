@@ -46,6 +46,7 @@ END_BINDING();
 #define KIND_SPHERE 0
 #define KIND_CUBE 1
 #define KIND_GEOMETRY 2
+const uint MAX_DEPTH = 11;
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc
@@ -68,7 +69,7 @@ struct GlobalUniforms
 	mat4 projInverse;  // Camera inverse projection matrix
 };
 
-// Push constant structure for the raster
+// Push constant structure
 struct PushConstantPost
 {
 	uint image_width;
@@ -76,17 +77,6 @@ struct PushConstantPost
 	bool bidirectional_correction;
 	int   frame;
 };
-
-// Push constant structure for the raster
-struct PushConstantRaster
-{
-	mat4  modelMatrix;  // matrix of the instance
-	vec3  lightPosition;
-	uint  objIndex;
-	float lightIntensity;
-	int   lightType;
-};
-
 
 // Push constant structure for the ray tracer
 struct PushConstantRayTracer
@@ -96,8 +86,6 @@ struct PushConstantRayTracer
 	float camAperture;
 	float focusDist;
 	float fov;
-	float shininess;
-	float fuzziness;
 
 	int max_depth;
 	int debug_technique_s;
@@ -106,8 +94,8 @@ struct PushConstantRayTracer
 
 struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device
 {
-	vec3 pos;
-	vec3 nrm;
+	vec3 position;
+	vec3 normal;
 	vec2 texCoord;
 };
 
@@ -128,7 +116,7 @@ struct AABB {
 };
 
 
-struct WaveFrontMaterial  // See ObjLoader, copy of MaterialObj, could be compressed for device
+struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for device
 {
 	uint ID;
 

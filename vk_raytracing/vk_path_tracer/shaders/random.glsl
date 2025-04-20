@@ -1,5 +1,6 @@
 #ifndef RANDOM
 #define RANDOM
+#include "raycommon.glsl"
 
 uint pcg_hash(inout uint seed) {
 	seed = seed*747796405u+2891336453u;
@@ -30,13 +31,11 @@ uint InitRandomSeed(uint val0, uint val1) {
 }
 
 vec2 randomGaussian(inout uint rngState) {
-	const float k_pi = 3.14159265;
 
-	// Almost uniform in (0,1] - make sure the value is never 0:
-	const float u1 = max(1e-38, rand(rngState));
+	const float u1 = max(EPSILON, rand(rngState));
 	const float u2 = rand(rngState);  // In [0, 1]
-	const float r = sqrt(-2.0*log(u1));
-	const float theta = 2*k_pi*u2;  // Random in [0, 2pi]
+	const float r = sqrt(-2.0 * log(u1));
+	const float theta = 2 * PI * u2;  // Random in [0, 2pi]
 	return r*vec2(cos(theta), sin(theta));
 }
 
@@ -64,33 +63,21 @@ vec3 RandomCosineHemisphereDirection(vec3 normal, inout uint seed) {
 	return normalize(RandomSphereDirection(seed)+normal);
 }
 
-vec3 randomPointInTriangle(vec3 u, vec3 v, inout uint seed) {
-	float s = rand(seed);
-	float t = rand(seed);
-
-	return s + t <= 1 ? s * u + t * v : (1 - s) * u + (1 - t) * v;
-}
-
 
 vec3 randomBarycentricPointInTriangle(vec3 A, vec3 B, vec3 C, inout uint seed) {
 	float r1 = rand(seed);
 	float r2 = rand(seed);
 
-    // Ajustar r1 y r2 si la suma excede 1
-	if(r1+r2>1.0) {
-		r1 = 1.0-r1;
-		r2 = 1.0-r2;
+	if(r1 + r2 > 1.0) {
+		r1 = 1.0 - r1;
+		r2 = 1.0 - r2;
 	}
 
-    // Coordenadas baric�ntricas
-	float a = 1.0-r1-r2;
+	float a = 1.0 - r1 - r2;
 	float b = r1;
 	float c = r2;
 
-    // Punto dentro del tri�ngulo
 	return vec3(a, b, c);
-
-	//    return a * A.pos + b * B.pos + c * C.pos;
 }
 
 #endif

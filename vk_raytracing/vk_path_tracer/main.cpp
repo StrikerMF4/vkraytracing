@@ -66,21 +66,6 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 	}
 }
 
-// Extra UI
-void renderUI(VulkanHandler& vulkanHandler)
-{
-	if (ImGui::CollapsingHeader("Extra widget"))
-	{
-		ImGuiH::CameraWidget();
-		ImGui::RadioButton("Point", &vulkanHandler.m_pcRaster.lightType, 0);
-		ImGui::SameLine();
-		ImGui::RadioButton("Infinite", &vulkanHandler.m_pcRaster.lightType, 1);
-
-		ImGui::SliderFloat3("Position", &vulkanHandler.m_pcRaster.lightPosition.x, -20.f, 20.f);
-		ImGui::SliderFloat("Intensity", &vulkanHandler.m_pcRaster.lightIntensity, 0.f, 150.f);
-	}
-}
-
 inline static void drawOverlay(std::string& technique_codename, float& render_time)
 {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
@@ -166,7 +151,7 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 		{
 			if (ImGui::BeginTabItem("Algoritmo"))
 			{
-				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer", "Raster" };
+				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
 				static int item_current_idx = current_technique; // Here we store our selection data as an index.
 
 				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
@@ -190,10 +175,8 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				if (current_technique != (TechniqueType)item_current_idx)
 				{
 					current_technique = (TechniqueType)item_current_idx;
-					if (current_technique != TechniqueType::RASTER) {
-						vulkanHandler.changeTechnique(current_technique);
-						vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
-					}
+					vulkanHandler.changeTechnique(current_technique);
+					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
 					paused = false;
 					pause_timer_start = std::chrono::high_resolution_clock::now();
@@ -252,12 +235,7 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 
 				ImGui::EndTabItem();
 			}
-			if (ImGui::BeginTabItem("Legacy"))
-			{
-				renderUI(vulkanHandler);
 
-				ImGui::EndTabItem();
-			}
 			ImGui::EndTabBar();
 		}
 		ImGui::EndChild();
@@ -451,7 +429,6 @@ int main(int argc, char** argv)
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
 	vulkanHandler.createDescriptorSetLayout();
-	vulkanHandler.createGraphicsPipeline();
 	vulkanHandler.createUniformBuffer();
 	vulkanHandler.createObjDescriptionBuffer();
 	vulkanHandler.createLightBuffer();
@@ -475,8 +452,6 @@ int main(int argc, char** argv)
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
 	vulkanHandler.m_pcRay.focusDist = 1.f;
-	vulkanHandler.m_pcRay.shininess = 0.f;
-	vulkanHandler.m_pcRay.fuzziness = 0.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
@@ -546,27 +521,9 @@ int main(int argc, char** argv)
 
 		// Offscreen render pass
 		{
-			VkRenderPassBeginInfo offscreenRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-			offscreenRenderPassBeginInfo.clearValueCount = 2;
-			offscreenRenderPassBeginInfo.pClearValues = clearValues.data();
-			offscreenRenderPassBeginInfo.renderPass = vulkanHandler.m_offscreenRenderPass;
-			offscreenRenderPassBeginInfo.framebuffer = vulkanHandler.m_offscreenFramebuffer;
-			offscreenRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
-
-			// Rendering Scene (reuse last frame if program is paused)
-
 			if (!paused)
 			{
-				if (current_technique != TechniqueType::RASTER)
-				{
-					vulkanHandler.raytrace(cmdBuf, clearColor);
-				}
-				else
-				{
-					vkCmdBeginRenderPass(cmdBuf, &offscreenRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-					vulkanHandler.rasterize(cmdBuf);
-					vkCmdEndRenderPass(cmdBuf);
-				}
+				vulkanHandler.raytrace(cmdBuf, clearColor);
 			}
 			else {
 				vulkanHandler.updateFrame();
