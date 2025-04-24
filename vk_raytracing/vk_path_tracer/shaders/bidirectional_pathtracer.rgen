@@ -311,11 +311,11 @@ void main() {
 	float We = Aperture > 0 ?
 		1.0 / (filmArea * lensArea * G + EPSILON) :
 		1.0 / (filmArea * G + EPSILON);
-	vec3 alpha_E = vec3(We / pdfF);
-	eye_hits[0].alpha = alpha_E;
+	eye_hits[0].alpha = vec3(1.0) / eye_hits[0].pdfB;
 	eye_hits[0].w_i = vec3(0);
 	eye_hits[0].normal = cameraForward;
 
+	vec3 alpha_E = eye_hits[0].alpha * vec3(We / pdfF);
 	bool hitLight = false;
 	resetPayload(payload, eye_hits[0].point, direction);
 
@@ -337,7 +337,7 @@ void main() {
 			break;
 
 		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
-		alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
+		
 
 		float G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal,
 						payload.origin, payload.surface_normal);
@@ -352,11 +352,16 @@ void main() {
 		eye_hits[eye_max_index].G = G;
 		eye_hits[eye_max_index].alpha = alpha_E;
 
+		alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
+
 		if (eye_hits[eye_max_index].isSpecular)
 			eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
 		else
 			eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
 
+		if (payload.pdfF < EPSILON2 || (payload.bsdf_sample.x < EPSILON2 && payload.bsdf_sample.y < EPSILON2 && payload.bsdf_sample.z < EPSILON2))
+			break;
+		
 		direction = payload.direction;
 		resetPayload(payload, payload.origin, payload.direction);
 	}
@@ -364,15 +369,18 @@ void main() {
 
 	/* LIGHT PATH */ 
 	float light_point_pdf, light_dir_pdf;
-	uint light_index = RandomPointInLight(light_hits[0].point, light_hits[0].normal, light_hits[0].alpha, light_point_pdf);
+	vec3 Le;
+	uint light_index = RandomPointInLight(light_hits[0].point, light_hits[0].normal, Le, light_point_pdf);
 	vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
+	
 
 	light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
 	light_hits[0].pdfB = light_point_pdf;
+	light_hits[0].alpha = vec3(1.0) / light_hits[0].pdfB;
 	light_hits[0].isSpecular = false;
 	light_hits[0].G = 1.0;
 	light_hits[0].w_i = vec3(0);
-	vec3 alpha_L = light_hits[0].alpha / light_hits[0].pdfF;
+	vec3 alpha_L = light_hits[0].alpha * Le / light_hits[0].pdfF;
 
 	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
@@ -385,7 +393,6 @@ void main() {
 			break;
 
 		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
-		alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
 
 		float G = GeometricTerm(light_hits[light_max_index].point, light_hits[light_max_index].normal,
 									payload.origin, payload.surface_normal);
@@ -404,6 +411,11 @@ void main() {
 			light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
 		else
 			light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+		
+		alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
+
+		if (payload.pdfF < EPSILON2 || (payload.bsdf_sample.x < EPSILON2 && payload.bsdf_sample.y < EPSILON2 && payload.bsdf_sample.z < EPSILON2))
+			break;
 
 		origin = payload.origin;
 		light_direction = payload.direction;
@@ -450,7 +462,7 @@ void main() {
 				pdf.eyeB = eye_hits[t-1].pdfB; // pdfTEndBackward
 				pdf.lightF = 0.0;
 				pdf.lightB = 0.0;
-				contribution = eye_hits[t-2].alpha * eye_hits[t-1].alpha;
+				contribution = eye_hits[t-1].alpha * eye_hits[t].alpha;
 			}
 			else {
 				light_point = light_hits[s-1].point;
@@ -474,11 +486,11 @@ void main() {
 				contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, pdf, light_index);
 			}
 
-			if (t > 1 && s != 0) {
-				contribution *= eye_hits[t-2].alpha;
+			if (t > 0 && s != 0) {
+				contribution *= eye_hits[t-1].alpha;
 			}
-			if (s > 1) {
-				contribution *= light_hits[s-2].alpha;
+			if (s > 0) {
+				contribution *= light_hits[s-1].alpha;
 			}
 
 			mis = misWeight(s, t, pdf);
