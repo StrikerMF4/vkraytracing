@@ -178,6 +178,9 @@ public:
   // Push constant for ray tracer
   PushConstantRayTracer m_pcRay{};
 
+  bool m_createScreenshot{ false };  // Create screenshot at the end of the next render cycle
+  void createScreenshot(const VkCommandBuffer& cmdBuf, const std::string& filename);
+
   // Techniques
   std::unordered_map<TechniqueType, Technique*> m_techniques;
   Technique* current_technique;

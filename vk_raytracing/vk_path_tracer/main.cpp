@@ -1,5 +1,4 @@
 #include <array>
-#include <time.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -14,6 +13,9 @@
 #include "nvpsystem.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
+#include <iostream>
+#include <chrono>
+#include <ctime>
 #include <time.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -115,6 +117,8 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 		ImGui::TextColored(white, "ESC: mostrar menu");
 		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "F1: ocultar interfaz");
+
+		ImGui::TextColored(white, "F2: guardar captura de pantalla");
 
 		ImGui::TextColored(white, "R: reiniciar");
 		//ImGui::SameLine(0.0, 15);
@@ -546,6 +550,20 @@ int main(int argc, char** argv)
 			ImGui::Render();
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
 			vkCmdEndRenderPass(cmdBuf);
+		}
+
+		if (vulkanHandler.m_createScreenshot)
+		{
+			std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+			std::string s(30, '\0');
+			std::strftime(&s[0], s.size(), "%Y-%m-%d %H.%M.%S", std::localtime(&now));
+
+			std::string filename = "screenshot " + s + ".ppm";
+
+			vulkanHandler.createScreenshot(cmdBuf, filename);
+
+			vulkanHandler.m_createScreenshot = false;
 		}
 
 		// Submit for display
