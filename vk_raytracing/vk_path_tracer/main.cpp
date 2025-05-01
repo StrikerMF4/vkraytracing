@@ -140,6 +140,9 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 
 		ImGui::TextColored(white, "F2: guardar captura de pantalla");
 
+		ImGui::TextColored(white, "F11: pantalla completa");
+
+
 		ImGui::TextColored(white, "R: reiniciar");
 		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "P: pausar");
