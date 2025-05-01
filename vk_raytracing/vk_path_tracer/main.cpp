@@ -34,8 +34,12 @@ ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
 VulkanHandler vulkanHandler;
 
 bool paused = false;
+bool fullscreen = false;
 bool gui_visible = true;
 bool menu_visible = false;
+
+VkExtent2D window_size{};
+int window_posx, window_posy;
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -57,6 +61,19 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 			break;
 		case GLFW_KEY_F2:
 			vulkanHandler.m_createScreenshot = true;
+			break;
+		case GLFW_KEY_F11:
+			fullscreen = !fullscreen;
+			if (fullscreen) {
+				window_size = vulkanHandler.getSize();
+				glfwGetWindowPos(window, &window_posx, &window_posy);
+				GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			}
+			else {
+				glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
+			}
 			break;
 		case GLFW_KEY_ESCAPE:
 			menu_visible = !menu_visible;
