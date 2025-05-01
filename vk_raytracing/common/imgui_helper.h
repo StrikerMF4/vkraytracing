@@ -12,7 +12,7 @@ class Panelv2: public Panel
 
 public:
   // Starting the panel, equivalent to ImGui::Begin for a window. Need ImGui::end()
-  static void Begin(Side side = Side::Right, float alpha = 0.5f, char* name = nullptr, ImGuiWindowFlags flags = 0);
+  static void Begin(Side side = Side::Right, float alpha = 0.5f, const char* name = nullptr, ImGuiWindowFlags flags = 0);
 };
 
 }  // namespace ImGuiH

@@ -55,6 +55,9 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 		case GLFW_KEY_F1:
 			gui_visible = !gui_visible;
 			break;
+		case GLFW_KEY_F2:
+			vulkanHandler.m_createScreenshot = true;
+			break;
 		case GLFW_KEY_ESCAPE:
 			menu_visible = !menu_visible;
 			break;
@@ -557,11 +560,11 @@ int main(int argc, char** argv)
 			std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
 			std::string s(30, '\0');
-			std::strftime(&s[0], s.size(), "%Y-%m-%d %H.%M.%S", std::localtime(&now));
+			std::size_t len = std::strftime(&s[0], s.size(), "%Y-%m-%d %H.%M.%S", std::localtime(&now));
+			s.resize(len);
+			std::string filename = "screenshot " + s + ".png";
 
-			std::string filename = "screenshot " + s + ".ppm";
-
-			vulkanHandler.createScreenshot(cmdBuf, filename);
+			vulkanHandler.createScreenshot(filename);
 
 			vulkanHandler.m_createScreenshot = false;
 		}
