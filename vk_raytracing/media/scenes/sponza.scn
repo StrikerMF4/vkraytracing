@@ -7,22 +7,12 @@
         "fov": 60
     },
     "materials": [
-		{
-            "name": "rightSphere",
-			"color": [0.725, 0.71, 0.68],
-            "metallic": 1.0,
-			"roughness": 0.1,
-			"opacity": 0.0,
-            "ior": 2.5,
-            "albedotexture": "textures/micro_test2.png",
-            "emission": [10.0, 10.0, 10.0]
-        },
         {
             "name": "leaf",
             "ior": 1.5,
             "albedotexture": "textures/sponza_thorn_diff.png",
             "normaltexture": "textures/sponza_thorn_bump.png",
-            "alphatexture": "textures\sponza_thorn_mask.png"
+            "alphatexture": "textures/sponza_thorn_mask.png"
         },
         {
             "name": "vase_round",
@@ -56,13 +46,13 @@
             "name": "arch",
             "ior": 1.5,
             "metallic": 0.1,
-            "albedotexture": "textures/sponza_arch_diff.png",
+            "albedotexture": "textures/sponza_arch_diff.png"
         },
         {
             "name": "ceiling",
             "ior": 1.5,
             "metallic": 0.01,
-            "albedotexture": "textures/sponza_ceiling_a_diff.png",
+            "albedotexture": "textures/sponza_ceiling_a_diff.png"
         },
         {
             "name": "column_a",
@@ -95,7 +85,7 @@
             "name": "details",
             "ior": 1.5,
             "metallic": 0.01,
-            "albedotexture": "textures/sponza_details_diff.png",
+            "albedotexture": "textures/sponza_details_diff.png"
         },
         {
             "name": "Material__47",
@@ -105,37 +95,37 @@
             "name": "flagpole",
             "ior": 1.5,
             "metallic": 0.05,
-            "albedotexture": "textures/sponza_flagpole_diff.png",
+            "albedotexture": "textures/sponza_flagpole_diff.png"
         },
         {
             "name": "fabric_e",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_fabric_green_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_fabric_green_diff.png"
         },
         {
             "name": "fabric_d",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_fabric_blue_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_fabric_blue_diff.png"
         },
         {
             "name": "fabric_a",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_fabric_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_fabric_diff.png"
         },
         {
             "name": "fabric_g",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_curtain_blue_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_curtain_blue_diff.png"
         },
         {
             "name": "fabric_c",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_curtain_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_curtain_diff.png"
         },
         {
             "name": "fabric_f",
-            "ior": 1.0,
-            "albedotexture": "textures/sponza_curtain_green_diff.png",
+            "ior": 1,
+            "albedotexture": "textures/sponza_curtain_green_diff.png"
         },
         {
             "name": "chain",
@@ -169,11 +159,11 @@
             "name": "roof",
             "ior": 1.5,
             "metallic": 0.01,
-            "albedotexture": "textures/sponza_roof_diff.png",
+            "albedotexture": "textures/sponza_roof_diff.png"
         }
     ],
     "entities": [
-		{
+        {
             "type": "mesh",
             "file": "models/sponza/sponza.obj"
         }
