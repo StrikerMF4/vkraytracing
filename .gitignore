@@ -184,3 +184,4 @@ cmake_built
 
 #Omniverse
 OV/downloaded
+*.blend
