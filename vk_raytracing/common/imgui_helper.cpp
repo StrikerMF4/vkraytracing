@@ -30,7 +30,7 @@ using namespace ImGuiH;
 
 ImGuiID Panelv2::dockspaceID{ 0 };
 
-void Panelv2::Begin(Side side /*= Side::Right*/, float alpha /*= 0.5f*/, char* name /*= nullptr*/, ImGuiWindowFlags flags /*= 0 */)
+void Panelv2::Begin(Side side /*= Side::Right*/, float alpha /*= 0.5f*/, const char* name /*= nullptr*/, ImGuiWindowFlags flags /*= 0 */)
 {
   // Keeping the unique ID of the dock space
   dockspaceID = ImGui::GetID("DockSpace");

@@ -2,7 +2,10 @@
 
 
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
 #include "stb_image.h"
+#include "stb_image_write.h"
 
 #include "vulkan_handler.h"
 #include "nvh/alignment.hpp"
@@ -891,7 +894,7 @@ void VulkanHandler::createOffscreenRender()
 	{
 		auto colorCreateInfo = nvvk::makeImage2DCreateInfo(m_size, m_offscreenColorFormat,
 			VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-			| VK_IMAGE_USAGE_STORAGE_BIT);
+			| VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
 
 		nvvk::Image           image = m_alloc.createImage(colorCreateInfo);
@@ -1340,4 +1343,64 @@ void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
 		m_show_gui = !m_show_gui;
 	else if (pressed && key == GLFW_KEY_Q)
 		glfwSetWindowShouldClose(m_window, 1);
+	else if (pressed && key == GLFW_KEY_L)
+		m_createScreenshot = true;
 }
+
+void VulkanHandler::createScreenshot(const std::string& outFilename)
+{
+	// Create a temporary buffer to hold the pixels of the image
+	const VkBufferUsageFlags usage{ VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
+	const VkDeviceSize buffer_size = 4 * sizeof(uint8_t) * m_size.width * m_size.height;
+	nvvk::Buffer       pixel_buffer = m_alloc.createBuffer(buffer_size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+	VkImage srcImage = m_swapChain.getActiveImage();
+
+	imageToBuffer(srcImage, pixel_buffer.buffer);
+
+	// Write the buffer to disk
+	LOGI(" - Size: %d, %d\n", m_size.width, m_size.height);
+	LOGI(" - Bytes: %d\n", m_size.width * m_size.height * 4);
+	LOGI(" - Out name: %s\n", outFilename.c_str());
+	const uint8_t* src = static_cast<const uint8_t*>(m_alloc.map(pixel_buffer));
+
+	std::vector<uint8_t> rgba;
+	rgba.resize(buffer_size);
+
+	for (uint32_t y = 0; y < m_size.height; ++y) {
+		for (uint32_t x = 0; x < m_size.width; ++x) {
+			size_t i = (y * m_size.width + x) * 4;
+			rgba[i + 0] = src[i + 2];  // R = B
+			rgba[i + 1] = src[i + 1];  // G = G
+			rgba[i + 2] = src[i + 0];  // B = R
+			rgba[i + 3] = src[i + 3];  // A = A
+		}
+	}
+
+	stbi_write_png(outFilename.c_str(), m_size.width, m_size.height, 4, rgba.data(), 0);
+	m_alloc.unmap(pixel_buffer);
+
+	// Destroy temporary buffer
+	m_alloc.destroy(pixel_buffer);
+}
+
+void VulkanHandler::imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBufferOut)
+{
+	nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
+	VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
+
+	// Make the image layout eTransferSrcOptimal to copy to buffer
+	const VkImageSubresourceRange subresource_range{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	nvvk::cmdBarrierImageLayout(cmdBuf, imgIn, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, subresource_range);
+
+	// Copy the image to the buffer
+	VkBufferImageCopy copy_region{};
+	copy_region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+	copy_region.imageExtent = VkExtent3D{ m_size.width, m_size.height, 1 };
+	vkCmdCopyImageToBuffer(cmdBuf, imgIn, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pixelBufferOut, 1, &copy_region);
+
+	// Put back the image as it was
+	nvvk::cmdBarrierImageLayout(cmdBuf, imgIn, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, subresource_range);
+	cmdBufGet.submitAndWait(cmdBuf);
+}
+

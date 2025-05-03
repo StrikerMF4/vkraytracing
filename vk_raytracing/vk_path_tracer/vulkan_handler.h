@@ -11,6 +11,16 @@
 #include "nvvk/raytraceKHR_vk.hpp"
 #include <scene_loader.h>
 
+#define VK_CHECK_RESULT(f)																				                                    \
+{																										                                    \
+	VkResult res = (f);																					                                    \
+	if (res != VK_SUCCESS)																				                                    \
+	{																									                                    \
+		std::cout << "Fatal : VkResult is \"" << res << "\" in " << __FILE__ << " at line " << __LINE__ << "\n";   \
+		assert(res == VK_SUCCESS);																		                                    \
+	}																									                                    \
+}
+
 enum TechniqueType
 {
 	SIMPLE_PATHTRACER = 0,
@@ -177,6 +187,10 @@ public:
 
   // Push constant for ray tracer
   PushConstantRayTracer m_pcRay{};
+
+  bool m_createScreenshot{ false };  // Create screenshot at the end of the next render cycle
+  void createScreenshot(const std::string& filename);
+  void imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBufferOut);
 
   // Techniques
   std::unordered_map<TechniqueType, Technique*> m_techniques;

@@ -1,5 +1,4 @@
 #include <array>
-#include <time.h>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -14,6 +13,9 @@
 #include "nvpsystem.hpp"
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
+#include <iostream>
+#include <chrono>
+#include <ctime>
 #include <time.h>
 
 //////////////////////////////////////////////////////////////////////////
@@ -32,8 +34,12 @@ ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
 VulkanHandler vulkanHandler;
 
 bool paused = false;
+bool fullscreen = false;
 bool gui_visible = true;
 bool menu_visible = false;
+
+VkExtent2D window_size{};
+int window_posx, window_posy;
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -52,6 +58,22 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 			break;
 		case GLFW_KEY_F1:
 			gui_visible = !gui_visible;
+			break;
+		case GLFW_KEY_F2:
+			vulkanHandler.m_createScreenshot = true;
+			break;
+		case GLFW_KEY_F11:
+			fullscreen = !fullscreen;
+			if (fullscreen) {
+				window_size = vulkanHandler.getSize();
+				glfwGetWindowPos(window, &window_posx, &window_posy);
+				GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			}
+			else {
+				glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
+			}
 			break;
 		case GLFW_KEY_ESCAPE:
 			menu_visible = !menu_visible;
@@ -115,6 +137,11 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 		ImGui::TextColored(white, "ESC: mostrar menu");
 		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "F1: ocultar interfaz");
+
+		ImGui::TextColored(white, "F2: guardar captura de pantalla");
+
+		ImGui::TextColored(white, "F11: pantalla completa");
+
 
 		ImGui::TextColored(white, "R: reiniciar");
 		//ImGui::SameLine(0.0, 15);
@@ -546,6 +573,20 @@ int main(int argc, char** argv)
 			ImGui::Render();
 			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
 			vkCmdEndRenderPass(cmdBuf);
+		}
+
+		if (vulkanHandler.m_createScreenshot)
+		{
+			std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+			std::string s(30, '\0');
+			std::size_t len = std::strftime(&s[0], s.size(), "%Y-%m-%d %H.%M.%S", std::localtime(&now));
+			s.resize(len);
+			std::string filename = "screenshot " + s + ".png";
+
+			vulkanHandler.createScreenshot(filename);
+
+			vulkanHandler.m_createScreenshot = false;
 		}
 
 		// Submit for display

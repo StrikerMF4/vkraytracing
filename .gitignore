@@ -184,4 +184,6 @@ cmake_built
 
 #Omniverse
 OV/downloaded
+
+screenshot *.png
 *.blend
