@@ -186,3 +186,4 @@ cmake_built
 OV/downloaded
 
 screenshot *.png
+*.blend
