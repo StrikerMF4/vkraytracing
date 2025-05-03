@@ -4,6 +4,7 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
 #include <imgui_helper.h>
+#include <imfilebrowser.h>
 #include <scene_loader.h>
 
 #include "vulkan_handler.h"
@@ -37,6 +38,7 @@ bool paused = false;
 bool fullscreen = false;
 bool gui_visible = true;
 bool menu_visible = false;
+bool change_scene = false;
 
 VkExtent2D window_size{};
 int window_posx, window_posy;
@@ -61,6 +63,9 @@ static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mo
 			break;
 		case GLFW_KEY_F2:
 			vulkanHandler.m_createScreenshot = true;
+			break;
+		case GLFW_KEY_F3:
+			change_scene = true;
 			break;
 		case GLFW_KEY_F11:
 			fullscreen = !fullscreen;
@@ -365,6 +370,75 @@ int main(int argc, char** argv)
 	// Setup Imgui
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
+	ImGui::FileBrowser fileDialog;
+
+	// (optional) set browser properties
+	fileDialog.SetTitle("title");
+	fileDialog.SetTypeFilters({ ".scn" });
+
+	fileDialog.Open();
+
+	vulkanHandler.setupGlfwCallbacks(window);
+	glfwSetKeyCallback(window, &key_cb);
+
+	std::string scene_path;
+	ImGui_ImplGlfw_InitForVulkan(window, true);
+
+	while (1) {
+
+		glfwPollEvents();
+		if (vulkanHandler.isMinimized())
+			continue;
+
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		fileDialog.Display();
+
+		vulkanHandler.prepareFrame();
+
+		auto curFrame = vulkanHandler.getCurFrame();
+		const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
+
+		VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+		vulkanHandler.updateFrame();
+		// Clearing screen
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { {0, 0, 0, 0} };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		// 2nd rendering pass: tone mapper, UI
+		{
+			VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+			postRenderPassBeginInfo.clearValueCount = 3;
+			postRenderPassBeginInfo.pClearValues = clearValues.data();
+			postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
+			postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];
+			postRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
+
+			// Rendering tonemapper
+			vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			// Rendering UI
+			ImGui::Render();
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
+			vkCmdEndRenderPass(cmdBuf);
+		}
+
+		if (fileDialog.HasSelected())
+		{
+			std::cout << "Selected filename" << fileDialog.GetSelected().string() << std::endl;
+			scene_path = nvh::findFile(fileDialog.GetSelected().string(), defaultSearchPaths, true);
+			fileDialog.ClearSelected();
+			break;
+		}
+
+		vkEndCommandBuffer(cmdBuf);
+		vulkanHandler.submitFrame();
+	}
+
 	// Load Scene
 	//const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
 
@@ -379,7 +453,7 @@ int main(int argc, char** argv)
 
 	//otras
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
+	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
 	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
@@ -398,14 +472,14 @@ int main(int argc, char** argv)
 	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_sphere_light.scn", defaultSearchPaths, true);
 	const std::string scene_path = nvh::findFile("media/scenes/Externas/renderman_teapot_all.scn", defaultSearchPaths, true);*/
 	
-	SceneLoader::Scene scene(scene_path);
+	SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
 
 	// Setup camera
-	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
-	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
-	CameraManip.setFov(scene.camera_fov);
+	glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
+	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
+	CameraManip.setFov(scene->camera_fov);
 
-	vulkanHandler.loadScene(&scene, scene_path);
+	vulkanHandler.loadScene(scene, scene_path);
 
 	// Creation of the example-----------------------------------------------------------------------------------------------------------------
 
@@ -482,11 +556,7 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
-	vulkanHandler.m_pcRay.fov = scene.camera_fov;
-
-	vulkanHandler.setupGlfwCallbacks(window);
-	glfwSetKeyCallback(window, &key_cb);
-	ImGui_ImplGlfw_InitForVulkan(window, true);
+	vulkanHandler.m_pcRay.fov = scene->camera_fov;
 
 	time_t start = time(0);
 
