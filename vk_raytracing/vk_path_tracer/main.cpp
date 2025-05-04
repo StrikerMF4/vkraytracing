@@ -157,7 +157,7 @@ int max_depth = 5;
 bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
+inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, int& iteration_limit, int iterations, float& time_elapsed) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
 	if (ImGui::BeginMenuBar())
@@ -236,6 +236,9 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 				}
 
 				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+					paused = true;
+
+				if (!ImGui::InputInt("Iterations to pause", &iteration_limit) && iteration_limit != 0 && iterations >= iteration_limit)
 					paused = true;
 
 				if (ImGui::Button("Pause"))
@@ -492,6 +495,8 @@ int main(int argc, char** argv)
 
 	float time_elapsed = 0;
 	float time_limit = 0;
+	int iterations = 0;
+	int iteration_limit = 0;
 	auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
 	// Main loop
@@ -516,7 +521,7 @@ int main(int argc, char** argv)
 			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
 
 			if (menu_visible) {
-				drawConfigWindow(current_technique, pause_timer_start, time_limit, time_elapsed);
+				drawConfigWindow(current_technique, pause_timer_start, time_limit, iteration_limit, vulkanHandler.m_pcRay.frame, time_elapsed);
 			}
 		}
 
