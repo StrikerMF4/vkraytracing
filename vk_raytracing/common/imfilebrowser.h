@@ -117,6 +117,7 @@ namespace ImGui
         void SetInputName(std::string_view input);
 
     private:
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
 
         template <class Functor>
         struct ScopeGuard
@@ -384,15 +385,19 @@ inline void ImGui::FileBrowser::Display()
         }
         SetNextWindowSize(ImVec2(static_cast<float>(width_), static_cast<float>(height_)), ImGuiCond_FirstUseEver);
     }
+    
+    ImGui::SetNextWindowSize(ImVec2(this->viewport->Size.x, this->viewport->Size.y));
+
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
     if(flags_ & ImGuiFileBrowserFlags_NoModal)
     {
-        if(!BeginPopup(openLabel_.c_str()))
+        if(!BeginPopup(openLabel_.c_str(), window_flags))
         {
             return;
         }
     }
     else if(!BeginPopupModal(openLabel_.c_str(), nullptr,
-                             flags_ & ImGuiFileBrowserFlags_NoTitleBar ? ImGuiWindowFlags_NoTitleBar : 0))
+        window_flags | (flags_ & ImGuiFileBrowserFlags_NoTitleBar ? ImGuiWindowFlags_NoTitleBar : 0)))
     {
         return;
     }
@@ -823,11 +828,7 @@ inline void ImGui::FileBrowser::Display()
 
     SameLine();
 
-    const bool shouldClose =
-        Button("cancel") || shouldClose_ ||
-        ((flags_ & ImGuiFileBrowserFlags_CloseOnEsc) &&
-        IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
-        IsKeyPressed(ImGuiKey_Escape));
+    const bool shouldClose = shouldClose_;
     if(shouldClose)
     {
         CloseCurrentPopup();

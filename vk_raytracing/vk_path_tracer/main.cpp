@@ -23,6 +23,9 @@
 #define UNUSED(x) (void)(x)
 //////////////////////////////////////////////////////////////////////////
 
+static int const SAMPLE_WIDTH = 1280;
+static int const SAMPLE_HEIGHT = 720;
+
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
@@ -161,6 +164,8 @@ float config_max_depth;
 int max_depth = 5;
 bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
+TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
+
 
 inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
@@ -281,9 +286,10 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH = 1280;
-static int const SAMPLE_HEIGHT = 720;
 
+bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
+void render_initialization();
+void render_loop(SceneLoader::Scene* scene, GLFWwindow* window);
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -370,22 +376,50 @@ int main(int argc, char** argv)
 	// Setup Imgui
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
-	ImGui::FileBrowser fileDialog;
-
-	// (optional) set browser properties
-	fileDialog.SetTitle("title");
-	fileDialog.SetTypeFilters({ ".scn" });
-
-	fileDialog.Open();
-
 	vulkanHandler.setupGlfwCallbacks(window);
 	glfwSetKeyCallback(window, &key_cb);
 
-	std::string scene_path;
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
-	while (1) {
+	std::string scene_path;
+	bool valid_scene = scene_file_dialog_loop(window, &scene_path);
 
+	//Load Scene
+	if (valid_scene) {
+		SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
+		vulkanHandler.loadScene(scene, scene_path);
+
+		// Setup camera
+		glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
+		CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
+		CameraManip.setFov(scene->camera_fov);
+
+		render_initialization();
+
+		render_loop(scene, window);
+	}
+	
+	// Cleanup
+	vkDeviceWaitIdle(vulkanHandler.getDevice());
+
+	vulkanHandler.destroyResources();
+	vulkanHandler.destroy();
+	vkctx.deinit();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+
+	return 0;
+}
+
+bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
+	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(
+		ImGuiFileBrowserFlags_ConfirmOnEnter | ImGuiFileBrowserFlags_EditPathString |
+		ImGuiFileBrowserFlags_NoTitleBar, ".."
+	);
+	fileDialog.Open();
+
+	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		if (vulkanHandler.isMinimized())
 			continue;
@@ -404,7 +438,6 @@ int main(int argc, char** argv)
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
-		vulkanHandler.updateFrame();
 		// Clearing screen
 		std::array<VkClearValue, 2> clearValues{};
 		clearValues[0].color = { {0, 0, 0, 0} };
@@ -430,100 +463,22 @@ int main(int argc, char** argv)
 		if (fileDialog.HasSelected())
 		{
 			std::cout << "Selected filename" << fileDialog.GetSelected().string() << std::endl;
-			scene_path = nvh::findFile(fileDialog.GetSelected().string(), defaultSearchPaths, true);
+			*scene_path = nvh::findFile(fileDialog.GetSelected().string(), defaultSearchPaths, true);
 			fileDialog.ClearSelected();
-			break;
+			return true;
 		}
 
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
 	}
+	return false;
+}
 
-	// Load Scene
-	//const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
-
-	//Escenas Walter
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronConductor.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
-
-	//Bidirectional
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps_alt.scn", defaultSearchPaths, true);
-
-	//otras
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
-
-
-	//Externas
-	//const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
-	/*const std::string scene_path = nvh::findFile("media/scenes/Externas/spaceship.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/diningroom.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/staircase.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/test_veach.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_distant_light.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_rect_lights.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/tropical_island.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_sphere_light.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/renderman_teapot_all.scn", defaultSearchPaths, true);*/
-	
-	SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
-
-	// Setup camera
-	glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
-	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
-	CameraManip.setFov(scene->camera_fov);
-
-	vulkanHandler.loadScene(scene, scene_path);
-
-	// Creation of the example-----------------------------------------------------------------------------------------------------------------
-
-	//TO-DO: borrar esto, dejar solo escenas en formato escena
-	{  //Minecraft floor
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/vokselia_spawn.obj", defaultSearchPaths, true),
-						 glm::scale(glm::translate(glm::mat4(1.0f), vec3(0, 0.1, 0.1)), vec3(0.5)));*/
-	}
-
-	{  //cornell dragon
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/dragon.obj", defaultSearchPaths, true),
-						  glm::translate(
-						  glm::rotate(
-						  glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
-	}
-
-	//Lego
-	{
-		//vulkanHandler.loadModel(nvh::findFile("media/scenes/lego.obj", defaultSearchPaths, true));
-	}
-
-	{ //cornell bunny
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/bunny.obj", defaultSearchPaths, true));*/
-	}
-
-	{  //cornell lucy
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-	  vulkanHandler.loadModel(nvh::findFile("media/scenes/lucy.obj", defaultSearchPaths, true),
-						glm::scale(glm::rotate(glm::mat4(1.0f), (float)1.5, vec3(0, 1, 0)), vec3(0.0023)));*/
-	}
-
-	//Sponza
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/sponza.obj", defaultSearchPaths, true));
-
-	//-----------------------------------------------------------------------------------------------------------------------------------------
-
+void render_initialization() {
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER); 
+	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
-	TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
 	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
@@ -546,8 +501,9 @@ int main(int argc, char** argv)
 	vulkanHandler.createPostDescriptor();
 	vulkanHandler.createPostPipeline();
 	vulkanHandler.updatePostDescriptorSet();
+}
 
-
+void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
 	bool      useRaytracer = true;
 
@@ -557,6 +513,8 @@ int main(int argc, char** argv)
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
 	vulkanHandler.m_pcRay.fov = scene->camera_fov;
+
+	vulkanHandler.resetFrame();
 
 	time_t start = time(0);
 
@@ -663,16 +621,4 @@ int main(int argc, char** argv)
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
 	}
-
-	// Cleanup
-	vkDeviceWaitIdle(vulkanHandler.getDevice());
-
-	vulkanHandler.destroyResources();
-	vulkanHandler.destroy();
-	vkctx.deinit();
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-
-	return 0;
 }

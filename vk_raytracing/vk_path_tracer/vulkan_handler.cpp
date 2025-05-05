@@ -869,8 +869,10 @@ void VulkanHandler::destroyResources()
 void VulkanHandler::onResize(int /*w*/, int /*h*/)
 {
 	createOffscreenRender();
-	updatePostDescriptorSet();
-	updateRtDescriptorSet();
+	if (m_postDescSet != NULL && m_rtDescSet != NULL) {
+		updatePostDescriptorSet();
+		updateRtDescriptorSet();
+	}
 
 	resetFrame();
 }
