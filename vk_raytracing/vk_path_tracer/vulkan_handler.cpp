@@ -503,11 +503,11 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
 				unsigned int lightID = m_lights.size();
 				//Fill non light face with filler ID
-				for (int index = last_index; index < light.first_index; index++) {
+				for (unsigned int index = last_index; index < light.first_index; index++) {
 					shape->model_loader.LoadedLightIDs.push_back(0);
 				}
 				//Save lightID for every face
-				for (int index = light.first_index; index <= light.last_index; index++) {
+				for (unsigned int index = light.first_index; index <= light.last_index; index++) {
 					shape->model_loader.LoadedLightIDs.push_back(lightID);
 				}
 				last_index = light.last_index + 1;

@@ -26,25 +26,30 @@
 static int const SAMPLE_WIDTH = 1280;
 static int const SAMPLE_HEIGHT = 720;
 
+static ImVec4 const yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
+static ImVec4 const white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+static ImVec4 const green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
+static ImVec4 const red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
+
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
-ImVec4 yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
-ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-ImVec4 green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
-ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
-
 //Shared
 VulkanHandler vulkanHandler;
+TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
+
+VkExtent2D window_size{};
+int window_posx, window_posy;
 
 bool paused = false;
 bool fullscreen = false;
 bool gui_visible = true;
-bool menu_visible = false;
+bool config_menu_visible = false;
 bool change_scene = false;
 
-VkExtent2D window_size{};
-int window_posx, window_posy;
+int max_depth = MAX_DEPTH / 2;
+bool bidirectional_debug_technique = false;
+int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description)
@@ -52,54 +57,55 @@ static void onErrorCallback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods)
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (action == GLFW_PRESS)
+	if (action != GLFW_PRESS)
+		return;
+
+	switch (key)
 	{
-		switch (key)
-		{
-		case GLFW_KEY_Q:
-			glfwSetWindowShouldClose(window, 1);
-			break;
-		case GLFW_KEY_F1:
-			gui_visible = !gui_visible;
-			break;
-		case GLFW_KEY_F2:
-			vulkanHandler.m_createScreenshot = true;
-			break;
-		case GLFW_KEY_F3:
-			change_scene = true;
-			break;
-		case GLFW_KEY_F11:
-			fullscreen = !fullscreen;
-			if (fullscreen) {
-				window_size = vulkanHandler.getSize();
-				glfwGetWindowPos(window, &window_posx, &window_posy);
-				GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-			}
-			else {
-				glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
-			}
-			break;
-		case GLFW_KEY_ESCAPE:
-			menu_visible = !menu_visible;
-			break;
-		case GLFW_KEY_P:
-			paused = !paused;
-			break;
-		case GLFW_KEY_R:
-			vulkanHandler.resetFrame();
-			break;
+	case GLFW_KEY_Q:
+		glfwSetWindowShouldClose(window, 1);
+		break;
+	case GLFW_KEY_F1:
+		gui_visible = !gui_visible;
+		break;
+	case GLFW_KEY_F2:
+		vulkanHandler.m_createScreenshot = true;
+		break;
+	case GLFW_KEY_F3:
+		change_scene = true;
+		break;
+	case GLFW_KEY_F11:
+		fullscreen = !fullscreen;
+		if (fullscreen) {
+			window_size = vulkanHandler.getSize();
+			glfwGetWindowPos(window, &window_posx, &window_posy);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 		}
+		else {
+			glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
+		}
+		break;
+	case GLFW_KEY_ESCAPE:
+		config_menu_visible = !config_menu_visible;
+		break;
+	case GLFW_KEY_P:
+		paused = !paused;
+		break;
+	case GLFW_KEY_R:
+		vulkanHandler.resetFrame();
+		break;
 	}
+
 }
 
 inline static void drawOverlay(std::string& technique_codename, float& render_time)
 {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-	
+
 	const float PAD = 10.0f;
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
@@ -134,7 +140,7 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 		//Tiempo de renderizado
 		ImGui::TextColored(yellow, "Render status: ");
 		ImGui::SameLine();
-		if(paused)
+		if (paused)
 			ImGui::TextColored(red, "paused");
 		else
 			ImGui::TextColored(green, "running");
@@ -160,11 +166,6 @@ inline static void drawOverlay(std::string& technique_codename, float& render_ti
 	ImGui::End();
 }
 
-float config_max_depth;
-int max_depth = 5;
-bool bidirectional_debug_technique = false;
-int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
-TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
 
 
 inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
@@ -220,8 +221,9 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 					time_elapsed = 0;
 				}
 
-				if (ImGui::InputInt("Max Depth", &max_depth, 1) && max_depth > 0) {
-					vulkanHandler.m_pcRay.max_depth = max_depth;
+				int new_depth = max_depth;
+				if (ImGui::InputInt("Max Depth", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
+					vulkanHandler.m_pcRay.max_depth = max_depth = new_depth;
 					vulkanHandler.resetFrame();
 				}
 
@@ -229,12 +231,15 @@ inline static void drawConfigWindow(TechniqueType& current_technique, std::chron
 					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
 
 					if (bidirectional_debug_technique) {
-						if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
+						int new_technique_s = bidirectional_debug_technique_s;
+						int new_technique_t = bidirectional_debug_technique_t;
+
+						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= 0 && new_technique_s <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
 							vulkanHandler.resetFrame();
 						}
-						if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
+						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= 0 && new_technique_t <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
 							vulkanHandler.resetFrame();
 						}
 					}
@@ -377,7 +382,7 @@ int main(int argc, char** argv)
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
 	vulkanHandler.setupGlfwCallbacks(window);
-	glfwSetKeyCallback(window, &key_cb);
+	glfwSetKeyCallback(window, &keyCallback);
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
@@ -398,7 +403,7 @@ int main(int argc, char** argv)
 
 		render_loop(scene, window);
 	}
-	
+
 	// Cleanup
 	vkDeviceWaitIdle(vulkanHandler.getDevice());
 
@@ -505,7 +510,6 @@ void render_initialization() {
 
 void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
-	bool      useRaytracer = true;
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
 	vulkanHandler.m_pcRay.focusDist = 1.f;
@@ -543,7 +547,7 @@ void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 		if (gui_visible) {
 			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
 
-			if (menu_visible) {
+			if (config_menu_visible) {
 				drawConfigWindow(current_technique, pause_timer_start, time_limit, time_elapsed);
 			}
 		}
