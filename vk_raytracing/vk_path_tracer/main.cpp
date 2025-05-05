@@ -52,246 +52,14 @@ bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 
 // GLFW Callback functions
-static void onErrorCallback(int error, const char* description)
-{
-	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-}
+static void onErrorCallback(int error, const char* description);
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (action != GLFW_PRESS)
-		return;
+// GUI
+static void drawOverlay(std::string& technique_codename, float& render_time);
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed);
 
-	switch (key)
-	{
-	case GLFW_KEY_Q:
-		glfwSetWindowShouldClose(window, 1);
-		break;
-	case GLFW_KEY_F1:
-		gui_visible = !gui_visible;
-		break;
-	case GLFW_KEY_F2:
-		vulkanHandler.m_createScreenshot = true;
-		break;
-	case GLFW_KEY_F3:
-		change_scene = true;
-		break;
-	case GLFW_KEY_F11:
-		fullscreen = !fullscreen;
-		if (fullscreen) {
-			window_size = vulkanHandler.getSize();
-			glfwGetWindowPos(window, &window_posx, &window_posy);
-			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-		}
-		else {
-			glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
-		}
-		break;
-	case GLFW_KEY_ESCAPE:
-		config_menu_visible = !config_menu_visible;
-		break;
-	case GLFW_KEY_P:
-		paused = !paused;
-		break;
-	case GLFW_KEY_R:
-		vulkanHandler.resetFrame();
-		break;
-	}
-
-}
-
-inline static void drawOverlay(std::string& technique_codename, float& render_time)
-{
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-
-	const float PAD = 10.0f;
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-	ImVec2 work_size = viewport->WorkSize;
-	ImVec2 window_pos, window_pos_pivot;
-	window_pos.x = work_pos.x + PAD;
-	window_pos.y = work_pos.y + PAD;
-	window_pos_pivot.x = 0.0f;
-	window_pos_pivot.y = 0.0f;
-	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowViewport(viewport->ID);
-	window_flags |= ImGuiWindowFlags_NoMove;
-
-	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
-	if (ImGui::Begin("Overlay", NULL, window_flags))
-	{
-		//Algoritmo
-		ImGui::TextColored(yellow, "Tecnica: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, technique_codename.c_str());
-
-		//Estadisticas
-		ImGui::TextColored(yellow, "Stats: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-
-		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render time: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, "%.3f secs", render_time);
-
-		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render status: ");
-		ImGui::SameLine();
-		if (paused)
-			ImGui::TextColored(red, "paused");
-		else
-			ImGui::TextColored(green, "running");
-
-		ImGui::NewLine();
-
-		//Informaci�n
-		ImGui::TextColored(white, "ESC: mostrar menu");
-		//ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(white, "F1: ocultar interfaz");
-
-		ImGui::TextColored(white, "F2: guardar captura de pantalla");
-
-		ImGui::TextColored(white, "F11: pantalla completa");
-
-
-		ImGui::TextColored(white, "R: reiniciar");
-		//ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(white, "P: pausar");
-
-		ImGui::TextColored(white, "Q: salir");
-	}
-	ImGui::End();
-}
-
-
-
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
-	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
-
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu("Archivo"))
-		{
-			//if (ImGui::MenuItem("Close", "Ctrl+W")) { *p_open = false; }
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
-
-	// Content
-	{
-		ImGui::BeginGroup();
-		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
-		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
-		{
-			if (ImGui::BeginTabItem("Algoritmo"))
-			{
-				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
-				static int item_current_idx = current_technique; // Here we store our selection data as an index.
-
-				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
-				const char* combo_preview_value = items[item_current_idx];
-
-				if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
-				{
-					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-					{
-						const bool is_selected = (item_current_idx == n);
-						if (ImGui::Selectable(items[n], is_selected))
-							item_current_idx = n;
-
-						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-						if (is_selected)
-							ImGui::SetItemDefaultFocus();
-					}
-					ImGui::EndCombo();
-				}
-
-				if (current_technique != (TechniqueType)item_current_idx)
-				{
-					current_technique = (TechniqueType)item_current_idx;
-					vulkanHandler.changeTechnique(current_technique);
-					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
-
-					paused = false;
-					pause_timer_start = std::chrono::high_resolution_clock::now();
-					time_elapsed = 0;
-				}
-
-				int new_depth = max_depth;
-				if (ImGui::InputInt("Max Depth", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
-					vulkanHandler.m_pcRay.max_depth = max_depth = new_depth;
-					vulkanHandler.resetFrame();
-				}
-
-				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
-					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
-
-					if (bidirectional_debug_technique) {
-						int new_technique_s = bidirectional_debug_technique_s;
-						int new_technique_t = bidirectional_debug_technique_t;
-
-						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= 0 && new_technique_s <= max_depth) {
-							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
-							vulkanHandler.resetFrame();
-						}
-						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= 0 && new_technique_t <= max_depth) {
-							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
-							vulkanHandler.resetFrame();
-						}
-					}
-					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
-						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
-						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
-						vulkanHandler.resetFrame();
-					}
-				}
-
-				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
-					paused = true;
-
-				if (ImGui::Button("Pause"))
-				{
-					paused = !paused;
-
-					if (!paused)
-					{
-						pause_timer_start = std::chrono::high_resolution_clock::now();
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Reset"))
-				{
-					vulkanHandler.resetFrame();
-				}
-
-				ImGui::EndTabItem();
-			}
-			if (ImGui::BeginTabItem("Camara"))
-			{
-				ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-				ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
-
-				ImGui::EndTabItem();
-			}
-
-			ImGui::EndTabBar();
-		}
-		ImGui::EndChild();
-		ImGui::EndGroup();
-	}
-
-	ImGuiH::Panel::End();
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-
+// Render
 bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
 void render_initialization();
 void render_loop(SceneLoader::Scene* scene, GLFWwindow* window);
@@ -417,7 +185,246 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
+
+//GLFW
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action != GLFW_PRESS)
+		return;
+
+	switch (key)
+	{
+	case GLFW_KEY_Q:
+		glfwSetWindowShouldClose(window, 1);
+		break;
+	case GLFW_KEY_F1:
+		gui_visible = !gui_visible;
+		break;
+	case GLFW_KEY_F2:
+		vulkanHandler.m_createScreenshot = true;
+		break;
+	case GLFW_KEY_F3:
+		change_scene = true;
+		break;
+	case GLFW_KEY_F11:
+		fullscreen = !fullscreen;
+		if (fullscreen) {
+			window_size = vulkanHandler.getSize();
+			glfwGetWindowPos(window, &window_posx, &window_posy);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		}
+		else {
+			glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
+		}
+		break;
+	case GLFW_KEY_ESCAPE:
+		config_menu_visible = !config_menu_visible;
+		break;
+	case GLFW_KEY_P:
+		paused = !paused;
+		break;
+	case GLFW_KEY_R:
+		vulkanHandler.resetFrame();
+		break;
+	}
+}
+
+static void onErrorCallback(int error, const char* description)
+{
+	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+//GUI
+
+static void drawOverlay(std::string& technique_codename, float& render_time)
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+
+	const float PAD = 10.0f;
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+	ImVec2 work_size = viewport->WorkSize;
+	ImVec2 window_pos, window_pos_pivot;
+	window_pos.x = work_pos.x + PAD;
+	window_pos.y = work_pos.y + PAD;
+	window_pos_pivot.x = 0.0f;
+	window_pos_pivot.y = 0.0f;
+	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+	ImGui::SetNextWindowViewport(viewport->ID);
+	window_flags |= ImGuiWindowFlags_NoMove;
+
+	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
+	if (ImGui::Begin("Overlay", NULL, window_flags))
+	{
+		//Algoritmo
+		ImGui::TextColored(yellow, "Tecnica: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, technique_codename.c_str());
+
+		//Estadisticas
+		ImGui::TextColored(yellow, "Stats: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Render time: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%.3f secs", render_time);
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Render status: ");
+		ImGui::SameLine();
+		if (paused)
+			ImGui::TextColored(red, "paused");
+		else
+			ImGui::TextColored(green, "running");
+
+		ImGui::NewLine();
+
+		//Informaci�n
+		ImGui::TextColored(white, "ESC: mostrar menu");
+		//ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(white, "F1: ocultar interfaz");
+
+		ImGui::TextColored(white, "F2: guardar captura de pantalla");
+
+		ImGui::TextColored(white, "F11: pantalla completa");
+
+
+		ImGui::TextColored(white, "R: reiniciar");
+		//ImGui::SameLine(0.0, 15);
+		ImGui::TextColored(white, "P: pausar");
+
+		ImGui::TextColored(white, "Q: salir");
+	}
+	ImGui::End();
+}
+
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
+	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
+
+	if (ImGui::BeginMenuBar())
+	{
+		if (ImGui::BeginMenu("Archivo"))
+		{
+			//if (ImGui::MenuItem("Close", "Ctrl+W")) { *p_open = false; }
+			ImGui::EndMenu();
+		}
+		ImGui::EndMenuBar();
+	}
+
+	// Content
+	{
+		ImGui::BeginGroup();
+		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+		{
+			if (ImGui::BeginTabItem("Algoritmo"))
+			{
+				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
+				static int item_current_idx = current_technique; // Here we store our selection data as an index.
+
+				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
+				const char* combo_preview_value = items[item_current_idx];
+
+				if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
+				{
+					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+					{
+						const bool is_selected = (item_current_idx == n);
+						if (ImGui::Selectable(items[n], is_selected))
+							item_current_idx = n;
+
+						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+
+				if (current_technique != (TechniqueType)item_current_idx)
+				{
+					current_technique = (TechniqueType)item_current_idx;
+					vulkanHandler.changeTechnique(current_technique);
+					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
+
+					paused = false;
+					pause_timer_start = std::chrono::high_resolution_clock::now();
+					time_elapsed = 0;
+				}
+
+				int new_depth = max_depth;
+				if (ImGui::InputInt("Max Depth", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
+					vulkanHandler.m_pcRay.max_depth = max_depth = new_depth;
+					vulkanHandler.resetFrame();
+				}
+
+				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
+
+					if (bidirectional_debug_technique) {
+						int new_technique_s = bidirectional_debug_technique_s;
+						int new_technique_t = bidirectional_debug_technique_t;
+
+						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= 0 && new_technique_s <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
+							vulkanHandler.resetFrame();
+						}
+						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= 0 && new_technique_t <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
+							vulkanHandler.resetFrame();
+						}
+					}
+					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
+						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
+						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+						vulkanHandler.resetFrame();
+					}
+				}
+
+				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+					paused = true;
+
+				if (ImGui::Button("Pause"))
+				{
+					paused = !paused;
+
+					if (!paused)
+					{
+						pause_timer_start = std::chrono::high_resolution_clock::now();
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Reset"))
+				{
+					vulkanHandler.resetFrame();
+				}
+
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Camara"))
+			{
+				ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
+				ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+		ImGui::EndChild();
+		ImGui::EndGroup();
+	}
+
+	ImGuiH::Panel::End();
+}
+
+//Render
+
+static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
 	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(
 		ImGuiFileBrowserFlags_ConfirmOnEnter | ImGuiFileBrowserFlags_EditPathString |
 		ImGuiFileBrowserFlags_NoTitleBar, ".."
@@ -479,7 +486,7 @@ bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
 	return false;
 }
 
-void render_initialization() {
+static void render_initialization() {
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
@@ -508,7 +515,7 @@ void render_initialization() {
 	vulkanHandler.updatePostDescriptorSet();
 }
 
-void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
+static void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
@@ -548,7 +555,7 @@ void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
 
 			if (config_menu_visible) {
-				drawConfigWindow(current_technique, pause_timer_start, time_limit, time_elapsed);
+				drawConfigWindow(pause_timer_start, time_limit, time_elapsed);
 			}
 		}
 
@@ -626,3 +633,5 @@ void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 		vulkanHandler.submitFrame();
 	}
 }
+
+
