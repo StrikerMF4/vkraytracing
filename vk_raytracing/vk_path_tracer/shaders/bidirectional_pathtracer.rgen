@@ -9,7 +9,7 @@
 #extension GL_EXT_shader_atomic_float : enable
 
 #include "lights.glsl"
-#include "wavefront.glsl"
+#include "material.glsl"
 #include "raycommon.glsl"
 #include "host_device.h"
 

@@ -29,7 +29,7 @@ Scene::Scene(const std::string& filepath) {
 		json camera_data = data["camera"];
 
 		if (camera_data.contains("fov"))
-			camera_fov = camera_data["fov"].template get<unsigned int>();
+			camera_fov = camera_data["fov"].template get<float>();
 		if (camera_data.contains("position"))
 			camera_position = glm::vec3(
 				camera_data["position"][0].template get<double>(),

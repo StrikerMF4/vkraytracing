@@ -4,6 +4,7 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
 #include <imgui_helper.h>
+#include <imfilebrowser.h>
 #include <scene_loader.h>
 
 #include "vulkan_handler.h"
@@ -22,266 +23,46 @@
 #define UNUSED(x) (void)(x)
 //////////////////////////////////////////////////////////////////////////
 
+static int const SAMPLE_WIDTH = 1280;
+static int const SAMPLE_HEIGHT = 720;
+
+static ImVec4 const yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
+static ImVec4 const white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+static ImVec4 const green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
+static ImVec4 const red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
+
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
-ImVec4 yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
-ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-ImVec4 green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
-ImVec4 red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
-
 //Shared
 VulkanHandler vulkanHandler;
-
-bool paused = false;
-bool fullscreen = false;
-bool gui_visible = true;
-bool menu_visible = false;
+TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
 
 VkExtent2D window_size{};
 int window_posx, window_posy;
 
-// GLFW Callback functions
-static void onErrorCallback(int error, const char* description)
-{
-	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
-}
+bool paused = false;
+bool fullscreen = false;
+bool gui_visible = true;
+bool config_menu_visible = false;
+bool change_scene = false;
 
-static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	if (action == GLFW_PRESS)
-	{
-		switch (key)
-		{
-		case GLFW_KEY_Q:
-			glfwSetWindowShouldClose(window, 1);
-			break;
-		case GLFW_KEY_F1:
-			gui_visible = !gui_visible;
-			break;
-		case GLFW_KEY_F2:
-			vulkanHandler.m_createScreenshot = true;
-			break;
-		case GLFW_KEY_F11:
-			fullscreen = !fullscreen;
-			if (fullscreen) {
-				window_size = vulkanHandler.getSize();
-				glfwGetWindowPos(window, &window_posx, &window_posy);
-				GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-			}
-			else {
-				glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
-			}
-			break;
-		case GLFW_KEY_ESCAPE:
-			menu_visible = !menu_visible;
-			break;
-		case GLFW_KEY_P:
-			paused = !paused;
-			break;
-		case GLFW_KEY_R:
-			vulkanHandler.resetFrame();
-			break;
-		}
-	}
-}
-
-inline static void drawOverlay(std::string& technique_codename, float& render_time)
-{
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-	
-	const float PAD = 10.0f;
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-	ImVec2 work_size = viewport->WorkSize;
-	ImVec2 window_pos, window_pos_pivot;
-	window_pos.x = work_pos.x + PAD;
-	window_pos.y = work_pos.y + PAD;
-	window_pos_pivot.x = 0.0f;
-	window_pos_pivot.y = 0.0f;
-	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-	ImGui::SetNextWindowViewport(viewport->ID);
-	window_flags |= ImGuiWindowFlags_NoMove;
-
-	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
-	if (ImGui::Begin("Overlay", NULL, window_flags))
-	{
-		//Algoritmo
-		ImGui::TextColored(yellow, "Tecnica: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, technique_codename.c_str());
-
-		//Estadisticas
-		ImGui::TextColored(yellow, "Stats: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
-
-		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render time: ");
-		ImGui::SameLine();
-		ImGui::TextColored(white, "%.3f secs", render_time);
-
-		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render status: ");
-		ImGui::SameLine();
-		if(paused)
-			ImGui::TextColored(red, "paused");
-		else
-			ImGui::TextColored(green, "running");
-
-		ImGui::NewLine();
-
-		//Informaci�n
-		ImGui::TextColored(white, "ESC: mostrar menu");
-		//ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(white, "F1: ocultar interfaz");
-
-		ImGui::TextColored(white, "F2: guardar captura de pantalla");
-
-		ImGui::TextColored(white, "F11: pantalla completa");
-
-
-		ImGui::TextColored(white, "R: reiniciar");
-		//ImGui::SameLine(0.0, 15);
-		ImGui::TextColored(white, "P: pausar");
-
-		ImGui::TextColored(white, "Q: salir");
-	}
-	ImGui::End();
-}
-
-float config_max_depth;
-int max_depth = 5;
+int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 
-inline static void drawConfigWindow(TechniqueType& current_technique, std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, int& iteration_limit, int iterations, float& time_elapsed) {
-	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
+// GLFW Callback functions
+static void onErrorCallback(int error, const char* description);
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu("Archivo"))
-		{
-			//if (ImGui::MenuItem("Close", "Ctrl+W")) { *p_open = false; }
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
+// GUI
+static void drawOverlay(std::string& technique_codename, float& render_time);
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations);
 
-	// Content
-	{
-		ImGui::BeginGroup();
-		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
-		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
-		{
-			if (ImGui::BeginTabItem("Algoritmo"))
-			{
-				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
-				static int item_current_idx = current_technique; // Here we store our selection data as an index.
-
-				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
-				const char* combo_preview_value = items[item_current_idx];
-
-				if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
-				{
-					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-					{
-						const bool is_selected = (item_current_idx == n);
-						if (ImGui::Selectable(items[n], is_selected))
-							item_current_idx = n;
-
-						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-						if (is_selected)
-							ImGui::SetItemDefaultFocus();
-					}
-					ImGui::EndCombo();
-				}
-
-				if (current_technique != (TechniqueType)item_current_idx)
-				{
-					current_technique = (TechniqueType)item_current_idx;
-					vulkanHandler.changeTechnique(current_technique);
-					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
-
-					paused = false;
-					pause_timer_start = std::chrono::high_resolution_clock::now();
-					time_elapsed = 0;
-				}
-
-				if (ImGui::InputInt("Max Depth", &max_depth, 1) && max_depth > 0) {
-					vulkanHandler.m_pcRay.max_depth = max_depth;
-					vulkanHandler.resetFrame();
-				}
-
-				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
-					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
-
-					if (bidirectional_debug_technique) {
-						if (ImGui::InputInt("Debug Technique S", &bidirectional_debug_technique_s, 1) && bidirectional_debug_technique_s >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s;
-							vulkanHandler.resetFrame();
-						}
-						if (ImGui::InputInt("Debug Technique T", &bidirectional_debug_technique_t, 1) && bidirectional_debug_technique_t >= 0) {
-							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t;
-							vulkanHandler.resetFrame();
-						}
-					}
-					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
-						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
-						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
-						vulkanHandler.resetFrame();
-					}
-				}
-
-				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
-					paused = true;
-
-				if (!ImGui::InputInt("Iterations to pause", &iteration_limit) && iteration_limit != 0 && iterations >= iteration_limit)
-					paused = true;
-
-				if (ImGui::Button("Pause"))
-				{
-					paused = !paused;
-
-					if (!paused)
-					{
-						pause_timer_start = std::chrono::high_resolution_clock::now();
-					}
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Reset"))
-				{
-					vulkanHandler.resetFrame();
-				}
-
-				ImGui::EndTabItem();
-			}
-			if (ImGui::BeginTabItem("Camara"))
-			{
-				ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-				ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
-
-				ImGui::EndTabItem();
-			}
-
-			ImGui::EndTabBar();
-		}
-		ImGui::EndChild();
-		ImGui::EndGroup();
-	}
-
-	ImGuiH::Panel::End();
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////
-static int const SAMPLE_WIDTH = 1280;
-static int const SAMPLE_HEIGHT = 720;
-
+// Render
+bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
+void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
+void render_loop(GLFWwindow* window);
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -368,91 +149,343 @@ int main(int argc, char** argv)
 	// Setup Imgui
 	vulkanHandler.initGUI(0);  // Using sub-pass 0
 
-	// Load Scene
-	//const std::string scene_path = nvh::findFile("media/scenes/test.scn", defaultSearchPaths, true);
+	vulkanHandler.setupGlfwCallbacks(window);
+	glfwSetKeyCallback(window, &keyCallback);
 
-	//Escenas Walter
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronConductor.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/PatronDielectrico.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/RoughnessTests/WalterGlass.scn", defaultSearchPaths, true);
+	ImGui_ImplGlfw_InitForVulkan(window, true);
 
-	//Bidirectional
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/Bidirectional/veach_lamps_alt.scn", defaultSearchPaths, true);
+	std::string scene_path;
+	bool valid_scene = scene_file_dialog_loop(window, &scene_path);
 
-	//otras
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_original.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_sphere_antiguo.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_water.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_mirror.scn", defaultSearchPaths, true);
-	//const std::string scene_path = nvh::findFile("media/scenes/cornellbox_bubble.scn", defaultSearchPaths, true);
+	vkDeviceWaitIdle(vulkanHandler.getDevice());
 
+	//Load Scene
+	if (valid_scene) {
+		SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
+		vulkanHandler.loadScene(scene, scene_path);
 
-	//Externas
-	//const std::string scene_path = nvh::findFile("media/scenes/Externas/bedroom.scn", defaultSearchPaths, true);
-	/*const std::string scene_path = nvh::findFile("media/scenes/Externas/spaceship.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/diningroom.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/staircase.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/test_veach.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_distant_light.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_rect_lights.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/tropical_island.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/hyperion_sphere_light.scn", defaultSearchPaths, true);
-	const std::string scene_path = nvh::findFile("media/scenes/Externas/renderman_teapot_all.scn", defaultSearchPaths, true);*/
-	
-	SceneLoader::Scene scene(scene_path);
+		render_initialization(scene, window);
 
-	// Setup camera
-	glfwSetWindowSize(window, scene.resolution_x, scene.resolution_y);
-	CameraManip.setLookat(scene.camera_position, scene.camera_lookat, glm::vec3(0, 1, 0));
-	CameraManip.setFov(scene.camera_fov);
+		vulkanHandler.resetFrame();
 
-	vulkanHandler.loadScene(&scene, scene_path);
-
-	// Creation of the example-----------------------------------------------------------------------------------------------------------------
-
-	//TO-DO: borrar esto, dejar solo escenas en formato escena
-	{  //Minecraft floor
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Sphere.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/vokselia_spawn.obj", defaultSearchPaths, true),
-						 glm::scale(glm::translate(glm::mat4(1.0f), vec3(0, 0.1, 0.1)), vec3(0.5)));*/
+		render_loop(window);
 	}
 
-	{  //cornell dragon
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/dragon.obj", defaultSearchPaths, true),
-						  glm::translate(
-						  glm::rotate(
-						  glm::scale(glm::mat4(1.0f), vec3(1.5,1.5,1.5)), (float)1.5, vec3(0, 1, 0)),vec3(0, 0.5, 0)));*/
-	}
+	// Cleanup
+	vkDeviceWaitIdle(vulkanHandler.getDevice());
 
-	//Lego
+	vulkanHandler.destroyResources();
+	vulkanHandler.destroy();
+	vkctx.deinit();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+
+	return 0;
+}
+
+
+//GLFW
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action != GLFW_PRESS)
+		return;
+
+	switch (key)
 	{
-		//vulkanHandler.loadModel(nvh::findFile("media/scenes/lego.obj", defaultSearchPaths, true));
+	case GLFW_KEY_Q:
+		glfwSetWindowShouldClose(window, 1);
+		break;
+	case GLFW_KEY_F1:
+		gui_visible = !gui_visible;
+		break;
+	case GLFW_KEY_F2:
+		vulkanHandler.m_createScreenshot = true;
+		break;
+	case GLFW_KEY_F3:
+		change_scene = true;
+		break;
+	case GLFW_KEY_F11:
+		fullscreen = !fullscreen;
+		if (fullscreen) {
+			window_size = vulkanHandler.getSize();
+			glfwGetWindowPos(window, &window_posx, &window_posy);
+			GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		}
+		else {
+			glfwSetWindowMonitor(window, NULL, window_posx, window_posy, window_size.width, window_size.height, 0);
+		}
+		break;
+	case GLFW_KEY_ESCAPE:
+		config_menu_visible = !config_menu_visible;
+		break;
+	case GLFW_KEY_P:
+		paused = !paused;
+		break;
+	case GLFW_KEY_R:
+		vulkanHandler.resetFrame();
+		break;
+	}
+}
+
+static void onErrorCallback(int error, const char* description)
+{
+	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
+
+//GUI
+
+static void drawOverlay(std::string& technique_codename, float& render_time)
+{
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+
+	const float PAD = 10.0f;
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+	ImVec2 work_size = viewport->WorkSize;
+	ImVec2 window_pos, window_pos_pivot;
+	window_pos.x = work_pos.x + PAD;
+	window_pos.y = work_pos.y + PAD;
+	window_pos_pivot.x = 0.0f;
+	window_pos_pivot.y = 0.0f;
+	ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+	ImGui::SetNextWindowViewport(viewport->ID);
+	window_flags |= ImGuiWindowFlags_NoMove;
+
+	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
+	if (ImGui::Begin("Overlay", NULL, window_flags))
+	{
+		//Algoritmo
+		ImGui::TextColored(yellow, "Algoritmo: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, technique_codename.c_str());
+
+		//Estadisticas
+		ImGui::TextColored(yellow, "Estadísticas: ");
+		ImGui::SameLine();
+		if (paused)
+			ImGui::TextColored(white, "- FPS   - ms");
+		else
+			ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Tiempo de ejecución: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%.3f secs", render_time);
+
+		//Iteraciones
+		ImGui::TextColored(yellow, "Iteraciones: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%d", 3); //Placeholder
+
+		//Tiempo de renderizado
+		ImGui::TextColored(yellow, "Estado: ");
+		ImGui::SameLine();
+		if (paused)
+			ImGui::TextColored(red, "pausado");
+		else
+			ImGui::TextColored(green, "ejecutando");
+
+		ImGui::NewLine();
+
+		//Informacion
+		ImGui::TextColored(white, "ESC: mostrar menu");
+		ImGui::TextColored(white, "F1: ocultar interfaz");
+		ImGui::TextColored(white, "F2: guardar captura de pantalla");
+		ImGui::TextColored(white, "F11: pantalla completa");
+		
+		ImGui::TextColored(white, "R: reiniciar");
+		ImGui::TextColored(white, "P: pausar");
+		ImGui::TextColored(white, "Q: salir");
+	}
+	ImGui::End();
+}
+
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations) {
+	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
+
+	// Content
+	{
+		ImGui::BeginGroup();
+		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
+		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+		{
+			if (ImGui::BeginTabItem("Algoritmo"))
+			{
+				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
+				static int item_current_idx = current_technique; // Here we store our selection data as an index.
+
+				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
+				const char* combo_preview_value = items[item_current_idx];
+
+				if (ImGui::BeginCombo("Algoritmo", combo_preview_value))
+				{
+					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
+					{
+						const bool is_selected = (item_current_idx == n);
+						if (ImGui::Selectable(items[n], is_selected))
+							item_current_idx = n;
+
+						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+
+				if (current_technique != (TechniqueType)item_current_idx)
+				{
+					current_technique = (TechniqueType)item_current_idx;
+					vulkanHandler.changeTechnique(current_technique);
+					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
+
+					paused = false;
+					pause_timer_start = std::chrono::high_resolution_clock::now();
+					time_elapsed = 0;
+				}
+
+				int new_depth = max_depth;
+				if (ImGui::InputInt("Profundida máxima", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
+					vulkanHandler.m_pcRay.max_depth = max_depth = new_depth;
+					vulkanHandler.resetFrame();
+				}
+
+				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
+
+					if (bidirectional_debug_technique) {
+						int new_technique_s = bidirectional_debug_technique_s;
+						int new_technique_t = bidirectional_debug_technique_t;
+
+						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= 0 && new_technique_s <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
+							vulkanHandler.resetFrame();
+						}
+						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= 0 && new_technique_t <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
+							vulkanHandler.resetFrame();
+						}
+					}
+					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
+						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
+						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+						vulkanHandler.resetFrame();
+					}
+				}
+
+				if (!ImGui::InputFloat("Limite de tiempo", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+					paused = true;
+        
+        if (!ImGui::InputInt("Iterations to pause", &iteration_limit) && iteration_limit != 0 && iterations >= iteration_limit)
+					paused = true;
+
+				const char* pause_button_text = paused ? "Reanudar" : "Pausar";
+				if (ImGui::Button(pause_button_text))
+				{
+					paused = !paused;
+
+					if (!paused)
+					{
+						pause_timer_start = std::chrono::high_resolution_clock::now();
+					}
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Reiniciar"))
+				{
+					vulkanHandler.resetFrame();
+				}
+
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Cámara"))
+			{
+				ImGui::SliderFloat("Apertura", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
+				ImGui::SliderFloat("Distancia Focal", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+		ImGui::EndChild();
+		ImGui::EndGroup();
 	}
 
-	{ //cornell bunny
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Mirror.obj", defaultSearchPaths, true));
-		vulkanHandler.loadModel(nvh::findFile("media/scenes/bunny.obj", defaultSearchPaths, true));*/
+	ImGuiH::Panel::End();
+}
+
+//Render
+
+static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
+	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(
+		ImGuiFileBrowserFlags_ConfirmOnEnter | ImGuiFileBrowserFlags_EditPathString |
+		ImGuiFileBrowserFlags_NoTitleBar, ".."
+	);
+	fileDialog.Open();
+
+	while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
+		if (vulkanHandler.isMinimized())
+			continue;
+
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		fileDialog.Display();
+
+		vulkanHandler.prepareFrame();
+
+		auto curFrame = vulkanHandler.getCurFrame();
+		const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
+
+		VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+		// Clearing screen
+		std::array<VkClearValue, 2> clearValues{};
+		clearValues[0].color = { {0, 0, 0, 0} };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		// 2nd rendering pass: tone mapper, UI
+		{
+			VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+			postRenderPassBeginInfo.clearValueCount = 3;
+			postRenderPassBeginInfo.pClearValues = clearValues.data();
+			postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
+			postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];
+			postRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
+
+			// Rendering tonemapper
+			vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			// Rendering UI
+			ImGui::Render();
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
+			vkCmdEndRenderPass(cmdBuf);
+		}
+
+		vkEndCommandBuffer(cmdBuf);
+		vulkanHandler.submitFrame();
+
+		if (fileDialog.HasSelected())
+		{
+			std::cout << "Selected filename" << fileDialog.GetSelected().string() << std::endl;
+			*scene_path = nvh::findFile(fileDialog.GetSelected().string(), defaultSearchPaths, true);
+			fileDialog.ClearSelected();
+			return true;
+		}
 	}
+	return false;
+}
 
-	{  //cornell lucy
-		/*vulkanHandler.loadModel(nvh::findFile("media/scenes/CornellBox-Empty-CO.obj", defaultSearchPaths, true));
-	  vulkanHandler.loadModel(nvh::findFile("media/scenes/lucy.obj", defaultSearchPaths, true),
-						glm::scale(glm::rotate(glm::mat4(1.0f), (float)1.5, vec3(0, 1, 0)), vec3(0.0023)));*/
-	}
-
-	//Sponza
-	//vulkanHandler.loadModel(nvh::findFile("media/scenes/sponza.obj", defaultSearchPaths, true));
-
-	//-----------------------------------------------------------------------------------------------------------------------------------------
-
+static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window) {
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER); 
+	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
-	TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
 	vulkanHandler.changeTechnique(current_technique);
 	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
@@ -476,20 +509,21 @@ int main(int argc, char** argv)
 	vulkanHandler.createPostPipeline();
 	vulkanHandler.updatePostDescriptorSet();
 
-
-	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
-	bool      useRaytracer = true;
+	// Setup camera
+	glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
+	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
+	CameraManip.setFov(scene->camera_fov);
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
 	vulkanHandler.m_pcRay.focusDist = 1.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
-	vulkanHandler.m_pcRay.fov = scene.camera_fov;
+	vulkanHandler.m_pcRay.fov = scene->camera_fov;
+}
 
-	vulkanHandler.setupGlfwCallbacks(window);
-	glfwSetKeyCallback(window, &key_cb);
-	ImGui_ImplGlfw_InitForVulkan(window, true);
+static void render_loop(GLFWwindow* window) {
+	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
 
 	time_t start = time(0);
 
@@ -520,8 +554,8 @@ int main(int argc, char** argv)
 		if (gui_visible) {
 			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
 
-			if (menu_visible) {
-				drawConfigWindow(current_technique, pause_timer_start, time_limit, iteration_limit, vulkanHandler.m_pcRay.frame, time_elapsed);
+			if (config_menu_visible) {
+				drawConfigWindow(pause_timer_start, time_limit, time_elapsed);
 			}
 		}
 
@@ -536,7 +570,7 @@ int main(int argc, char** argv)
 		vulkanHandler.prepareFrame();
 
 		// Start command buffer of this frame
-		auto                   curFrame = vulkanHandler.getCurFrame();
+		auto curFrame = vulkanHandler.getCurFrame();
 		const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
 
 		VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -555,10 +589,7 @@ int main(int argc, char** argv)
 		{
 			if (!paused)
 			{
-				vulkanHandler.raytrace(cmdBuf, clearColor);
-			}
-			else {
-				vulkanHandler.updateFrame();
+				vulkanHandler.raytrace(cmdBuf);
 			}
 		}
 
@@ -598,16 +629,6 @@ int main(int argc, char** argv)
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
 	}
-
-	// Cleanup
-	vkDeviceWaitIdle(vulkanHandler.getDevice());
-
-	vulkanHandler.destroyResources();
-	vulkanHandler.destroy();
-	vkctx.deinit();
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-
-	return 0;
 }
+
+

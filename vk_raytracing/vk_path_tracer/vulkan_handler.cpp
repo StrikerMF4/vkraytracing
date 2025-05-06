@@ -503,11 +503,11 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
 				unsigned int lightID = m_lights.size();
 				//Fill non light face with filler ID
-				for (int index = last_index; index < light.first_index; index++) {
+				for (unsigned int index = last_index; index < light.first_index; index++) {
 					shape->model_loader.LoadedLightIDs.push_back(0);
 				}
 				//Save lightID for every face
-				for (int index = light.first_index; index <= light.last_index; index++) {
+				for (unsigned int index = light.first_index; index <= light.last_index; index++) {
 					shape->model_loader.LoadedLightIDs.push_back(lightID);
 				}
 				last_index = light.last_index + 1;
@@ -869,8 +869,10 @@ void VulkanHandler::destroyResources()
 void VulkanHandler::onResize(int /*w*/, int /*h*/)
 {
 	createOffscreenRender();
-	updatePostDescriptorSet();
-	updateRtDescriptorSet();
+	if (m_postDescSet != NULL && m_rtDescSet != NULL) {
+		updatePostDescriptorSet();
+		updateRtDescriptorSet();
+	}
 
 	resetFrame();
 }
@@ -907,7 +909,7 @@ void VulkanHandler::createOffscreenRender()
 	// Creating the auxiliary color image (used in bidirectional)
 	{
 		auto size = VkExtent2D();
-		
+
 		size.width = m_size.width * 4;
 		size.height = m_size.height;
 
@@ -1164,6 +1166,7 @@ void VulkanHandler::createBottomLevelAS()
 	}
 
 	//Esferas
+	if (m_implicitObj.size() != 0)
 	{
 		auto blas = implicitObjToVkGeometryKHR();
 		allBlas.emplace_back(blas);
@@ -1290,7 +1293,7 @@ void VulkanHandler::createRtShaderBindingTable()
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
 //
-void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor)
+void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf)
 {
 	updateFrame();
 
