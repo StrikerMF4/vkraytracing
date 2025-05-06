@@ -36,7 +36,7 @@
         },
         {
             "name": "light",
-            "emission": [10.0, 10.0, 10.0]
+            "emission": [80.0, 80.0, 80.0]
         }
     ],
     "entities": [
