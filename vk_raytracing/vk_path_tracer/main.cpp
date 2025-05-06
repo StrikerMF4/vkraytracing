@@ -50,14 +50,15 @@ bool change_scene = false;
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
+auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 // GUI
-static void drawOverlay(std::string& technique_codename, float& render_time);
-static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations);
+static void drawOverlay(std::string& technique_codename, float& render_time, int iterations);
+static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iteration_limit);
 
 // Render
 bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
@@ -224,6 +225,11 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 		break;
 	case GLFW_KEY_P:
 		paused = !paused;
+		if (!paused)
+		{
+			pause_timer_start = std::chrono::high_resolution_clock::now();
+		}
+
 		break;
 	case GLFW_KEY_R:
 		vulkanHandler.resetFrame();
@@ -238,7 +244,7 @@ static void onErrorCallback(int error, const char* description)
 
 //GUI
 
-static void drawOverlay(std::string& technique_codename, float& render_time)
+static void drawOverlay(std::string& technique_codename, float& render_time, int iterations)
 {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
@@ -279,7 +285,7 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 		//Iteraciones
 		ImGui::TextColored(yellow, "Iteraciones: ");
 		ImGui::SameLine();
-		ImGui::TextColored(white, "%d", 3); //Placeholder
+		ImGui::TextColored(white, "%d", iterations); //Placeholder
 
 		//Tiempo de renderizado
 		ImGui::TextColored(yellow, "Estado: ");
@@ -296,7 +302,7 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 		ImGui::TextColored(white, "F1: ocultar interfaz");
 		ImGui::TextColored(white, "F2: guardar captura de pantalla");
 		ImGui::TextColored(white, "F11: pantalla completa");
-		
+
 		ImGui::TextColored(white, "R: reiniciar");
 		ImGui::TextColored(white, "P: pausar");
 		ImGui::TextColored(white, "Q: salir");
@@ -304,7 +310,7 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 	ImGui::End();
 }
 
-static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations) {
+static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iteration_limit) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
 	// Content
@@ -376,11 +382,13 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 					}
 				}
 
-				if (!ImGui::InputFloat("Limite de tiempo", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
-					paused = true;
-        
-        if (!ImGui::InputInt("Iterations to pause", &iteration_limit) && iteration_limit != 0 && iterations >= iteration_limit)
-					paused = true;
+				float new_time_limit = time_limit;
+				if (ImGui::InputFloat("Límite de tiempo", &new_time_limit, 0.0f, 0.0f, "%.3f") && new_time_limit >= 0.0f)
+					time_limit = new_time_limit;
+
+				int new_iterations_limit = iteration_limit;
+				if (ImGui::InputInt("Límite de iteraciones", &new_iterations_limit) && new_iterations_limit >= 0)
+					iteration_limit = new_iterations_limit;
 
 				const char* pause_button_text = paused ? "Reanudar" : "Pausar";
 				if (ImGui::Button(pause_button_text))
@@ -531,7 +539,6 @@ static void render_loop(GLFWwindow* window) {
 	float time_limit = 0;
 	int iterations = 0;
 	int iteration_limit = 0;
-	auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
 	// Main loop
 	while (!glfwWindowShouldClose(window))
@@ -541,6 +548,7 @@ static void render_loop(GLFWwindow* window) {
 			pause_timer_start = std::chrono::high_resolution_clock::now();
 			time_elapsed = 0;
 		}
+		iterations = vulkanHandler.m_pcRay.frame + 1;
 
 		glfwPollEvents();
 		if (vulkanHandler.isMinimized())
@@ -552,10 +560,10 @@ static void render_loop(GLFWwindow* window) {
 
 		// Show UI window.
 		if (gui_visible) {
-			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed);
+			drawOverlay(vulkanHandler.current_technique->formatted_name, time_elapsed, iterations);
 
 			if (config_menu_visible) {
-				drawConfigWindow(pause_timer_start, time_limit, time_elapsed);
+				drawConfigWindow(time_limit, time_elapsed, iteration_limit);
 			}
 		}
 
@@ -564,6 +572,12 @@ static void render_loop(GLFWwindow* window) {
 			std::chrono::duration<float> elapsed = now - pause_timer_start;
 			time_elapsed += elapsed.count();
 			pause_timer_start = now;
+			
+			if (time_limit > 0.01f && time_elapsed > time_limit)
+				paused = true;
+
+			if (iteration_limit > 0 && iterations >= iteration_limit)
+				paused = true;
 		}
 
 		// Start rendering the scene
