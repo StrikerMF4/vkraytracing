@@ -909,7 +909,7 @@ void VulkanHandler::createOffscreenRender()
 	// Creating the auxiliary color image (used in bidirectional)
 	{
 		auto size = VkExtent2D();
-		
+
 		size.width = m_size.width * 4;
 		size.height = m_size.height;
 
@@ -1292,7 +1292,7 @@ void VulkanHandler::createRtShaderBindingTable()
 //--------------------------------------------------------------------------------------------------
 // Ray Tracing the scene
 //
-void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf, const glm::vec4& clearColor)
+void VulkanHandler::raytrace(const VkCommandBuffer& cmdBuf)
 {
 	updateFrame();
 

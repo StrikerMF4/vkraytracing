@@ -61,8 +61,8 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 
 // Render
 bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
-void render_initialization();
-void render_loop(SceneLoader::Scene* scene, GLFWwindow* window);
+void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
+void render_loop(GLFWwindow* window);
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -157,19 +157,18 @@ int main(int argc, char** argv)
 	std::string scene_path;
 	bool valid_scene = scene_file_dialog_loop(window, &scene_path);
 
+	vkDeviceWaitIdle(vulkanHandler.getDevice());
+
 	//Load Scene
 	if (valid_scene) {
 		SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
 		vulkanHandler.loadScene(scene, scene_path);
 
-		// Setup camera
-		glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
-		CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
-		CameraManip.setFov(scene->camera_fov);
+		render_initialization(scene, window);
 
-		render_initialization();
+		vulkanHandler.resetFrame();
 
-		render_loop(scene, window);
+		render_loop(window);
 	}
 
 	// Cleanup
@@ -472,6 +471,9 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 			vkCmdEndRenderPass(cmdBuf);
 		}
 
+		vkEndCommandBuffer(cmdBuf);
+		vulkanHandler.submitFrame();
+
 		if (fileDialog.HasSelected())
 		{
 			std::cout << "Selected filename" << fileDialog.GetSelected().string() << std::endl;
@@ -479,14 +481,11 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 			fileDialog.ClearSelected();
 			return true;
 		}
-
-		vkEndCommandBuffer(cmdBuf);
-		vulkanHandler.submitFrame();
 	}
 	return false;
 }
 
-static void render_initialization() {
+static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window) {
 	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
@@ -513,10 +512,11 @@ static void render_initialization() {
 	vulkanHandler.createPostDescriptor();
 	vulkanHandler.createPostPipeline();
 	vulkanHandler.updatePostDescriptorSet();
-}
 
-static void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
-	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
+	// Setup camera
+	glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
+	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
+	CameraManip.setFov(scene->camera_fov);
 
 	vulkanHandler.m_pcRay.camAperture = 0.f;
 	vulkanHandler.m_pcRay.focusDist = 1.f;
@@ -524,8 +524,10 @@ static void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
 	vulkanHandler.m_pcRay.fov = scene->camera_fov;
+}
 
-	vulkanHandler.resetFrame();
+static void render_loop(GLFWwindow* window) {
+	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
 
 	time_t start = time(0);
 
@@ -570,7 +572,7 @@ static void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 		vulkanHandler.prepareFrame();
 
 		// Start command buffer of this frame
-		auto                   curFrame = vulkanHandler.getCurFrame();
+		auto curFrame = vulkanHandler.getCurFrame();
 		const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
 
 		VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -589,7 +591,7 @@ static void render_loop(SceneLoader::Scene* scene, GLFWwindow* window) {
 		{
 			if (!paused)
 			{
-				vulkanHandler.raytrace(cmdBuf, clearColor);
+				vulkanHandler.raytrace(cmdBuf);
 			}
 			else {
 				vulkanHandler.updateFrame();
