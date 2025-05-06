@@ -1166,6 +1166,7 @@ void VulkanHandler::createBottomLevelAS()
 	}
 
 	//Esferas
+	if (m_implicitObj.size() != 0)
 	{
 		auto blas = implicitObjToVkGeometryKHR();
 		allBlas.emplace_back(blas);

@@ -266,7 +266,10 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 		//Estadisticas
 		ImGui::TextColored(yellow, "Stats: ");
 		ImGui::SameLine();
-		ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+		if (paused)
+			ImGui::TextColored(white, "- FPS   - ms");
+		else
+			ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 
 		//Tiempo de renderizado
 		ImGui::TextColored(yellow, "Render time: ");
