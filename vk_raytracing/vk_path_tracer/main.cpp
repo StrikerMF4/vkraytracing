@@ -57,7 +57,7 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 
 // GUI
 static void drawOverlay(std::string& technique_codename, float& render_time);
-static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed);
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations);
 
 // Render
 bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
@@ -304,7 +304,7 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 	ImGui::End();
 }
 
-static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
+static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed, int& iteration_limit, int iterations) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
 
 	// Content
@@ -377,6 +377,9 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 				}
 
 				if (!ImGui::InputFloat("Limite de tiempo", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+					paused = true;
+        
+        if (!ImGui::InputInt("Iterations to pause", &iteration_limit) && iteration_limit != 0 && iterations >= iteration_limit)
 					paused = true;
 
 				const char* pause_button_text = paused ? "Reanudar" : "Pausar";
@@ -526,6 +529,8 @@ static void render_loop(GLFWwindow* window) {
 
 	float time_elapsed = 0;
 	float time_limit = 0;
+	int iterations = 0;
+	int iteration_limit = 0;
 	auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
 	// Main loop
