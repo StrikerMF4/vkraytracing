@@ -259,12 +259,12 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 	if (ImGui::Begin("Overlay", NULL, window_flags))
 	{
 		//Algoritmo
-		ImGui::TextColored(yellow, "Tecnica: ");
+		ImGui::TextColored(yellow, "Algoritmo: ");
 		ImGui::SameLine();
 		ImGui::TextColored(white, technique_codename.c_str());
 
 		//Estadisticas
-		ImGui::TextColored(yellow, "Stats: ");
+		ImGui::TextColored(yellow, "Estadísticas: ");
 		ImGui::SameLine();
 		if (paused)
 			ImGui::TextColored(white, "- FPS   - ms");
@@ -272,34 +272,33 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 			ImGui::TextColored(white, "%.0f FPS   %.3f ms", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 
 		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render time: ");
+		ImGui::TextColored(yellow, "Tiempo de ejecución: ");
 		ImGui::SameLine();
 		ImGui::TextColored(white, "%.3f secs", render_time);
 
+		//Iteraciones
+		ImGui::TextColored(yellow, "Iteraciones: ");
+		ImGui::SameLine();
+		ImGui::TextColored(white, "%d", 3); //Placeholder
+
 		//Tiempo de renderizado
-		ImGui::TextColored(yellow, "Render status: ");
+		ImGui::TextColored(yellow, "Estado: ");
 		ImGui::SameLine();
 		if (paused)
-			ImGui::TextColored(red, "paused");
+			ImGui::TextColored(red, "pausado");
 		else
-			ImGui::TextColored(green, "running");
+			ImGui::TextColored(green, "ejecutando");
 
 		ImGui::NewLine();
 
-		//Informaci�n
+		//Informacion
 		ImGui::TextColored(white, "ESC: mostrar menu");
-		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "F1: ocultar interfaz");
-
 		ImGui::TextColored(white, "F2: guardar captura de pantalla");
-
 		ImGui::TextColored(white, "F11: pantalla completa");
-
-
+		
 		ImGui::TextColored(white, "R: reiniciar");
-		//ImGui::SameLine(0.0, 15);
 		ImGui::TextColored(white, "P: pausar");
-
 		ImGui::TextColored(white, "Q: salir");
 	}
 	ImGui::End();
@@ -307,16 +306,6 @@ static void drawOverlay(std::string& technique_codename, float& render_time)
 
 static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_start, float& time_limit, float& time_elapsed) {
 	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
-
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu("Archivo"))
-		{
-			//if (ImGui::MenuItem("Close", "Ctrl+W")) { *p_open = false; }
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
 
 	// Content
 	{
@@ -332,7 +321,7 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
 				const char* combo_preview_value = items[item_current_idx];
 
-				if (ImGui::BeginCombo("Algoritmo: ", combo_preview_value))
+				if (ImGui::BeginCombo("Algoritmo", combo_preview_value))
 				{
 					for (int n = 0; n < IM_ARRAYSIZE(items); n++)
 					{
@@ -359,7 +348,7 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 				}
 
 				int new_depth = max_depth;
-				if (ImGui::InputInt("Max Depth", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
+				if (ImGui::InputInt("Profundida máxima", &new_depth, 1) && new_depth > 0 && new_depth <= MAX_DEPTH) {
 					vulkanHandler.m_pcRay.max_depth = max_depth = new_depth;
 					vulkanHandler.resetFrame();
 				}
@@ -387,10 +376,11 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 					}
 				}
 
-				if (!ImGui::InputFloat("Time to pause", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
+				if (!ImGui::InputFloat("Limite de tiempo", &time_limit, 0.0f, 0.0f, "%.3f") && time_limit > 0.01f && time_elapsed > time_limit)
 					paused = true;
 
-				if (ImGui::Button("Pause"))
+				const char* pause_button_text = paused ? "Reanudar" : "Pausar";
+				if (ImGui::Button(pause_button_text))
 				{
 					paused = !paused;
 
@@ -400,17 +390,17 @@ static void drawConfigWindow(std::chrono::steady_clock::time_point& pause_timer_
 					}
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("Reset"))
+				if (ImGui::Button("Reiniciar"))
 				{
 					vulkanHandler.resetFrame();
 				}
 
 				ImGui::EndTabItem();
 			}
-			if (ImGui::BeginTabItem("Camara"))
+			if (ImGui::BeginTabItem("Cámara"))
 			{
-				ImGui::SliderFloat("Aperture", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-				ImGui::SliderFloat("Focus distance", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+				ImGui::SliderFloat("Apertura", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
+				ImGui::SliderFloat("Distancia Focal", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
 
 				ImGui::EndTabItem();
 			}
@@ -595,9 +585,6 @@ static void render_loop(GLFWwindow* window) {
 			if (!paused)
 			{
 				vulkanHandler.raytrace(cmdBuf);
-			}
-			else {
-				vulkanHandler.updateFrame();
 			}
 		}
 
