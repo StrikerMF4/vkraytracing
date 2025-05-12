@@ -47,7 +47,7 @@ void main() {
 		vec2       d           = inUV * 2.0 - 1.0;
 
 		//defocus blur
-		float aperture = camera.focusDist / camera.camAperture;
+		float aperture = camera.camAperture;
 		float focus_dist = camera.focusDist;
 		vec2 offset = (aperture / 2) * RandomDiskDirection(payload.random_seed);
 		vec3 origin    = (camera.viewInverse * vec4(offset, 0, 1)).xyz;

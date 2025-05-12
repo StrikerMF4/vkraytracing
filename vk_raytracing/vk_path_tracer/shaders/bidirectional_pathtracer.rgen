@@ -166,8 +166,7 @@ ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
         return ivec2(-1);  // Punto detrás de la camara
     }
 
-	float aperture = camera.focusDist / camera.camAperture;
-    float lensRadius = aperture / 2.0;
+    float lensRadius = camera.camAperture / 2.0;
     if (lensRadius > 0.0f &&
         (pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
          lensRadius * lensRadius)) {
@@ -212,8 +211,7 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     float lensToFilmDistance2 = dot(lensToFilm, lensToFilm);
     float cosTheta = abs(normalize(lensToFilm).z);
     float G = cosTheta * cosTheta / lensToFilmDistance2;
-	float aperture = camera.focusDist / camera.camAperture;
-	float lensRadius = aperture / 2;
+	float lensRadius = camera.camAperture / 2;
     float lensArea = lensRadius * lensRadius * PI;
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
@@ -280,7 +278,7 @@ void main() {
 	vec2       d           = inUV * 2.0 - 1.0;
 
 	//defocus blur
-	float aperture = camera.focusDist / camera.camAperture;
+	float aperture = camera.camAperture;
 	float focus_dist = camera.focusDist;
 	vec2 offset = (aperture / 2) * RandomDiskDirection(payload.random_seed);
 	vec3 origin    = (camera.viewInverse * vec4(offset, 0, 1)).xyz;
