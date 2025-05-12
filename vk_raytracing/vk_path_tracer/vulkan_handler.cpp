@@ -261,8 +261,8 @@ void VulkanHandler::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 	hostUBO.viewInverse = glm::inverse(view);
 	hostUBO.projInverse = glm::inverse(proj);
 	hostUBO.fov = CameraManip.getFov();
-	hostUBO.camAperture = 0;
-	hostUBO.focusDist = 0;
+	hostUBO.camAperture = m_cameraAperture;
+	hostUBO.focusDist = m_cameraFocalLength;
 
 	// UBO on the device, and what stages access it.
 	VkBuffer deviceUBO = m_bGlobals.buffer;
