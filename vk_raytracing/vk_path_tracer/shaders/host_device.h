@@ -60,13 +60,17 @@ struct ObjDesc
 };
 
 // Uniform buffer set at each frame
-struct GlobalUniforms
+struct CameraUniforms
 {
 	mat4 viewProj;     // Camera view * projection
 	mat4 view;  // Camera view matrix
 	mat4 proj;  // Camera proj matrix
 	mat4 viewInverse;  // Camera inverse view matrix
 	mat4 projInverse;  // Camera inverse projection matrix
+
+	float camAperture;
+	float focusDist;
+	float fov;
 };
 
 // Push constant structure
@@ -83,9 +87,6 @@ struct PushConstantRayTracer
 {
 	uint light_count;
 	int   frame;
-	float camAperture;
-	float focusDist;
-	float fov;
 
 	int max_depth;
 	int debug_technique_s;

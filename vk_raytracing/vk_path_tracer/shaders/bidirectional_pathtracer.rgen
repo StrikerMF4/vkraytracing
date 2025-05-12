@@ -22,7 +22,7 @@ layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indi
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = eOutImage, rgba16f) uniform image2D output_image;
 layout(set = 0, binding = eBidirectionalLightImage, r32f) uniform image2D light_output_image;
-layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
+layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms camera; };
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
@@ -83,15 +83,15 @@ float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal) {
 }
 
 float eyeDirectionPDF(vec3 direction) {
-	vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
+	vec3 cameraForward = normalize((camera.viewInverse * vec4(0,0,-1,0)).xyz);
 	float cosTheta = dot(cameraForward, direction);
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
-	float filmHeight = 2.0f * settings.focusDist * tan(settings.fov * 0.5f);
+	float filmHeight = 2.0f * camera.focusDist * tan(camera.fov * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
 
-    return settings.focusDist * settings.focusDist / (filmArea * cosTheta * cosTheta * cosTheta);
+    return camera.focusDist * camera.focusDist / (filmArea * cosTheta * cosTheta * cosTheta);
 }
 
 float misWeight(int s, int t, PDFConnection pdf) {
@@ -159,14 +159,14 @@ float misWeight(int s, int t, PDFConnection pdf) {
 }
 
 ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
-    vec4 pView = uni.view * vec4(pWorld, 1.0f);
-    vec4 pLensLocal = uni.view * vec4(pLens, 1.0f);
+    vec4 pView = camera.view * vec4(pWorld, 1.0f);
+    vec4 pLensLocal = camera.view * vec4(pLens, 1.0f);
 
     if (pView.z > 0.0f) {
         return ivec2(-1);  // Punto detrás de la camara
     }
 
-    float lensRadius = settings.camAperture / 2.0;
+    float lensRadius = camera.camAperture / 2.0;
     if (lensRadius > 0.0f &&
         (pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
          lensRadius * lensRadius)) {
@@ -178,8 +178,8 @@ ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
         return ivec2(-1);  // Direccion casi paralela al plano del lente
     }
 
-    vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
-    vec4 pNDC = uni.proj * pFocus;
+    vec4 pFocus = pLensLocal + (camera.focusDist / dir.z) * dir;
+    vec4 pNDC = camera.proj * pFocus;
     pNDC /= pNDC.w;
 
     float screenX = (pNDC.x + 1.0f) * 0.5f * gl_LaunchSizeEXT.x;
@@ -200,10 +200,10 @@ bool worldToScreenBool(vec3 pWorld, vec3 pLens) {
 
 float evalWe(vec3 pCamera, vec3 pWorld) {
 
-    vec4 pView = uni.view * vec4(pWorld, 1.0f);
-    vec4 pLensLocal = uni.view * vec4(pCamera, 1.0f);
+    vec4 pView = camera.view * vec4(pWorld, 1.0f);
+    vec4 pLensLocal = camera.view * vec4(pCamera, 1.0f);
     vec4 dir = pView - pLensLocal;
-    vec4 pFocus = pLensLocal + (settings.focusDist / dir.z) * dir;
+    vec4 pFocus = pLensLocal + (camera.focusDist / dir.z) * dir;
     vec3 lensToFilm = vec3(
         pFocus.x - pLensLocal.x,
         pFocus.y - pLensLocal.y,
@@ -211,11 +211,11 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     float lensToFilmDistance2 = dot(lensToFilm, lensToFilm);
     float cosTheta = abs(normalize(lensToFilm).z);
     float G = cosTheta * cosTheta / lensToFilmDistance2;
-	float lensRadius = settings.camAperture / 2;
+	float lensRadius = camera.camAperture / 2;
     float lensArea = lensRadius * lensRadius * PI;
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
-	float filmHeight = 2.0f * settings.focusDist * tan(radians(settings.fov) * 0.5f);
+	float filmHeight = 2.0f * camera.focusDist * tan(radians(camera.fov) * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
 
@@ -278,20 +278,20 @@ void main() {
 	vec2       d           = inUV * 2.0 - 1.0;
 
 	//defocus blur
-	float Aperture = settings.camAperture;
-	float focus_dist = settings.focusDist;
+	float Aperture = camera.camAperture;
+	float focus_dist = camera.focusDist;
 	vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
-	vec3 origin    = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
+	vec3 origin    = (camera.viewInverse * vec4(offset, 0, 1)).xyz;
 	vec3 cameraOrigin = origin;
-	vec3 target    = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
-	vec3 direction = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
+	vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+	vec3 direction = (camera.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
 
-	vec3 cameraForward = normalize((uni.viewInverse * vec4(0,0,-1,0)).xyz);
+	vec3 cameraForward = normalize((camera.viewInverse * vec4(0,0,-1,0)).xyz);
 	float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
 	float cosTheta = abs(dot(cameraForward, normalize(direction)));
 
-	float filmHeight = 2.0f * focus_dist * tan(radians(settings.fov) * 0.5f);
+	float filmHeight = 2.0f * focus_dist * tan(radians(camera.fov) * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
 	float lensArea = (PI * Aperture * Aperture) / 4;

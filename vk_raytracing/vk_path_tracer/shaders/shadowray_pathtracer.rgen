@@ -16,7 +16,7 @@ layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indi
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
-layout(set = 1, binding = eGlobals) uniform _GlobalUniforms { GlobalUniforms uni; };
+layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms camera; };
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
@@ -111,12 +111,12 @@ void main()
 		vec2 d				   = inUV * 2.0 - 1.0;
 
 		//defocus blur
-		float Aperture   = settings.camAperture;
-		float focus_dist = settings.focusDist;
+		float Aperture   = camera.camAperture / camera.focusDist;
+		float focus_dist = camera.focusDist;
 		vec2 offset      = (Aperture/2) * RandomDiskDirection(payload.random_seed);
-		vec3 origin      = (uni.viewInverse * vec4(offset, 0, 1)).xyz;
-		vec3 target      = (uni.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
-		vec3 direction   = (uni.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
+		vec3 origin      = (camera.viewInverse * vec4(offset, 0, 1)).xyz;
+		vec3 target      = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+		vec3 direction   = (camera.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
 
 		resetPayload(payload, origin, direction);
 		

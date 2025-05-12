@@ -250,7 +250,7 @@ void VulkanHandler::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 {
 	// Prepare new UBO contents on host.
 	const float    aspectRatio = m_size.width / static_cast<float>(m_size.height);
-	GlobalUniforms hostUBO = {};
+	CameraUniforms hostUBO = {};
 	const auto& view = CameraManip.getMatrix();
 	glm::mat4      proj = glm::perspectiveRH_ZO(glm::radians(CameraManip.getFov()), aspectRatio, 0.1f, 1000.0f);
 	proj[1][1] *= -1;  // Inverting Y for Vulkan (not needed with perspectiveVK).
@@ -260,6 +260,9 @@ void VulkanHandler::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 	hostUBO.view = view;
 	hostUBO.viewInverse = glm::inverse(view);
 	hostUBO.projInverse = glm::inverse(proj);
+	hostUBO.fov = CameraManip.getFov();
+	hostUBO.camAperture = 0;
+	hostUBO.focusDist = 0;
 
 	// UBO on the device, and what stages access it.
 	VkBuffer deviceUBO = m_bGlobals.buffer;
@@ -278,7 +281,7 @@ void VulkanHandler::updateUniformBuffer(const VkCommandBuffer& cmdBuf)
 
 	// Schedule the host-to-device upload. (hostUBO is copied into the cmd
 	// buffer so it is okay to deallocate when the function returns).
-	vkCmdUpdateBuffer(cmdBuf, m_bGlobals.buffer, 0, sizeof(GlobalUniforms), &hostUBO);
+	vkCmdUpdateBuffer(cmdBuf, m_bGlobals.buffer, 0, sizeof(CameraUniforms), &hostUBO);
 
 	// Making sure the updated UBO will be visible.
 	VkBufferMemoryBarrier afterBarrier{ VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
@@ -657,11 +660,11 @@ void VulkanHandler::uploadImplicitObjects() {
 // Creating the uniform buffer holding the camera matrices
 // - Buffer is host visible
 //
-void VulkanHandler::createUniformBuffer()
+void VulkanHandler::createCameraUniformBuffer()
 {
-	m_bGlobals = m_alloc.createBuffer(sizeof(GlobalUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	m_bGlobals = m_alloc.createBuffer(sizeof(CameraUniforms), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_debug.setObjectName(m_bGlobals.buffer, "Globals");
+	m_debug.setObjectName(m_bGlobals.buffer, "CameraUniforms");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1321,13 +1324,13 @@ void VulkanHandler::updateFrame()
 	const auto& m = CameraManip.getMatrix();
 	const auto  fov = CameraManip.getFov();
 
-	if (refCamMatrix != m || refFov != fov || m_pcRay.focusDist != lastFocusDist || m_pcRay.camAperture != lastCamAperture)
+	if (refCamMatrix != m || refFov != fov || m_cameraFocalLength != lastFocusDist || m_cameraAperture != lastCamAperture)
 	{
 		resetFrame();
 		refCamMatrix = m;
 		refFov = fov;
-		lastCamAperture = m_pcRay.camAperture;
-		lastFocusDist = m_pcRay.focusDist;
+		lastCamAperture = m_cameraAperture;
+		lastFocusDist = m_cameraFocalLength;
 	}
 	m_pcPost.frame = ++m_pcRay.frame;
 }

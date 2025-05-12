@@ -411,11 +411,12 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 			}
 			if (ImGui::BeginTabItem("Cámara"))
 			{
-				ImGui::DragFloat("Apertura", &vulkanHandler.m_pcRay.camAperture, 0.0001, 0.0f, 5.0f, "%.4f"); //camera parameters
-				ImGui::DragFloat("Distancia Focal", &vulkanHandler.m_pcRay.focusDist, 0.001, 0.1f, 20.f);
+				ImGui::DragFloat("Apertura", &vulkanHandler.m_cameraAperture, 0.0001, 0.0f, 5.0f, "%.4f"); //camera parameters
+				ImGui::DragFloat("Distancia Focal", &vulkanHandler.m_cameraFocalLength, 0.001, 0.1f, 20.f);
 
-				if (ImGui::DragFloat("Campo de visión", &vulkanHandler.m_pcRay.fov, 0.1, 0.1f, 200.f, "%.1f")) {
-					CameraManip.setFov(vulkanHandler.m_pcRay.fov);
+				float fov = CameraManip.getFov();
+				if (ImGui::DragFloat("Campo de visión", &fov, 0.1, 0.1f, 200.f, "%.1f")) {
+					CameraManip.setFov(fov);
 				}
 
 				ImGui::EndTabItem();
@@ -505,7 +506,7 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
 	vulkanHandler.createDescriptorSetLayout();
-	vulkanHandler.createUniformBuffer();
+	vulkanHandler.createCameraUniformBuffer();
 	vulkanHandler.createObjDescriptionBuffer();
 	vulkanHandler.createLightBuffer();
 	vulkanHandler.updateDescriptorSet();
@@ -527,12 +528,11 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene->camera_fov);
 
-	vulkanHandler.m_pcRay.camAperture = 0.f;
-	vulkanHandler.m_pcRay.focusDist = 1.f;
+	vulkanHandler.m_cameraAperture = 0.f;
+	vulkanHandler.m_cameraFocalLength = 1.f;
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
-	vulkanHandler.m_pcRay.fov = scene->camera_fov;
 }
 
 static void render_loop(GLFWwindow* window) {

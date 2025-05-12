@@ -72,7 +72,7 @@ public:
 	void loadScene(SceneLoader::Scene* scene, std::string scene_path);
 	void uploadImplicitObjects();
 	void updateDescriptorSet();
-	void createUniformBuffer();
+	void createCameraUniformBuffer();
 	void createObjDescriptionBuffer();
 	void createLightBuffer();
 	void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/");
@@ -187,6 +187,9 @@ public:
 
 	// Push constant for ray tracer
 	PushConstantRayTracer m_pcRay{};
+
+	float m_cameraAperture{ 0.0f };  // Camera aperture
+	float m_cameraFocalLength{ 0.0f };  // Camera focal length
 
 	bool m_createScreenshot{ false };  // Create screenshot at the end of the next render cycle
 	void createScreenshot(const std::string& filename);
