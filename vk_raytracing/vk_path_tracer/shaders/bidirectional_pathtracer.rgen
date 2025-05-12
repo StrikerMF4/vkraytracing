@@ -166,7 +166,8 @@ ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
         return ivec2(-1);  // Punto detrás de la camara
     }
 
-    float lensRadius = camera.camAperture / 2.0;
+	float aperture = camera.focusDist / camera.camAperture;
+    float lensRadius = aperture / 2.0;
     if (lensRadius > 0.0f &&
         (pLensLocal.x * pLensLocal.x + pLensLocal.y * pLensLocal.y >
          lensRadius * lensRadius)) {
@@ -211,7 +212,8 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     float lensToFilmDistance2 = dot(lensToFilm, lensToFilm);
     float cosTheta = abs(normalize(lensToFilm).z);
     float G = cosTheta * cosTheta / lensToFilmDistance2;
-	float lensRadius = camera.camAperture / 2;
+	float aperture = camera.focusDist / camera.camAperture;
+	float lensRadius = aperture / 2;
     float lensArea = lensRadius * lensRadius * PI;
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
@@ -278,9 +280,9 @@ void main() {
 	vec2       d           = inUV * 2.0 - 1.0;
 
 	//defocus blur
-	float Aperture = camera.camAperture;
+	float aperture = camera.focusDist / camera.camAperture;
 	float focus_dist = camera.focusDist;
-	vec2 offset = (Aperture/2) * RandomDiskDirection(payload.random_seed);
+	vec2 offset = (aperture / 2) * RandomDiskDirection(payload.random_seed);
 	vec3 origin    = (camera.viewInverse * vec4(offset, 0, 1)).xyz;
 	vec3 cameraOrigin = origin;
 	vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
@@ -294,7 +296,7 @@ void main() {
 	float filmHeight = 2.0f * focus_dist * tan(radians(camera.fov) * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
-	float lensArea = (PI * Aperture * Aperture) / 4;
+	float lensArea = (PI * aperture * aperture) / 4;
 
 
 	/* EYE PATH */
@@ -304,11 +306,11 @@ void main() {
 	eye_hits[0].point = origin;
 	float pdfF = lensToFilmDistance2 / (filmArea + EPSILON);
 	eye_hits[0].pdfF = pdfF;
-	eye_hits[0].pdfB = Aperture > 0 ? 4 / (PI * Aperture * Aperture) : 1.0;
+	eye_hits[0].pdfB = aperture > 0 ? 4 / (PI * aperture * aperture) : 1.0;
 	eye_hits[0].isSpecular = false;
 	float G = cosTheta * cosTheta / lensToFilmDistance2;
 	eye_hits[0].G = 1.0;
-	float We = Aperture > 0 ?
+	float We = aperture > 0 ?
 		1.0 / (filmArea * lensArea * G + EPSILON) :
 		1.0 / (filmArea * G + EPSILON);
 	eye_hits[0].alpha = vec3(1.0) / eye_hits[0].pdfB;

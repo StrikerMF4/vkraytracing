@@ -111,9 +111,9 @@ void main()
 		vec2 d				   = inUV * 2.0 - 1.0;
 
 		//defocus blur
-		float Aperture   = camera.camAperture / camera.focusDist;
+		float aperture   = camera.camAperture / camera.focusDist;
 		float focus_dist = camera.focusDist;
-		vec2 offset      = (Aperture/2) * RandomDiskDirection(payload.random_seed);
+		vec2 offset      = (aperture/2) * RandomDiskDirection(payload.random_seed);
 		vec3 origin      = (camera.viewInverse * vec4(offset, 0, 1)).xyz;
 		vec3 target      = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
 		vec3 direction   = (camera.viewInverse * vec4(normalize(target.xyz*focus_dist - vec3(offset, 0)), 0)).xyz;
