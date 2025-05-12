@@ -18,4 +18,8 @@ public:
 }  // namespace ImGuiH
 
 
+void darkTheme();
+
+void purpleTheme();
+
 #endif

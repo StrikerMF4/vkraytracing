@@ -30,13 +30,14 @@ static ImVec4 const yellow = ImVec4(1.0f, 0.96f, 0.25f, 1.0f);
 static ImVec4 const white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 static ImVec4 const green = ImVec4(0.33f, 0.91f, 0.29f, 1.0f);
 static ImVec4 const red = ImVec4(0.98f, 0.24f, 0.24f, 1.0f);
+static float const alpha = 0.6;
 
 // Default search path for shaders
 std::vector<std::string> defaultSearchPaths;
 
 //Shared
 VulkanHandler vulkanHandler;
-TechniqueType current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
+TechniqueType current_technique = TechniqueType::SIMPLE_PATHTRACER;
 
 VkExtent2D window_size{};
 int window_posx, window_posy;
@@ -155,6 +156,8 @@ int main(int argc, char** argv)
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
 
+	purpleTheme();
+
 	std::string scene_path;
 	bool valid_scene = scene_file_dialog_loop(window, &scene_path);
 
@@ -261,7 +264,7 @@ static void drawOverlay(std::string& technique_codename, float& render_time, int
 	ImGui::SetNextWindowViewport(viewport->ID);
 	window_flags |= ImGuiWindowFlags_NoMove;
 
-	ImGui::SetNextWindowBgAlpha(0.5f); // Transparent background
+	ImGui::SetNextWindowBgAlpha(alpha); // Transparent background
 	if (ImGui::Begin("Overlay", NULL, window_flags))
 	{
 		//Algoritmo
@@ -311,13 +314,11 @@ static void drawOverlay(std::string& technique_codename, float& render_time, int
 }
 
 static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iteration_limit) {
-	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, 0.5, "Configuracion", ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove);
+	ImGuiH::Panelv2::Begin(ImGuiH::Panel::Side::Right, alpha, nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove);
 
 	// Content
 	{
-		ImGui::BeginGroup();
-		ImGui::BeginChild("Tabs", ImVec2(0, -ImGui::GetFrameHeightWithSpacing())); // Leave room for 1 line below us
-		if (ImGui::BeginTabBar("##Tabs", ImGuiTabBarFlags_None))
+		if (ImGui::BeginTabBar("#Tabs", ImGuiTabBarFlags_None))
 		{
 			if (ImGui::BeginTabItem("Algoritmo"))
 			{
@@ -410,8 +411,12 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 			}
 			if (ImGui::BeginTabItem("Cámara"))
 			{
-				ImGui::SliderFloat("Apertura", &vulkanHandler.m_pcRay.camAperture, 0.001f, 0.5f); //camera parameters
-				ImGui::SliderFloat("Distancia Focal", &vulkanHandler.m_pcRay.focusDist, 0.1f, 20.f);
+				ImGui::DragFloat("Apertura", &vulkanHandler.m_pcRay.camAperture, 0.0001, 0.0f, 5.0f, "%.4f"); //camera parameters
+				ImGui::DragFloat("Distancia Focal", &vulkanHandler.m_pcRay.focusDist, 0.001, 0.1f, 20.f);
+
+				if (ImGui::DragFloat("Campo de visión", &vulkanHandler.m_pcRay.fov, 0.1, 0.1f, 200.f, "%.1f")) {
+					CameraManip.setFov(vulkanHandler.m_pcRay.fov);
+				}
 
 				ImGui::EndTabItem();
 			}
@@ -432,6 +437,8 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 		ImGuiFileBrowserFlags_ConfirmOnEnter | ImGuiFileBrowserFlags_EditPathString |
 		ImGuiFileBrowserFlags_NoTitleBar, ".."
 	);
+	fileDialog.SetTypeFilters({ ".scn" }); 
+
 	fileDialog.Open();
 
 	while (!glfwWindowShouldClose(window)) {
