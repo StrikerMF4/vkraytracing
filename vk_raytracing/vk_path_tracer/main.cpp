@@ -423,8 +423,6 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 
 			ImGui::EndTabBar();
 		}
-		ImGui::EndChild();
-		ImGui::EndGroup();
 	}
 
 	ImGuiH::Panel::End();
