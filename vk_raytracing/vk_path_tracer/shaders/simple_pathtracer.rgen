@@ -53,10 +53,10 @@ void main() {
         // Depth-of-Field
         vec3  focalPoint        = camera.focusDist * direction.xyz;
         float cam_r1            = rand(payload.random_seed) * TWO_PI;
-        float cam_r2            = rand(payload.random_seed) * camera.camAperture;
+        float cam_r2            = rand(payload.random_seed) * camera.camAperture / 2;
         vec4  cam_right         = camera.viewInverse * vec4(1, 0, 0, 0);
         vec4  cam_up            = camera.viewInverse * vec4(0, 1, 0, 0);
-        vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * sqrt(cam_r2);
+        vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * cam_r2;
 
         origin = origin + randomAperturePos;
         direction = normalize(focalPoint - randomAperturePos);
