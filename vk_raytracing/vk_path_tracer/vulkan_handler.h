@@ -158,7 +158,7 @@ public:
 	nvvk::Texture               m_offscreenAuxColor;
 	nvvk::Texture               m_offscreenDepth;
 	VkFormat                    m_offscreenColorFormat{ VK_FORMAT_R32G32B32A32_SFLOAT };
-	VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R32_SFLOAT };
+	VkFormat                    m_offscreenAuxColorFormat{ VK_FORMAT_R32_UINT };
 	VkFormat                    m_offscreenDepthFormat{ VK_FORMAT_X8_D24_UNORM_PACK32 };
 
 	// #VKRay
