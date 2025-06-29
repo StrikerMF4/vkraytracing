@@ -514,9 +514,9 @@ void main() {
 
 			if(t == 1) {
 				pixel.x = pixel.x * 4;
-				imageAtomicAdd(light_output_image, pixel, uint(final_contribution.r * 1000000)); //r
-				imageAtomicAdd(light_output_image, pixel + ivec2(1,0), uint(final_contribution.g * 1000000)); //g
-				imageAtomicAdd(light_output_image, pixel + ivec2(2,0), uint(final_contribution.b * 1000000)); //b
+				imageAtomicAdd(light_output_image, pixel, uint(final_contribution.r * FLOAT_UINT_CONVERSION_CONSTANT)); //r
+				imageAtomicAdd(light_output_image, pixel + ivec2(1,0), uint(final_contribution.g * FLOAT_UINT_CONVERSION_CONSTANT)); //g
+				imageAtomicAdd(light_output_image, pixel + ivec2(2,0), uint(final_contribution.b * FLOAT_UINT_CONVERSION_CONSTANT)); //b
 				imageAtomicAdd(light_output_image, pixel + ivec2(3,0), 1); //count
 				continue;
 			}

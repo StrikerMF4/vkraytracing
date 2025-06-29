@@ -47,6 +47,7 @@ END_BINDING();
 #define KIND_CUBE 1
 #define KIND_GEOMETRY 2
 const uint MAX_DEPTH = 11;
+const float FLOAT_UINT_CONVERSION_CONSTANT = 1000000.0;
 
 // Information of a obj model when referenced in a shader
 struct ObjDesc

@@ -23,9 +23,9 @@ void main() {
 		float bidirectional_output_count = imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(3,0)).x;
 
 		if (bidirectional_output_count > 0) {
-			float bidirectional_output_r = (imageLoad(bidirectional_lights_output_image, pixel_alt).x)/1000000.0;
-			float bidirectional_output_g = (imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(1,0)).x)/1000000.0;
-			float bidirectional_output_b = (imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(2,0)).x)/1000000.0;
+			float bidirectional_output_r = (imageLoad(bidirectional_lights_output_image, pixel_alt).x) / FLOAT_UINT_CONVERSION_CONSTANT;
+			float bidirectional_output_g = (imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(1,0)).x) / FLOAT_UINT_CONVERSION_CONSTANT;
+			float bidirectional_output_b = (imageLoad(bidirectional_lights_output_image, pixel_alt + ivec2(2,0)).x) / FLOAT_UINT_CONVERSION_CONSTANT;
 
 			// Calculate average color from bidirectional output
 			vec3 fixed_color = vec3(bidirectional_output_r, bidirectional_output_g, bidirectional_output_b) / (settings.frame + 1);
