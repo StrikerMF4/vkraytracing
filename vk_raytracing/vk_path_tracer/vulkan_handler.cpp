@@ -518,9 +518,9 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 				m_lights.push_back(result);
 			}
 
-
-
-			//m_implicitObj_light_idx
+			if (shape->model_loader.LoadedLights.size() == 0) {
+				shape->model_loader.LoadedLightIDs.resize(shape->model_loader.LoadedIndices.size());
+			}
 
 			ObjModel model;
 			model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());
