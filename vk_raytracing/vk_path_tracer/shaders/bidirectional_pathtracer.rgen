@@ -341,7 +341,7 @@ void main() {
 			Light light = lights.i[payload.light_id];
 			eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
 			eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-			eye_hits[depth + 1].alpha = payload.Le;
+			eye_hits[depth + 1].alpha = payload.Le / eye_hits[depth + 1].pdfF;
 			eye_hits[depth + 1].G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
 			hitLight = true;
 			break;
