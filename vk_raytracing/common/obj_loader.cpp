@@ -480,6 +480,7 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 	algorithm::split(algorithm::tail(icurline), sface, " ");
 
 	bool noNormal = false;
+	bool noTexCoord = false;
 
 	// For every given vertex do this
 	for (int i = 0; i < int(sface.size()); i++)
@@ -523,41 +524,35 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 		switch (vtype)
 		{
 		case 1: // P
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = glm::vec2(0, 0);
 			noNormal = true;
+			noTexCoord = true;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 2: // P/T
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
 			noNormal = true;
+			noTexCoord = false;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 3: // P//N
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = glm::vec2(0, 0);
 			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			noTexCoord = true;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 4: // P/T/N
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
 			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			noTexCoord = false;
 			oVerts.push_back(vVert);
 			break;
-		}
 		default:
-		{
 			break;
-		}
 		}
 	}
 
@@ -574,6 +569,41 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 		for (int i = 0; i < int(oVerts.size()); i++)
 		{
 			oVerts[i].Normal = normal;
+		}
+	}
+
+	if (!noTexCoord && oVerts.size() >= 3)
+	{
+		// Tomamos los primeros 3 vértices para definir el plano del triángulo
+		glm::vec3& v0 = oVerts[0].Position;
+		glm::vec3& v1 = oVerts[1].Position;
+		glm::vec3& v2 = oVerts[2].Position;
+
+		glm::vec2& uv0 = oVerts[0].TextureCoordinate;
+		glm::vec2& uv1 = oVerts[1].TextureCoordinate;
+		glm::vec2& uv2 = oVerts[2].TextureCoordinate;
+
+		// Edges del triángulo en el espacio del objeto
+		glm::vec3 deltaPos1 = v1 - v0;
+		glm::vec3 deltaPos2 = v2 - v0;
+
+		// Edges en el espacio de la textura (UV)
+		glm::vec2 deltaUV1 = uv1 - uv0;
+		glm::vec2 deltaUV2 = uv2 - uv0;
+
+		// Cálculo matemático de la tangente y bitangente
+		float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+		if (isinf(r) || isnan(r)) r = 0.0f; // Evitar división por cero si las UVs están degeneradas
+
+		glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+		// glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r; // Opcional
+
+		// Asignamos la misma tangente a todos los vértices de esta cara.
+		// Una mejora sería promediar las tangentes de caras adyacentes, pero esto es mucho más complejo.
+		for (int i = 0; i < int(oVerts.size()); i++)
+		{
+			// Ortogonalizamos la tangente con la normal del vértice y la normalizamos
+			oVerts[i].Tangent = glm::normalize(tangent - oVerts[i].Normal * glm::dot(oVerts[i].Normal, tangent));
 		}
 	}
 }

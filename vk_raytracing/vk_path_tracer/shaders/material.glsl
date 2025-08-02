@@ -15,9 +15,15 @@ vec3 TangentToLocal(vec3 normal, vec3 vector) {
     return vector.x * tangent + vector.y * bitangent + vector.z * normal;
 }
 
-void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B) {
-    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-    T = normalize(cross(up, N));
+//void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B) {
+//    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+//    T = normalize(cross(up, N));
+//    B = cross(N, T);
+//}
+
+void TangentVectors(in vec3 N, in vec3 tangent, out vec3 T, out vec3 B) 
+{
+    T = normalize(tangent - dot(tangent, N) * N);
     B = cross(N, T);
 }
 
@@ -74,6 +80,29 @@ vec3 GGXMicronormal(vec3 normal, float alpha, inout uint seed, inout float theta
     return TangentToLocal(normal, micro_normal);
 }
 
+// Genera un micronormal H para una distribución GGX anisotrópica
+vec3 GGXAnisotropicMicronormal(vec3 N, vec3 T, vec3 B, float ax, float ay, inout uint seed) {
+    float e1 = rand(seed);
+    float e2 = rand(seed);
+
+    // Mapeo de coordenadas polares para el hemisferio (muestreo de GGX isotrópico con alpha=1)
+    float phi = 2.0 * PI * e1;
+    float cosTheta = sqrt((1.0 - e2) / (1.0 + (1.0 * 1.0 - 1.0) * e2));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    // Vector de muestra en espacio tangente
+    vec3 H_tangent;
+    H_tangent.x = sinTheta * cos(phi);
+    H_tangent.y = sinTheta * sin(phi);
+    H_tangent.z = cosTheta;
+
+    // Estira el vector de muestra para que sea anisotrópico
+    vec3 H_stretched = normalize(vec3(ax * H_tangent.x, ay * H_tangent.y, H_tangent.z));
+
+    // Transforma el micronormal del espacio tangente al espacio local/mundo
+    return H_stretched.x * T + H_stretched.y * B + H_stretched.z * N;
+}
+
 vec3 MicroReflect(vec3 i_ray, vec3 micro_normal) {
     return normalize(2 * abs(dot(i_ray, micro_normal)) * micro_normal - i_ray);
 }
@@ -104,8 +133,8 @@ void TintColors(Material material, float eta, out float F0, out vec3 Csheen, out
 }
 
 float GGXAnisotropicD(float NDotH, float HDotX, float HDotY, float ax, float ay) {
-    float a = HDotX / ax;
-    float b = HDotY / ay;
+    float a =HDotX / ax;
+    float b =HDotY / ay;
     float c = a * a + b * b + NDotH * NDotH;
     return 1.0 / (PI * ax * ay * c * c);
 }
@@ -150,7 +179,7 @@ vec3 EvalDisneyDiffuse(Material material, vec3 Csheen, vec3 w_i, vec3 w_o, vec3 
     return INV_PI * material.baseColor * mix(Fd + Fretro, ss, material.subsurface) + Fsheen;
 }
 
-vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, out float pdfF, out float pdfB) {
+vec3 EvalMicrofacetReflection(Material material, vec3 tangent, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, out float pdfF, out float pdfB) {
     pdfF = 0.0;
     pdfB = 0.0;
 
@@ -160,7 +189,8 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     float IDotN = dot(normal, w_i);
     vec3 T, B;
-    TangentVectors(normal, T, B);
+//    TangentVectors(normal, T, B);
+    TangentVectors(normal, tangent, T, B);
 
     float aspect = sqrt(1.0 - material.anisotropic * 0.9);
     float ax = max(0.001, material.roughness * material.roughness / aspect);
@@ -176,7 +206,7 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     return F * D * G / (4.0 * ODotN * IDotN);
 }
 
-vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
+vec3 EvalMicrofacetRefraction(Material material, vec3 tangent, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
     float IDotN = dot(w_i, normal);
     float ODotN = dot(w_o, normal);
     float IDotH = dot(w_i, H);
@@ -187,7 +217,8 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float ay = max(0.001, material.roughness * material.roughness * aspect);
 
     vec3 T, B;
-    TangentVectors(normal, T, B);
+//    TangentVectors(normal, T, B);
+    TangentVectors(normal, tangent, T, B);
     float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
@@ -312,7 +343,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 out
     outputColor = f;
 }
 
-vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, Material material, inout uint bsdf_type, inout uint random_seed) {
+vec3 DisneyBSDFDirection2(vec3 w_i, vec3 normal, Material material, inout uint bsdf_type, inout uint random_seed) {
     float cos_theta_i = dot(normal, w_i);
     cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
     // Determine if the ray is entering or exiting the material
@@ -394,6 +425,107 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, Material material, inout uint bs
         else {
             w_o = MicroTransmit(w_i, micro_normal, normal, eta);
             bsdf_type = BSDF_TRANSMISSION;
+        }
+    }
+  
+    return w_o;
+}
+
+vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, Material material, inout uint bsdf_type, inout uint random_seed) {
+    float cos_theta_i = dot(normal, w_i);
+    cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
+    // Determine if the ray is entering or exiting the material
+    bool entering = cos_theta_i >= 0.0;
+    float eta_i = 1.0;
+    float eta_t = material.ior;
+    if (!entering) {
+        normal = -normal;
+        cos_theta_i = -cos_theta_i;
+        eta_i = material.ior;
+        eta_t = 1.0;
+    }
+    float eta = eta_i / eta_t;
+
+    // NO necesitas 'alpha' isotrópico aquí
+    // float alpha = material.roughness * material.roughness; 
+
+    // Tint colors
+    vec3 Csheen, Cspec0;
+    float F0;
+    TintColors(material, eta, F0, Csheen, Cspec0);
+
+    // ... (El resto del cálculo de probabilidades es el mismo) ...
+    float dielectricWt = (1.0 - material.metallic) * material.opacity;
+    float metalWt = material.metallic;
+    float glassWt = (1.0 - material.metallic) * (1.0 - material.opacity);
+
+    float schlickWt = SchlickWeight(cos_theta_i);
+
+    float diffPr = dielectricWt * Luminance(material.baseColor);
+    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+    float metalPr = metalWt * Luminance(mix(material.baseColor, vec3(1.0), schlickWt));
+    float glassPr = glassWt;
+
+    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + EPSILON);
+    diffPr *= invTotalWt;
+    dielectricPr *= invTotalWt;
+    metalPr *= invTotalWt;
+    glassPr *= invTotalWt;
+
+    float cdf[5];
+    cdf[0] = diffPr;
+    cdf[1] = cdf[0] + dielectricPr;
+    cdf[2] = cdf[1] + metalPr;
+    cdf[3] = cdf[2] + glassPr;
+
+    float r3 = rand(random_seed);
+
+    vec3 w_o;
+    if (r3 < cdf[0]) { // Diffuse
+        w_o = RandomCosineHemisphereDirection(normal, random_seed);
+        bsdf_type = BSDF_DIFFUSE;
+    }
+    else if (r3 < cdf[2]) { // Dielectric + Metallic reflection - CORREGIDO
+        // Calcular parámetros anisotrópicos
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float roughness_sq = material.roughness * material.roughness;
+        float ax = max(0.001, roughness_sq / aspect);
+        float ay = max(0.001, roughness_sq * aspect);
+
+        // Calcular base tangente
+        vec3 T, B;
+//        TangentVectors(normal, T, B);
+        TangentVectors(normal, T, B);
+
+        // Muestrear usando la nueva función anisotrópica
+        vec3 micro_normal = GGXAnisotropicMicronormal(normal, T, B, ax, ay, random_seed);
+        
+        w_o = normalize(MicroReflect(w_i, micro_normal));
+
+        bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
+    }
+    else { // Glass - TAMBIÉN NECESITA CORRECCIÓN
+
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float roughness_sq = material.roughness * material.roughness;
+        float ax = max(0.001, roughness_sq / aspect);
+        float ay = max(0.001, roughness_sq * aspect);
+        
+        vec3 T, B;
+        TangentVectors(normal, T, B);
+        
+        vec3 micro_normal = GGXAnisotropicMicronormal(normal, T, B, ax, ay, random_seed);
+        float VDotH = dot(w_i, micro_normal);
+
+        float sin_theta = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
+        bool cannot_refract = (eta_i > eta_t && sin_theta > 1.0);
+
+        if (cannot_refract || DielectricFresnel(VDotH, eta) > rand(random_seed)) {
+             w_o = MicroReflect(w_i, micro_normal);
+             bsdf_type = BSDF_REFLECTION;
+        } else {
+             w_o = MicroTransmit(w_i, micro_normal, normal, eta);
+             bsdf_type = BSDF_TRANSMISSION;
         }
     }
   

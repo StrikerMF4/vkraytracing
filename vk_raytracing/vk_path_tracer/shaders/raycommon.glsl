@@ -37,6 +37,7 @@ struct rayPayload
 	float pdfF;
 	float pdfB;
 	uint light_id;
+	vec3 tangent; 
 
 	Material material;
 

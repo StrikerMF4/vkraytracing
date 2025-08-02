@@ -90,7 +90,12 @@ Scene::Scene(const std::string& filepath) {
 				material.clearcoatGloss = (*it)["clearcoatgloss"].template get<double>();
 			if ((*it).contains("ior"))
 				material.ior = (*it)["ior"].template get<double>();
-
+			if ((*it).contains("anisotropyDirection"))
+				material.anisotropyDirection = glm::vec3(
+					(*it)["anisotropyDirection"][0].template get<double>(),
+					(*it)["anisotropyDirection"][1].template get<double>(),
+					(*it)["anisotropyDirection"][2].template get<double>()
+				);
 			if ((*it).contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
 				textures.push_back((*it)["albedotexture"].template get<std::string>());
