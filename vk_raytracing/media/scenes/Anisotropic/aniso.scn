@@ -1,0 +1,152 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.7, 2.2],
+        "lookat": [0.0, 0.7, 0.0],
+        "fov": 60
+    },
+    "materials": [
+		{
+            "name": "roughness_0",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.0,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_1",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_2",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.2,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_3",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.3,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_4",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.4,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_5",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.5,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_6",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.6,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_7",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.7,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_8",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.8,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_9",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 0.9,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "roughness_10",
+			"color": [1.0, 1.0, 1.0],
+			"roughness": 1.0,
+            "anisotropictexture": "textures/AnisotropyDiscs.png"
+        },
+        {
+            "name": "text",
+			"color": [1.0, 1.0, 1.0]
+        },
+        {
+            "name": "light",
+            "emission": [10.0, 10.0, 10.0]
+        }
+    ],
+    "entities": [
+		{
+            "type": "mesh",
+            "file": "models/Light.obj",
+            "material": "light"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box000.obj",
+            "material": "roughness_0"
+        },
+		{
+            "type": "mesh",
+            "file": "models/Box001.obj",
+            "material": "roughness_1"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box002.obj",
+            "material": "roughness_2"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box003.obj",
+            "material": "roughness_3"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box004.obj",
+            "material": "roughness_4"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box005.obj",
+            "material": "roughness_5"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box006.obj",
+            "material": "roughness_6"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box007.obj",
+            "material": "roughness_7"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box008.obj",
+            "material": "roughness_8"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box009.obj",
+            "material": "roughness_9"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Box010.obj",
+            "material": "roughness_10"
+        },
+        {
+            "type": "mesh",
+            "file": "models/Text.obj",
+            "material": "text"
+        }
+    ]
+}
