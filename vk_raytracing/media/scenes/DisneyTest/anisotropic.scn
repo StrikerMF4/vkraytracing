@@ -58,30 +58,35 @@
             "type": "sphere",
             "position": [-5, 0, 0],
 			"material": "Esfera1",
+            "anisotropic_direction": [1, 0, 0],
 			"radius": 1.0
         },
         {
             "type": "sphere",
             "position": [-2.5, 0, 0],
 			"material": "Esfera2",
+            "anisotropic_direction": [1, 0, 0],
 			"radius": 1.0
         },
         {
             "type": "sphere",
             "position": [0, 0, 0],
 			"material": "Esfera3",
+            "anisotropic_direction": [1, 0, 0],
 			"radius": 1.0
         },
         {
             "type": "sphere",
             "position": [2.5, 0, 0],
 			"material": "Esfera4",
+            "anisotropic_direction": [1, 0, 0],
 			"radius": 1.0
         },
         {
             "type": "sphere",
             "position": [5, 0, 0],
 			"material": "Esfera5",
+            "anisotropic_direction": [1, 0, 0],
 			"radius": 1.0
         },
 	    {

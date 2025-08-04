@@ -8,7 +8,7 @@ vec3 sampleAreaLightDirection(vec3 normal, out float pdf, inout uint seed) {
     vec3 dir = RandomCosineHemisphereDirection(normal, seed);
     float cosTheta = dot(dir, normal);
 
-    pdf = cosTheta * INV_PI;
+    pdf = max(0.0, cosTheta) * INV_PI; 
     return dir;
 }
 

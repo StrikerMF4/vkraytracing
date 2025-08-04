@@ -69,6 +69,7 @@ struct Node {
 	bool isSpecular;
 	float G;
 	vec3 normal;
+	vec3 tangent;
 	vec3 w_i;
 	Material material;
 };

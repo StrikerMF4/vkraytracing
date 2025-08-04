@@ -90,12 +90,6 @@ Scene::Scene(const std::string& filepath) {
 				material.clearcoatGloss = (*it)["clearcoatgloss"].template get<double>();
 			if ((*it).contains("ior"))
 				material.ior = (*it)["ior"].template get<double>();
-			if ((*it).contains("anisotropyDirection"))
-				material.anisotropyDirection = glm::vec3(
-					(*it)["anisotropyDirection"][0].template get<double>(),
-					(*it)["anisotropyDirection"][1].template get<double>(),
-					(*it)["anisotropyDirection"][2].template get<double>()
-				);
 			if ((*it).contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
 				textures.push_back((*it)["albedotexture"].template get<std::string>());
@@ -193,6 +187,12 @@ Scene::Scene(const std::string& filepath) {
 				Sphere* sphere = new Sphere();
 
 				sphere->radius = (*it)["radius"].template get<double>();
+				sphere->anisotropic_direction = ((*it).contains("anisotropic_direction") ?
+					glm::vec3(
+						(*it)["anisotropic_direction"][0].template get<double>(),
+						(*it)["anisotropic_direction"][1].template get<double>(),
+						(*it)["anisotropic_direction"][2].template get<double>()
+					) : glm::vec3(0.0f, 0.0f, 0.0f));
 				sphere->material_idx = materials_map[(*it)["material"].template get<std::string>()].ID;
 				if ((*it).contains("inverted_normal"))
 					sphere->inverted_normal = (*it)["inverted_normal"].template get<int>();

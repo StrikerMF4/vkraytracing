@@ -84,7 +84,6 @@ namespace objl
 		float subsurface;
 		float specularTint;
 		float anisotropic;
-		glm::vec3 anisotropyDirection = glm::vec3(1.0, 0.0, 0.0);
 
 		float sheen;
 		float sheenTint;

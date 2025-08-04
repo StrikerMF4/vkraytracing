@@ -557,7 +557,7 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 	}
 
 	// take care of missing normals
-	// these may not be truly acurate but it is the 
+	// these may not be truly accurate but it is the 
 	// best they get for not compiling a mesh with normals	
 	if (noNormal)
 	{
@@ -591,18 +591,14 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 		glm::vec2 deltaUV1 = uv1 - uv0;
 		glm::vec2 deltaUV2 = uv2 - uv0;
 
-		// Cálculo matemático de la tangente y bitangente
+		// Calculo de tangente para anisotropico
 		float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-		if (isinf(r) || isnan(r)) r = 0.0f; // Evitar división por cero si las UVs están degeneradas
+		if (isinf(r) || isnan(r)) r = 0.0f;
 
 		glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
-		// glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r; // Opcional
 
-		// Asignamos la misma tangente a todos los vértices de esta cara.
-		// Una mejora sería promediar las tangentes de caras adyacentes, pero esto es mucho más complejo.
 		for (int i = 0; i < int(oVerts.size()); i++)
 		{
-			// Ortogonalizamos la tangente con la normal del vértice y la normalizamos
 			oVerts[i].Tangent = glm::normalize(tangent - oVerts[i].Normal * glm::dot(oVerts[i].Normal, tangent));
 		}
 	}

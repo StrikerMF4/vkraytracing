@@ -111,6 +111,7 @@ struct Sphere {
 	vec3 center;
 	float radius;
 	int inverted_normal;
+	vec3 anisotropic_direction; // Anisotropic direction for the sphere
 };
 
 struct AABB {
@@ -132,7 +133,6 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	float subsurface;
 	float specularTint;
 	float anisotropic;
-	vec3 anisotropyDirection;
 
 	float sheen;
 	float sheenTint;

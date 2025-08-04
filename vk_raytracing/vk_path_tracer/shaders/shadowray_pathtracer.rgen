@@ -56,7 +56,7 @@ vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out float pdf
     return (light.object_to_world * local_point).xyz;
 }
 
-vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, Material material, inout uint random_seed){
+vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material material, inout uint random_seed){
 	float IOR = payload.material.ior;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
@@ -82,7 +82,7 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, Material material, inout u
 				vec3 bsdf = vec3(0);
 				float pdfF, pdfB;
 				float g = GeometricTerm(origin, N, light_point, light_normal);
-				DisneyBSDF(viewer, L, N, material, bsdf, pdfF, pdfB, random_seed);
+				DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
 				color += light.emission * g * bsdf / pdfLight;
 			}
 		}
@@ -152,9 +152,10 @@ void main()
 			origin      = payload.origin;
 			direction   = payload.direction;
 			vec3 normal = payload.surface_normal;
+			vec3 tangent = payload.tangent;
 
 			if(payload.bsdf_type == BSDF_DIFFUSE && payload.status != RAY_HIT_LIGHT)
-				color += (GGX_shadow_ray(origin, viewer, normal, payload.material, payload.random_seed) + Le) * throughput;
+				color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed) + Le) * throughput;
 			else 
 				color += Le * throughput;
 

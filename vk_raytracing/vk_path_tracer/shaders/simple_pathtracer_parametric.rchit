@@ -39,9 +39,7 @@ void main() {
 
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
-    // Material of the object
-    int               matIdx = matIndices.i[gl_PrimitiveID];
-    payload.material = materials.m[matIdx];
+    Sphere sphere = allSpheres.i[object.kind_id];
 
     // Computing the normal and uv at hit position
     vec2 texCoord;
@@ -49,13 +47,17 @@ void main() {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
-        payload.tangent = material.anisotropyDirection;
+        payload.tangent = instance.anisotropic_direction;
+
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
             payload.surface_normal.y * 0.5 + 0.5
         );
     }
+    // Material of the object
+    int               matIdx = matIndices.i[gl_PrimitiveID];
+    payload.material = materials.m[matIdx];
 
     // Texture
     vec3 texture_color = vec3(1);
@@ -71,4 +73,3 @@ void main() {
 
     payload.origin = hit_position + payload.direction * EPSILON2;
 }
-

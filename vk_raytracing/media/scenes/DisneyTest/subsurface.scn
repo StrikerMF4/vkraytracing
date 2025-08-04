@@ -39,7 +39,7 @@
         {
             "name": "Paredes",
 			"color": [1.0, 1.0, 1.0],
-            "roughness": 0.5,
+            "roughness": 1,
             "albedotexture": "textures/micro_test2.png"
         }
     ],

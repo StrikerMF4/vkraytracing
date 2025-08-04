@@ -49,12 +49,14 @@ void main() {
     const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0));  // Transforming the position to world space
     // Computing the normal at hit position
     const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
-    TangentVectors(normal, material, tangent, T, B);;  // Transforming the normal to world space
+    mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
+//    payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
+    payload.surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
 
     payload.light_id = lightIndices.i[gl_PrimitiveID];
-
     const vec3 local_tangent = v0.tangent * barycentrics.x + v1.tangent * barycentrics.y + v2.tangent * barycentrics.z;
-    payload.tangent = normalize(vec3(local_tangent * gl_WorldToObjectEXT));
+    payload.tangent = normalize(objToWorld * local_tangent);
+
 
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];
@@ -75,4 +77,3 @@ void main() {
 
     payload.origin = hit_position + payload.direction * EPSILON2;
 }
-

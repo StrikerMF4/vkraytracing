@@ -34,6 +34,7 @@ namespace SceneLoader {
 		float radius;
 		unsigned int material_idx;
 		int inverted_normal = 1;
+		glm::vec3 anisotropic_direction = glm::vec3(0.0f);
 	};
 
 
