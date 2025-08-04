@@ -92,6 +92,7 @@ namespace objl
 		float ior;
 
 		int albedoTextureID;
+		int anisotropicTextureID;
 		int metallicRoughnessTextureID;
 		int normalTextureID;
 		int emissionTextureID;

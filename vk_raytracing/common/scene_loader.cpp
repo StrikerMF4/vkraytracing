@@ -95,6 +95,10 @@ Scene::Scene(const std::string& filepath) {
 				material.albedoTextureID = textures.size();
 				textures.push_back((*it)["albedotexture"].template get<std::string>());
 			}
+			if ((*it).contains("anisotropictexture")) {
+				material.anisotropicTextureID = textures.size();
+				textures.push_back((*it)["anisotropictexture"].template get<std::string>());
+			}
 			if ((*it).contains("metallicroughnesstexture")) {
 				material.metallicRoughnessTextureID = textures.size();
 				textures.push_back((*it)["metallicroughnesstexture"].template get<std::string>());
