@@ -20,6 +20,7 @@ layout(buffer_reference, scalar) buffer Vertices {Vertex v[]; }; // Positions of
 layout(buffer_reference, scalar) buffer Indices {ivec3 i[]; }; // Triangle indices
 layout(buffer_reference, scalar) buffer Materials {Material m[]; }; // Array of all materials on an object
 layout(buffer_reference, scalar) buffer MatIndices {int i[]; }; // Material ID for each triangle
+layout(buffer_reference, scalar) buffer LightIndices {int i[]; }; // Light ID for each triangle
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
@@ -32,6 +33,7 @@ void main() {
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
     MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
     Materials  materials   = Materials(objResource.materialAddress);
+    LightIndices lightIndices = LightIndices(objResource.lightIndexAddress);
     Indices    indices     = Indices(objResource.indexAddress);
     Vertices   vertices    = Vertices(objResource.vertexAddress);
 
@@ -48,6 +50,8 @@ void main() {
     // Computing the normal at hit position
     const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
     payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
+
+    payload.light_id = lightIndices.i[gl_PrimitiveID];
 
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];

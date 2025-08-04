@@ -6,6 +6,7 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
 
+#include "lights.glsl"
 #include "material.glsl"
 
 // clang-format off
@@ -68,7 +69,9 @@ void main() {
             traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
 
             if (payload.status == RAY_HIT_LIGHT) {
-                output_color += throughput * payload.Le;
+                Light light = lights.i[payload.light_id];
+                float pdf = AreaLightPDFDirection(-direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
+                output_color += throughput * payload.Le / pdf;
                 break;
             } else if (payload.status == RAY_MISS) {
                 output_color += throughput * vec3(0);
@@ -77,7 +80,7 @@ void main() {
 
             // Actualizar throughput
             if (payload.pdfF > 0) {
-            float cos_theta = abs(dot(payload.surface_normal, payload.direction));
+                float cos_theta = abs(dot(payload.surface_normal, payload.direction));
                 throughput *= (payload.bsdf_sample * cos_theta) / (payload.pdfF + EPSILON);
             }
             else break;
