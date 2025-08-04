@@ -111,6 +111,11 @@ Scene::Scene(const std::string& filepath) {
 				textures.push_back((*it)["emissiontexture"].template get<std::string>());
 			}
 
+			if ((*it).contains("anisotropytexture")) {
+				material.anisotropyTextureID = textures.size();
+				textures.push_back((*it)["anisotropytexture"].template get<std::string>());
+			}
+
 			//Save the material
 			material.ID = materials.size();
 			materials.push_back(material);

@@ -99,7 +99,6 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 	vec3 position;
 	vec3 normal;
 	vec2 texCoord;
-	vec3 tangent;
 };
 
 struct ImplicitObj {
@@ -146,6 +145,7 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	int metallicRoughnessTextureID;
 	int normalTextureID;
 	int emissionTextureID;
+	int anisotropyTextureID;
 
 	float opacity;
 	float alphaMode;

@@ -68,6 +68,7 @@ namespace objl
 			metallicRoughnessTextureID = -1;
 			normalTextureID = -1;
 			emissionTextureID = -1;
+			anisotropyTextureID = -1;
 			opacity = 1.0f;
 			alphaMode = 0.0f;
 			alphaCutoff = 0.0f;
@@ -98,6 +99,7 @@ namespace objl
 		int metallicRoughnessTextureID;
 		int normalTextureID;
 		int emissionTextureID;
+		int anisotropyTextureID;
 
 		float opacity;
 		float alphaMode;
