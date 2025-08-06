@@ -15,9 +15,20 @@ vec3 TangentToLocal(vec3 normal, vec3 vector) {
     return vector.x * tangent + vector.y * bitangent + vector.z * normal;
 }
 
-void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B) {
-    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-    T = normalize(cross(up, N));
+//void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B) {
+//    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+//    T = normalize(cross(up, N));
+//    B = cross(N, T);
+//}
+
+void TangentVectors(in vec3 N, in vec3 tangent, out vec3 T, out vec3 B) 
+{
+    if (length(tangent) < EPSILON2) {
+        vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+        T = normalize(cross(up, N));
+    } else {
+        T = normalize(tangent - dot(tangent, N) * N);
+    }
     B = cross(N, T);
 }
 
@@ -72,6 +83,26 @@ vec3 GGXMicronormal(vec3 normal, float alpha, inout uint seed, inout float theta
     vec3 micro_normal = vec3(x, y, z);
 
     return TangentToLocal(normal, micro_normal);
+}
+
+vec3 GGXAnisotropicMicronormal(vec3 N, vec3 T, vec3 B, float ax, float ay, inout uint seed) {
+    float e1 = rand(seed);
+    float e2 = rand(seed);
+
+    // Mapeo a disco elíptico en el plano tangente
+    float phi = 2.0 * PI * e1;
+    float r = sqrt(e2);
+    float x = r * cos(phi);
+    float y = r * sin(phi);
+
+    // Proyección al hemisferio
+    vec3 H_tan;
+    H_tan.x = ax * x;
+    H_tan.y = ay * y;
+    H_tan.z = sqrt(max(0.0, 1.0 - (H_tan.x * H_tan.x) - (H_tan.y * H_tan.y)));
+
+    // Transformar del espacio tangente al espacio del mundo
+    return normalize(T * H_tan.x + B * H_tan.y + N * H_tan.z);
 }
 
 vec3 MicroReflect(vec3 i_ray, vec3 micro_normal) {
@@ -150,7 +181,7 @@ vec3 EvalDisneyDiffuse(Material material, vec3 Csheen, vec3 w_i, vec3 w_o, vec3 
     return INV_PI * material.baseColor * mix(Fd + Fretro, ss, material.subsurface) + Fsheen;
 }
 
-vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, out float pdfF, out float pdfB) {
+vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 tangent, vec3 H, vec3 F, out float pdfF, out float pdfB) {
     pdfF = 0.0;
     pdfB = 0.0;
 
@@ -160,7 +191,7 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     float IDotN = dot(normal, w_i);
     vec3 T, B;
-    TangentVectors(normal, T, B);
+    TangentVectors(normal,tangent, T, B);
 
     float aspect = sqrt(1.0 - material.anisotropic * 0.9);
     float ax = max(0.001, material.roughness * material.roughness / aspect);
@@ -168,7 +199,7 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
-    float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, T), ax, ay);
+    float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
     pdfF = G1 * D / (4.0 * IDotN);
@@ -176,7 +207,7 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     return F * D * G / (4.0 * ODotN * IDotN);
 }
 
-vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
+vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 tangent, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
     float IDotN = dot(w_i, normal);
     float ODotN = dot(w_o, normal);
     float IDotH = dot(w_i, H);
@@ -187,7 +218,7 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float ay = max(0.001, material.roughness * material.roughness * aspect);
 
     vec3 T, B;
-    TangentVectors(normal, T, B);
+    TangentVectors(normal,tangent, T, B);
     float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
@@ -208,7 +239,7 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
 }
 
 
-void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 outputColor, out float pdfF, out float pdfB, inout uint random_seed) {
+void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, vec3 tangent, Material material, out vec3 outputColor, out float pdfF, out float pdfB, inout uint random_seed) {
     pdfF = 0.0;
     pdfB = 0.0;
     vec3 f = vec3(0.0);
@@ -281,7 +312,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 out
         // Normalize for interpolating based on Cspec0
         float F = (DielectricFresnel(IDotH, 1.0 / material.ior) - F0) / (1.0 - F0);
 
-        f += EvalMicrofacetReflection(material, w_i, w_o, normal, H, mix(Cspec0, vec3(1.0), F), tmpPdfF, tmpPdfB) * dielectricWt;
+        f += EvalMicrofacetReflection(material, w_i, w_o, normal, tangent, H, mix(Cspec0, vec3(1.0), F), tmpPdfF, tmpPdfB) * dielectricWt;
         pdfF += tmpPdfF * dielectricPr;
         pdfB += tmpPdfB * dielectricPr;
     }
@@ -289,7 +320,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 out
     if (metalPr > 0.0 && reflect) { // Metallic Reflection
         vec3 F = mix(material.baseColor, vec3(1.0), SchlickWeight(IDotH));
 
-        f += EvalMicrofacetReflection(material, w_i, w_o, normal, H, F, tmpPdfF, tmpPdfB)  * metalWt;
+        f += EvalMicrofacetReflection(material, w_i, w_o, normal, tangent, H, F, tmpPdfF, tmpPdfB)  * metalWt;
         pdfF += tmpPdfF * metalPr;
         pdfB += tmpPdfB * metalPr;
     }
@@ -298,12 +329,12 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 out
         float F = DielectricFresnel(IDotH, eta);
 
         if (reflect) {
-            f += EvalMicrofacetReflection(material, w_i, w_o, normal, H, vec3(F), tmpPdfF, tmpPdfB) * glassWt;
+            f += EvalMicrofacetReflection(material, w_i, w_o, normal, tangent, H, vec3(F), tmpPdfF, tmpPdfB) * glassWt;
             pdfF += tmpPdfF * glassPr * F;
             pdfB += tmpPdfB * glassPr * F;
         }
         else {
-            f += EvalMicrofacetRefraction(material, w_i, w_o, normal, H, vec3(F), eta, tmpPdfF, tmpPdfB) * glassWt;
+            f += EvalMicrofacetRefraction(material, w_i, w_o, normal, tangent, H, vec3(F), eta, tmpPdfF, tmpPdfB) * glassWt;
             pdfF += tmpPdfF * glassPr * (1.0 - F);
             pdfB += tmpPdfB * glassPr * (1.0 - F);
         }
@@ -312,7 +343,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, Material material, out vec3 out
     outputColor = f;
 }
 
-vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, Material material, inout uint bsdf_type, inout uint random_seed) {
+vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material, inout uint bsdf_type, inout uint random_seed) {
     float cos_theta_i = dot(normal, w_i);
     cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
     // Determine if the ray is entering or exiting the material
@@ -371,9 +402,17 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, Material material, inout uint bs
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
         bsdf_type = BSDF_DIFFUSE;
     }
-    else if (r3 < cdf[2]) { // Dielectric + Metallic reflection
-        float theta_m;
-        vec3 micro_normal = GGXMicronormal(normal, alpha, random_seed, theta_m);
+    else if (r3 < cdf[2]) { // Dielectric + Metallic reflection - CORREGIDO
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float roughness_sq = material.roughness * material.roughness;
+        float ax = max(0.001, roughness_sq / aspect);
+        float ay = max(0.001, roughness_sq * aspect);
+
+        vec3 T, B;
+        TangentVectors(normal,tangent, T, B);
+
+        vec3 micro_normal = GGXAnisotropicMicronormal(normal, T, B, ax, ay, random_seed);
+        
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
         bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
@@ -411,13 +450,13 @@ void DisneyBSDFSample(inout rayPayload payload) {
     }
     else {
         payload.direction = normalize(payload.direction);
-        vec3 new_direction = DisneyBSDFDirection(-payload.direction, payload.surface_normal, payload.material, payload.bsdf_type, payload.random_seed);
+        vec3 new_direction = DisneyBSDFDirection(-payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_type, payload.random_seed);
         new_direction = normalize(new_direction);
 
         if(payload.backward_propagation == 0)
-            DisneyBSDF(new_direction, -payload.direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
+            DisneyBSDF(new_direction, -payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
         else
-            DisneyBSDF(-payload.direction, new_direction, payload.surface_normal, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
+            DisneyBSDF(-payload.direction, new_direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
 
         payload.direction = new_direction;
         payload.status = RAY_CONTINUE;

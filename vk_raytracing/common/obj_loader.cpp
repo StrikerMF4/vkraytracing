@@ -480,6 +480,7 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 	algorithm::split(algorithm::tail(icurline), sface, " ");
 
 	bool noNormal = false;
+	bool noTexCoord = false;
 
 	// For every given vertex do this
 	for (int i = 0; i < int(sface.size()); i++)
@@ -523,46 +524,40 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 		switch (vtype)
 		{
 		case 1: // P
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = glm::vec2(0, 0);
 			noNormal = true;
+			noTexCoord = true;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 2: // P/T
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
 			noNormal = true;
+			noTexCoord = false;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 3: // P//N
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = glm::vec2(0, 0);
 			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			noTexCoord = true;
 			oVerts.push_back(vVert);
 			break;
-		}
 		case 4: // P/T/N
-		{
 			vVert.Position = algorithm::getElement(iPositions, svert[0]);
 			vVert.TextureCoordinate = algorithm::getElement(iTCoords, svert[1]);
 			vVert.Normal = algorithm::getElement(iNormals, svert[2]);
+			noTexCoord = false;
 			oVerts.push_back(vVert);
 			break;
-		}
 		default:
-		{
 			break;
-		}
 		}
 	}
 
 	// take care of missing normals
-	// these may not be truly acurate but it is the 
+	// these may not be truly accurate but it is the 
 	// best they get for not compiling a mesh with normals	
 	if (noNormal)
 	{

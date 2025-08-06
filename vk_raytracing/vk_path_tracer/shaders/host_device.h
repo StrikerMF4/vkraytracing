@@ -110,6 +110,7 @@ struct Sphere {
 	vec3 center;
 	float radius;
 	int inverted_normal;
+	vec3 anisotropic_direction; // Anisotropic direction for the sphere
 };
 
 struct AABB {
@@ -141,6 +142,7 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	float ior;
 
 	int albedoTextureID;
+	int anisotropicTextureID;
 	int metallicRoughnessTextureID;
 	int normalTextureID;
 	int emissionTextureID;

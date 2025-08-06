@@ -428,6 +428,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 			sphere_obj.center = sphere->position;
 			sphere_obj.radius = sphere->radius;
 			sphere_obj.inverted_normal = sphere->inverted_normal;
+			sphere_obj.anisotropic_direction = sphere->anisotropic_direction;
 
 			ImplicitObj obj;
 

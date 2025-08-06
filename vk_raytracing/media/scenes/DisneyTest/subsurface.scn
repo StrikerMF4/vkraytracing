@@ -1,0 +1,83 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.0, 9.0],
+        "lookat": [0.0, 0.0, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Esfera1",
+            "color": [1, 1, 1],
+            "subsurface": 0
+        },
+        {
+            "name": "Esfera2",
+            "color": [1, 1, 1],
+            "subsurface": 0.25
+        },
+        {
+            "name": "Esfera3",
+            "color": [1, 1, 1],
+            "subsurface": 0.5
+        },
+        {
+            "name": "Esfera4",
+            "color": [1, 1, 1],
+            "subsurface": 0.75
+        },
+        {
+            "name": "Esfera5",
+            "color": [1, 1, 1],
+            "subsurface": 1
+        },
+        {
+            "name": "Light",
+            "emission": [2.0, 2.0, 2.0]
+        },
+        {
+            "name": "Paredes",
+			"color": [1.0, 1.0, 1.0],
+            "roughness": 1,
+            "albedotexture": "textures/micro_test2.png"
+        }
+    ],
+    "entities": [
+		{
+            "type": "sphere",
+            "position": [-5, 0, 0],
+			"material": "Esfera1",
+			"radius": 1.0
+        },
+        {
+            "type": "sphere",
+            "position": [-2.5, 0, 0],
+			"material": "Esfera2",
+			"radius": 1.0
+        },
+        {
+            "type": "sphere",
+            "position": [0, 0, 0],
+			"material": "Esfera3",
+			"radius": 1.0
+        },
+        {
+            "type": "sphere",
+            "position": [2.5, 0, 0],
+			"material": "Esfera4",
+			"radius": 1.0
+        },
+        {
+            "type": "sphere",
+            "position": [5, 0, 0],
+			"material": "Esfera5",
+			"radius": 1.0
+        },
+	    {
+            "type": "mesh",
+            "file": "models/Escenario.obj",
+            "position": [0, 10, 0]
+        }
+    ]
+}

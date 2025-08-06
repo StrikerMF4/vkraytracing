@@ -46,6 +46,7 @@ void main() {
         Sphere instance = allSpheres.i[object.kind_id];
 
         payload.surface_normal = normalize(hit_position - instance.center);
+        payload.tangent = instance.anisotropic_direction;
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,

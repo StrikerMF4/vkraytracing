@@ -1,0 +1,39 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.0, 9.0],
+        "lookat": [0.0, 0.0, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Esfera1",
+            "color": [0.683, 0.275, 0.185],
+            "roughness": 0.001,
+            "opacity": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "Paredes",
+			"color": [1.0, 1.0, 1.0],
+            "roughness": 0.5,
+            "albedotexture": "Daylight.png",
+            "emission": [1.0, 1.0, 1.0]
+        }
+    ],
+    "entities": [
+		{
+            "type": "sphere",
+            "position": [0, 0, 0],
+			"material": "Esfera1",
+			"radius": 1.0
+        },
+	    {
+            "type": "mesh",
+            "file": "skybox.obj",
+            "material": "Paredes",
+            "scale": [10, 10, 10]
+        }
+    ]
+}

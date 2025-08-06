@@ -46,13 +46,26 @@ void main() {
     // Computing the coordinates of the hit position
     const vec3 local_position = v0.position * barycentrics.x + v1.position * barycentrics.y + v2.position * barycentrics.z;
     const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0));  // Transforming the position to world space
+    
+    mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
     // Computing the normal at hit position
     const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
-    payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
-    
+    payload.surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
+
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
+
+    vec3 final_tangent = vec3(0,0,0);
+    if (payload.material.anisotropicTextureID >= 0) {
+        uint txtId = payload.material.anisotropicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        
+        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).rgb * 2.0 - 1.0;
+
+        final_tangent = normalize(aniso_dir_tangent_space);
+    }
+    payload.tangent = final_tangent;
 
     // Texture
     vec3 texture_color = vec3(1);

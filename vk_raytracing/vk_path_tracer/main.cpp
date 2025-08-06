@@ -53,6 +53,9 @@ bool bidirectional_debug_technique = false;
 int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
+double maxTime = 500000.0;
+std::string scene_path;
+
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -71,7 +74,41 @@ void render_loop(GLFWwindow* window);
 //
 int main(int argc, char** argv)
 {
-	UNUSED(argc);
+	//UNUSED(argc);
+
+	if (argc > 1) {
+		// Usar el primer argumento como ruta de la escena
+		scene_path = argv[1];
+	}
+	else {
+		// Sin argumento, se podría usar un valor por defecto o mostrar error
+		std::cerr << "Uso: programa <ruta_escena> [tecnica] [tiempo_segundos]\n";
+	}
+	bool valid_scene = true;
+
+
+
+	std::string technique = "path";  // valor por defecto
+	if (argc > 2) {
+		technique = argv[2];
+	}
+
+	// Seleccionar la técnica inicial según el parámetro
+	if (technique == "path") {
+		current_technique = TechniqueType::SIMPLE_PATHTRACER;
+	}
+	else if (technique == "shadow") {
+		current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
+	}
+	else if (technique == "bdpt") {
+		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
+	}
+
+
+	if (argc > 3) {
+		maxTime = atof(argv[3]); // o std::stod(argv[3])
+	}
+
 
 	// Setup GLFW window
 	glfwSetErrorCallback(onErrorCallback);
@@ -158,8 +195,8 @@ int main(int argc, char** argv)
 
 	purpleTheme();
 
-	std::string scene_path;
-	bool valid_scene = scene_file_dialog_loop(window, &scene_path);
+	if (scene_path.size() == 0)
+		valid_scene = scene_file_dialog_loop(window, &scene_path);
 
 	vkDeviceWaitIdle(vulkanHandler.getDevice());
 
@@ -535,6 +572,15 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
 }
 
+std::string techniqueToString(TechniqueType t) {
+	switch (t) {
+	case TechniqueType::SIMPLE_PATHTRACER: return "SIMPLE";
+	case TechniqueType::SHADOWRAY_PATHTRACER: return "SHADOW";
+	case TechniqueType::BIDIRECTIONAL_PATHTRACER: return "BDPT";
+	default: return "Unknown";
+	}
+}
+
 static void render_loop(GLFWwindow* window) {
 	glm::vec4 clearColor = glm::vec4(0, 0, 0, 1.00f);
 
@@ -545,9 +591,12 @@ static void render_loop(GLFWwindow* window) {
 	int iterations = 0;
 	int iteration_limit = 0;
 
+	auto startTime = std::chrono::steady_clock::now();
+
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
+
 		if (vulkanHandler.m_pcRay.frame <= 0) {
 			paused = false;
 			pause_timer_start = std::chrono::high_resolution_clock::now();
@@ -637,16 +686,26 @@ static void render_loop(GLFWwindow* window) {
 			std::string s(30, '\0');
 			std::size_t len = std::strftime(&s[0], s.size(), "%Y-%m-%d %H.%M.%S", std::localtime(&now));
 			s.resize(len);
-			std::string filename = "screenshot " + s + ".png";
+			std::filesystem::path p(scene_path);
+			LOGI(scene_path.c_str());
+			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + ".png";
 
 			vulkanHandler.createScreenshot(filename);
 
 			vulkanHandler.m_createScreenshot = false;
+			startTime = std::chrono::steady_clock::now();
 		}
 
 		// Submit for display
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
+
+		auto now = std::chrono::steady_clock::now();
+		double elapsedSec = std::chrono::duration<double>(now - startTime).count();
+		if (elapsedSec >= maxTime) {
+			// Tiempo cumplido: tomar captura y salir
+			vulkanHandler.m_createScreenshot = true;
+		}
 	}
 }
 

@@ -1,0 +1,8 @@
+REM Ejecutar escena1 con path tracing por 10 segundos
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\subsurface.scn path 1000
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\metallic.scn path 1000
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\specular.scn path 1000
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\speculartint.scn path 1000
+C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\anisotropic.scn path 1000
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\sheen.scn path 1000
+@REM C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\bin_x64\Release\vk_path_tracer.exe C:\Users\jobak\OneDrive\Documentos\FING\Proyecto\vkraytracing\vk_raytracing\media\scenes\DisneyTest\sheentint.scn path 1000

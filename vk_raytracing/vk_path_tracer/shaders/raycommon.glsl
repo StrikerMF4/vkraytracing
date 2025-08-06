@@ -37,6 +37,7 @@ struct rayPayload
 	float pdfF;
 	float pdfB;
 	uint light_id;
+	vec3 tangent; 
 
 	Material material;
 
@@ -68,6 +69,7 @@ struct Node {
 	bool isSpecular;
 	float G;
 	vec3 normal;
+	vec3 tangent;
 	vec3 w_i;
 	Material material;
 };
