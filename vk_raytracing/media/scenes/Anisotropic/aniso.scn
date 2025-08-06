@@ -11,67 +11,89 @@
             "name": "roughness_0",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.0,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_1",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.1,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_2",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.2,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_3",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.3,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_4",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.4,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_5",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.5,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_6",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.6,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_7",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.7,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_8",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.8,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_9",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 0.9,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "roughness_10",
 			"color": [1.0, 1.0, 1.0],
 			"roughness": 1.0,
-            "anisotropictexture": "textures/AnisotropyDiscs.png"
+            "metallic": 1,
+            "anisotropictexture": "textures/AnisotropyDiscs.png",
+            "anisotropic": 1
         },
         {
             "name": "text",
@@ -79,14 +101,25 @@
         },
         {
             "name": "light",
-            "emission": [10.0, 10.0, 10.0]
+            "emission": [20.0, 20.0, 20.0]
+        },        
+        {
+            "name": "Light",
+            "emission": [2.0, 2.0, 2.0]
+        },        
+        {
+            "name": "Paredes",
+			"color": [1.0, 1.0, 1.0],
+            "roughness": 0.5,
+            "albedotexture": "textures/micro_test2.png"
         }
     ],
     "entities": [
 		{
             "type": "mesh",
             "file": "models/Light.obj",
-            "material": "light"
+            "material": "light",
+            "position": [0, 0, 10]
         },
         {
             "type": "mesh",
@@ -147,6 +180,11 @@
             "type": "mesh",
             "file": "models/Text.obj",
             "material": "text"
+        },
+	    {
+            "type": "mesh",
+            "file": "models/Escenario.obj",
+            "position": [0, 10, 0]
         }
     ]
 }

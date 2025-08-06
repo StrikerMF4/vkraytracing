@@ -50,44 +50,25 @@ void main() {
     // Computing the normal at hit position
     const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
     mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
-//    payload.surface_normal = normalize(vec3(local_normal * gl_WorldToObjectEXT));  // Transforming the normal to world space
     payload.surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
 
     payload.light_id = lightIndices.i[gl_PrimitiveID];
-    const vec3 local_tangent = v0.tangent * barycentrics.x + v1.tangent * barycentrics.y + v2.tangent * barycentrics.z;
-    payload.tangent = normalize(objToWorld * local_tangent);
-
-
-    const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
-    const vec3 local_tangent_geom = v0.tangent * barycentrics.x + v1.tangent * barycentrics.y + v2.tangent * barycentrics.z;
-    
-    mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
-    payload.surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
-    vec3 T_geom = normalize(objToWorld * local_tangent_geom);
-    vec3 B_geom = cross(N, T_geom);
-
-    payload.surface_normal = N; // La normal siempre es la geométrica
-
-    int matIdx = matIndices.i[gl_PrimitiveID];
-    payload.material = materials.m[matIdx];
-    
-    vec3 final_tangent;
-    if (payload.material.anisotropyTextureID >= 0) {
-        uint txtId = payload.material.anisotropyTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-        
-        vec2 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).rg * 2.0 - 1.0;
-
-        final_tangent = normalize(T_geom * aniso_dir_tangent_space.x + B_geom * aniso_dir_tangent_space.y);
-    } else {
-        final_tangent = T_geom;
-    }
-    
-    payload.tangent = final_tangent;
 
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];
-    payload.material    = materials.m[matIdx];
+    payload.material = materials.m[matIdx];
+
+    vec3 final_tangent = vec3(0,0,0);
+    if (payload.material.anisotropicTextureID >= 0) {
+        uint txtId = payload.material.anisotropicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        
+        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).rgb * 2.0 - 1.0;
+
+        final_tangent = normalize(aniso_dir_tangent_space);
+    }
+    payload.tangent = final_tangent;
+    
 
     // Texture
     vec3 texture_color = vec3(1);

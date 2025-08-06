@@ -60,14 +60,12 @@ uint RandomPointInLight(out vec3 point, out vec3 surface_normal, out vec3 emissi
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.position, v1.position, v2.position, payload.random_seed);
 
-	vec4 local_normal = vec4(v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z, 1.0);
-	vec3 local_normal_v3 = v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z;
+	vec3 local_normal = v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z;
 	vec4 local_point = vec4(barycentric.x * v0.position + barycentric.y * v1.position + barycentric.z * v2.position, 1.0);
 
-//	surface_normal = normalize((local_normal * light.world_to_object).xyz);
 
 	mat3 objToWorld = mat3(light.object_to_world);
-	surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal_v3);
+	surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
 
 	point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
 
@@ -139,7 +137,7 @@ float misWeight(int s, int t, PDFConnection pdf) {
                 continue;
             }
         }
-        misWeightSum += pK ;
+        misWeightSum += pK * pK;
     }
 
     pK = 1.0f;
@@ -157,7 +155,7 @@ float misWeight(int s, int t, PDFConnection pdf) {
                 continue;
             }
         }
-        misWeightSum += pK ;
+        misWeightSum += pK * pK;
 	}
 
 	return 1 / misWeightSum;
@@ -391,7 +389,7 @@ void main() {
 	vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 	
 
-	light_hits[0].pdfF = light_dir_pdf;
+	light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
 	light_hits[0].pdfB = light_point_pdf;
 	light_hits[0].alpha = vec3(1.0) / light_hits[0].pdfB;
 	light_hits[0].isSpecular = false;
@@ -399,7 +397,7 @@ void main() {
 	light_hits[0].w_i = vec3(0);
 	vec3 alpha_L = light_hits[0].alpha * Le / light_hits[0].pdfF;
 
-	resetPayload(payload, light_hits[0].point, light_direction);
+	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
     for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
         payload.backward_propagation = 0;

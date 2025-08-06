@@ -85,29 +85,6 @@ vec3 GGXMicronormal(vec3 normal, float alpha, inout uint seed, inout float theta
     return TangentToLocal(normal, micro_normal);
 }
 
-// Genera un micronormal H para una distribución GGX anisotrópica
-vec3 GGXAnisotropicMicronormal2(vec3 N, vec3 T, vec3 B, float ax, float ay, inout uint seed) {
-    float e1 = rand(seed);
-    float e2 = rand(seed);
-
-    // Mapeo de coordenadas polares para el hemisferio (muestreo de GGX isotrópico con alpha=1)
-    float phi = 2.0 * PI * e1;
-    float cosTheta = sqrt((1.0 - e2) / (1.0 + (1.0 * 1.0 - 1.0) * e2));
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-
-    // Vector de muestra en espacio tangente
-    vec3 H_tangent;
-    H_tangent.x = sinTheta * cos(phi);
-    H_tangent.y = sinTheta * sin(phi);
-    H_tangent.z = cosTheta;
-
-    // Estira el vector de muestra para que sea anisotrópico
-    vec3 H_stretched = normalize(vec3(ax * H_tangent.x, ay * H_tangent.y, H_tangent.z));
-
-    // Transforma el micronormal del espacio tangente al espacio local/mundo
-    return H_stretched.x * T + H_stretched.y * B + H_stretched.z * N;
-}
-
 vec3 GGXAnisotropicMicronormal(vec3 N, vec3 T, vec3 B, float ax, float ay, inout uint seed) {
     float e1 = rand(seed);
     float e2 = rand(seed);
@@ -421,32 +398,19 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
     float tmpPdf;
     vec3 L, f;
     vec3 w_o;
-//    if (r3 < cdf[0]) { // Diffuse
-    if (true) { // Diffuse
+    if (r3 < cdf[0]) { // Diffuse
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
         bsdf_type = BSDF_DIFFUSE;
     }
-//    else if (r3 < cdf[2]) { // Dielectric + Metallic reflection
-//        float theta_m;
-//        vec3 micro_normal = GGXMicronormal(normal, alpha, random_seed, theta_m);
-//        w_o = normalize(MicroReflect(w_i, micro_normal));
-//
-//        bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
-//    }
-
     else if (r3 < cdf[2]) { // Dielectric + Metallic reflection - CORREGIDO
-        // Calcular parámetros anisotrópicos
         float aspect = sqrt(1.0 - material.anisotropic * 0.9);
         float roughness_sq = material.roughness * material.roughness;
         float ax = max(0.001, roughness_sq / aspect);
         float ay = max(0.001, roughness_sq * aspect);
 
-        // Calcular base tangente
         vec3 T, B;
-//        TangentVectors(normal, T, B);
         TangentVectors(normal,tangent, T, B);
 
-        // Muestrear usando la nueva función anisotrópica
         vec3 micro_normal = GGXAnisotropicMicronormal(normal, T, B, ax, ay, random_seed);
         
         w_o = normalize(MicroReflect(w_i, micro_normal));

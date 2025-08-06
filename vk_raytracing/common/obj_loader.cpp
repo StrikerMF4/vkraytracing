@@ -571,37 +571,6 @@ void Loader::GenVerticesFromRawOBJ(std::vector<Vertex>& oVerts,
 			oVerts[i].Normal = normal;
 		}
 	}
-
-	if (!noTexCoord && oVerts.size() >= 3)
-	{
-		// Tomamos los primeros 3 vértices para definir el plano del triángulo
-		glm::vec3& v0 = oVerts[0].Position;
-		glm::vec3& v1 = oVerts[1].Position;
-		glm::vec3& v2 = oVerts[2].Position;
-
-		glm::vec2& uv0 = oVerts[0].TextureCoordinate;
-		glm::vec2& uv1 = oVerts[1].TextureCoordinate;
-		glm::vec2& uv2 = oVerts[2].TextureCoordinate;
-
-		// Edges del triángulo en el espacio del objeto
-		glm::vec3 deltaPos1 = v1 - v0;
-		glm::vec3 deltaPos2 = v2 - v0;
-
-		// Edges en el espacio de la textura (UV)
-		glm::vec2 deltaUV1 = uv1 - uv0;
-		glm::vec2 deltaUV2 = uv2 - uv0;
-
-		// Calculo de tangente para anisotropico
-		float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
-		if (isinf(r) || isnan(r)) r = 0.0f;
-
-		glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
-
-		for (int i = 0; i < int(oVerts.size()); i++)
-		{
-			oVerts[i].Tangent = glm::normalize(tangent - oVerts[i].Normal * glm::dot(oVerts[i].Normal, tangent));
-		}
-	}
 }
 
 // Triangulate a list of vertices into a face by printing

@@ -42,8 +42,6 @@ namespace objl
 
 		// Texture Coordinate Vector
 		glm::vec2 TextureCoordinate;
-
-		glm::vec3 Tangent;
 	};
 
 	struct Material
@@ -68,7 +66,7 @@ namespace objl
 			metallicRoughnessTextureID = -1;
 			normalTextureID = -1;
 			emissionTextureID = -1;
-			anisotropyTextureID = -1;
+			anisotropicTextureID = -1;
 			opacity = 1.0f;
 			alphaMode = 0.0f;
 			alphaCutoff = 0.0f;
@@ -99,7 +97,6 @@ namespace objl
 		int metallicRoughnessTextureID;
 		int normalTextureID;
 		int emissionTextureID;
-		int anisotropyTextureID;
 
 		float opacity;
 		float alphaMode;
