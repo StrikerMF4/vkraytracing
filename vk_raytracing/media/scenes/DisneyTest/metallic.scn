@@ -11,25 +11,25 @@
             "name": "Esfera1",
             "color": [1, 0.76, 0.46],
             "roughness": 0,
-            "metallic": 0
+            "metallic": 1
         },
         {
             "name": "Esfera2",
             "color": [1, 0.76, 0.46],
             "roughness": 0,
-            "metallic": 0.25
+            "metallic": 1
         },
         {
             "name": "Esfera3",
             "color": [1, 0.76, 0.46],
             "roughness": 0,
-            "metallic": 0.5
+            "metallic": 1
         },
         {
             "name": "Esfera4",
             "color": [1, 0.76, 0.46],
             "roughness": 0,
-            "metallic": 0.75
+            "metallic": 1
         },
         {
             "name": "Esfera5",
@@ -44,7 +44,6 @@
         {
             "name": "Paredes",
 			"color": [1.0, 1.0, 1.0],
-            "roughness": 0.5,
             "albedotexture": "textures/micro_test2.png"
         }
     ],

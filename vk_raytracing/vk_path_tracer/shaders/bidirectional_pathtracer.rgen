@@ -238,30 +238,34 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 		eye_color = vec3(evalWe(eye_point.point, light_point.point));
 		pdf.eyeF = eyeDirectionPDF(direction) / (abs(dot(eye_point.normal, direction)) + EPSILON);
 		pdf.eyeB = eye_hits[0].pdfB;
+		pdf.G = 1;
 	}
 	else {
 		float eye_pdfF = 0;
 		float eye_pdfB = 0;
 		DisneyBSDF(eye_point.w_i, direction, eye_point.normal, eye_point.tangent, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
-		pdf.eyeF = eye_pdfF / (abs(dot(eye_point.normal, direction)) + EPSILON);
-		pdf.eyeB = eye_pdfB / (abs(dot(eye_point.normal, eye_point.w_i)) + EPSILON);
+		pdf.eyeF = eye_pdfF;
+		pdf.eyeB = eye_pdfB;
+		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 	vec3 light_color = vec3(0);
 	if ( s == 1 ) { // direct illumination
 		Light light = lights.i[light_index];
 		light_color = dot(light_point.normal, -direction) > 0 ? light.emission : vec3(0.0);
-		pdf.lightF = sampleLightDirectionPDF(light, -direction, light_point.normal) / (abs(dot(light_point.normal, -direction)) + EPSILON);
+		pdf.lightF = AreaLightPDFDirection(-direction, light_point.normal)
+					 / (abs(dot(light_point.normal, -direction)) + EPSILON);
 		pdf.lightB = light_hits[0].pdfB;
+		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 	else {
 		float light_pdfF = 0;
 		float light_pdfB = 0;
 		DisneyBSDF(-direction, light_point.w_i, light_point.normal, light_point.tangent, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
-		pdf.lightF = light_pdfF / (abs(dot(light_point.normal, -direction)) + EPSILON);
-		pdf.lightB = light_pdfB / (abs(dot(light_point.normal, light_point.w_i)) + EPSILON);
+		pdf.lightF = light_pdfF;
+		pdf.lightB = light_pdfB;
+		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 
-	pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 
 	return light_color * eye_color * pdf.G;
 }
@@ -330,22 +334,27 @@ void main() {
 	eye_hits[0].normal = cameraForward;
 
 	vec3 alpha_E = eye_hits[0].alpha * vec3(We / pdfF);
+//	vec3 alpha_E = vec3(1);
 	bool hitLight = false;
 	resetPayload(payload, eye_hits[0].point, direction);
 
 	for(depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
-		payload.backward_propagation = 1;
 
 		// Trazar el rayo
 		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
 		if (payload.status == RAY_HIT_LIGHT) {
 			Light light = lights.i[payload.light_id];
-			eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
+			if (eye_hits[eye_max_index].isSpecular) 
+				eye_hits[depth + 1].pdfF = 1;
+			else
+				eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
+//				eye_hits[depth + 1].pdfF = AreaLightPDFDirection(-direction, payload.surface_normal) / max(abs(dot(payload.surface_normal, -direction)), EPSILON);
 			eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-			eye_hits[depth + 1].alpha = payload.Le / eye_hits[depth + 1].pdfF;
+			eye_hits[depth + 1].alpha = alpha_E * payload.Le / eye_hits[depth + 1].pdfF;
 			eye_hits[depth + 1].G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
 			hitLight = true;
+//			output_color += eye_hits[depth + 1].alpha;
 			break;
 		} else if (payload.status == RAY_MISS)
 			break;
@@ -474,11 +483,12 @@ void main() {
 
 			if (s == 0) {
 				if (!hitLight) continue;
-				pdf.eyeF = eye_hits[t-1].pdfF; // pdfTEndForward
-				pdf.eyeB = eye_hits[t-1].pdfB; // pdfTEndBackward
+				pdf.eyeF = eye_hits[t-2].pdfF; // pdfTEndForward
+				pdf.eyeB = eye_hits[t-2].pdfB; // pdfTEndBackward
+				pdf.G = eye_hits[t -1].G;
 				pdf.lightF = 0.0;
 				pdf.lightB = 0.0;
-				contribution = eye_hits[t-1].alpha * eye_hits[t].alpha;
+				contribution = eye_hits[t-1].alpha;
 			}
 			else {
 				light_point = light_hits[s-1].point;
@@ -529,6 +539,10 @@ void main() {
 		}
 
 	}
+
+
+    if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+        output_color = vec3(0.0);
 
 	if(settings.frame > 0)
 	{   //Accumulation over time
