@@ -90,7 +90,7 @@ float eyeDirectionPDF(vec3 direction) {
 	float cosTheta = dot(cameraForward, direction);
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
-	float filmHeight = 2.0f * camera.focusDist * tan(camera.fov * 0.5f);
+	float filmHeight = 2.0f * camera.focusDist * tan(radians(camera.fov) * 0.5f);
 	float filmWidth = filmHeight * aspectRatio;
 	float filmArea = filmWidth * filmHeight;
 
@@ -345,11 +345,7 @@ void main() {
 
 		if (payload.status == RAY_HIT_LIGHT) {
 			Light light = lights.i[payload.light_id];
-			if (eye_hits[eye_max_index].isSpecular) 
-				eye_hits[depth + 1].pdfF = 1;
-			else
-				eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
-//				eye_hits[depth + 1].pdfF = AreaLightPDFDirection(-direction, payload.surface_normal) / max(abs(dot(payload.surface_normal, -direction)), EPSILON);
+			eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
 			eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
 			eye_hits[depth + 1].alpha = alpha_E * payload.Le / eye_hits[depth + 1].pdfF;
 			eye_hits[depth + 1].G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);

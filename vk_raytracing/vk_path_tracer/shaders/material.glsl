@@ -109,7 +109,7 @@ vec3 GGXAnisotropicMicronormal(vec3 N, vec3 T, vec3 B, float ax, float ay, inout
 }
 
 vec3 MicroReflect(vec3 i_ray, vec3 micro_normal) {
-    return normalize(2.0 * dot(i_ray, micro_normal) * micro_normal - i_ray);
+    return normalize(2.0 * abs(dot(i_ray, micro_normal)) * micro_normal - i_ray);
 }
 
 vec3 MicroTransmit(vec3 i_ray, vec3 micro_normal, vec3 normal, float n) {
@@ -156,8 +156,8 @@ vec3 EvalDisneyDiffuse(Material material, vec3 Csheen, vec3 w_i, vec3 w_o, vec3 
     pdfB = 0.0;
 
     float ODotH = dot(w_o, H);
-    float ODotN = max(dot(normal, w_o), 0.0);
-    float IDotN = max(dot(normal, w_i), 0.0);
+    float ODotN = dot(normal, w_o);
+    float IDotN = dot(normal, w_i);
 
     if (ODotN <= 0.0)
         return vec3(0.0);
@@ -205,9 +205,9 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
-    pdfF = G1 * D / (4.0 * max(abs(IDotN), EPSILON));
-    pdfB = G2 * D / (4.0 * max(abs(ODotN), EPSILON));
-    return F * D * G / (4.0 * max(ODotN * IDotN, EPSILON));
+    pdfF = G1 * D / (4.0 * IDotN);
+    pdfB = G2 * D / (4.0 * ODotN);
+    return F * D * G / (4.0 * ODotN * IDotN);
 }
 
 vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 tangent, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
@@ -231,12 +231,12 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float denom = (abs(IDotH) + eta * abs(ODotH));
     denom = denom * denom + EPSILON;
     float denom_f = denom * max(abs(IDotN) * abs(ODotN), EPSILON);
-    float factor = abs((abs(IDotH * ODotH)) / (denom_f));
+    float factor = eta2 * abs((IDotH * ODotH) / (denom_f));
 
     vec3 f = sqrt(material.baseColor) * (1.0 - F) * D * G * factor;
 
-    pdfF = (G1 * abs(IDotH) * abs(ODotH) * D) / (denom * abs(IDotN));
-    pdfB = (G2 * abs(IDotH) * abs(ODotH) * D) / (denom * abs(ODotN));
+    pdfF = eta2 * ((G1 * abs(IDotH) * abs(ODotH) * D) / (denom * IDotN));
+    pdfB = eta2 * ((G2 * abs(IDotH) * abs(ODotH) * D) / (denom * ODotN));
 
     return f;
 }
