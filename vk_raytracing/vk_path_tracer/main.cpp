@@ -37,7 +37,7 @@ std::vector<std::string> defaultSearchPaths;
 
 //Shared
 VulkanHandler vulkanHandler;
-TechniqueType current_technique = TechniqueType::SIMPLE_PATHTRACER;
+TechniqueType current_technique = TechniqueType::BACKWARD_PATHTRACER;
 
 VkExtent2D window_size{};
 int window_posx, window_posy;
@@ -95,10 +95,10 @@ int main(int argc, char** argv)
 
 	// Seleccionar la técnica inicial según el parámetro
 	if (technique == "path") {
-		current_technique = TechniqueType::SIMPLE_PATHTRACER;
+		current_technique = TechniqueType::BACKWARD_PATHTRACER;
 	}
 	else if (technique == "shadow") {
-		current_technique = TechniqueType::SHADOWRAY_PATHTRACER;
+		current_technique = TechniqueType::BACKWARD_PATHTRACER_NEE;
 	}
 	else if (technique == "bdpt") {
 		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
@@ -359,7 +359,7 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 		{
 			if (ImGui::BeginTabItem("Algoritmo"))
 			{
-				const char* items[] = { "Simple PathTracer", "ShadowRay PathTracer", "Bidirectional PathTracer" };
+				const char* items[] = { "Backward Pathtracer", "Backward Pathtracer (NEE)", "Bidirectional Pathtracer" };
 				static int item_current_idx = current_technique; // Here we store our selection data as an index.
 
 				// Pass in the preview value visible before opening the combo (it could technically be different contents or not pulled from items[])
@@ -533,8 +533,8 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 }
 
 static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window) {
-	vulkanHandler.setupTechnique(TechniqueType::SHADOWRAY_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::SIMPLE_PATHTRACER);
+	vulkanHandler.setupTechnique(TechniqueType::BACKWARD_PATHTRACER_NEE);
+	vulkanHandler.setupTechnique(TechniqueType::BACKWARD_PATHTRACER);
 	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
 
 	vulkanHandler.changeTechnique(current_technique);
@@ -574,8 +574,8 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 
 std::string techniqueToString(TechniqueType t) {
 	switch (t) {
-	case TechniqueType::SIMPLE_PATHTRACER: return "SIMPLE";
-	case TechniqueType::SHADOWRAY_PATHTRACER: return "SHADOW";
+	case TechniqueType::BACKWARD_PATHTRACER: return "BPT";
+	case TechniqueType::BACKWARD_PATHTRACER_NEE: return "BPTNEE";
 	case TechniqueType::BIDIRECTIONAL_PATHTRACER: return "BDPT";
 	default: return "Unknown";
 	}

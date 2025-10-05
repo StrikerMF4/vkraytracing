@@ -23,8 +23,8 @@
 
 enum TechniqueType
 {
-	SIMPLE_PATHTRACER = 0,
-	SHADOWRAY_PATHTRACER = 1,
+	BACKWARD_PATHTRACER = 0,
+	BACKWARD_PATHTRACER_NEE = 1,
 	BIDIRECTIONAL_PATHTRACER = 2,
 };
 
@@ -201,11 +201,11 @@ public:
 
 	void setupTechnique(TechniqueType type) {
 		switch (type) {
-		case SHADOWRAY_PATHTRACER:
-			m_techniques[SHADOWRAY_PATHTRACER] = new Technique("shadowray_pathtracer", "Shadowray Pathtracer", 5);
+		case BACKWARD_PATHTRACER:
+			m_techniques[BACKWARD_PATHTRACER] = new Technique("backward_pathtracer", "Backward Pathtracer", 5);
 			break;
-		case SIMPLE_PATHTRACER:
-			m_techniques[SIMPLE_PATHTRACER] = new Technique("simple_pathtracer", "Simple Pathtracer", 5);
+		case BACKWARD_PATHTRACER_NEE:
+			m_techniques[BACKWARD_PATHTRACER_NEE] = new Technique("backward_pathtracer", "Backward Pathtracer (NEE)", 5);
 			break;
 		case BIDIRECTIONAL_PATHTRACER:
 			m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 5);
