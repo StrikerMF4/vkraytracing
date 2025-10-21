@@ -24,8 +24,6 @@ layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-const int NBSAMPLES = 1;
-
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 
 vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out float pdf){
@@ -61,7 +59,7 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
 
-	vec3 color = vec3(0);
+	vec3 output_color = vec3(0);
 	for (uint light_index = 0; light_index < settings.light_count; light_index++){
 		vec3 light_normal;
 		float pdfLight = 0;
@@ -83,96 +81,92 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 				float pdfF, pdfB;
 				float g = GeometricTerm(origin, N, light_point, light_normal);
 				DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
-				color += light.emission * g * bsdf / pdfLight;
+				output_color += light.emission * g * bsdf / pdfLight;
 			}
 		}
 	}
-	return color;
+	return output_color;
 }
 
 void main()
 {
+	payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
+
 	vec3 output_color = vec3(0);
-	uint depth = 0;
+	int depth = 0;
 
-	for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++) {
-		payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x + pixel_sample, settings.frame);
+	float aperture = camera.camAperture;
+	float focus_dist = camera.focusDist;
 
-		// gaussian AA
-		vec2 randvec = randomGaussian(payload.random_seed);
-		float r1 = randvec.x;
-		float r2 = randvec.y;
+	// Gaussian Anti-Aliasing
+	vec2 subpixel_jitter = vec2(0.5f, 0.5f);
+	if(settings.frame > 0 && aperture <= 0)
+		subpixel_jitter = RandomGaussianVector(payload.random_seed);
 
-		// Subpixel jitter: send the ray through a different position inside the pixel
-		// each time, to provide antialiasing.
-		vec2 subpixel_jitter   = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
-		const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
-		const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-		vec2       d           = inUV * 2.0 - 1.0;
+	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
+	const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+	vec2       d           = inUV * 2.0 - 1.0;
 
-		vec3 origin    = (camera.viewInverse * vec4(0, 0, 0, 1)).xyz;
-		vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
-		vec3 direction = (camera.viewInverse * vec4(normalize(target), 0)).xyz;
+	vec3 origin    = (camera.viewInverse * vec4(0, 0, 0, 1)).xyz;
+	vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+	vec3 direction = (camera.viewInverse * vec4(normalize(target), 0)).xyz;
 
-        // Depth-of-Field
-        vec3  focalPoint        = camera.focusDist * direction.xyz;
-        float cam_r1            = rand(payload.random_seed) * TWO_PI;
-        float cam_r2            = rand(payload.random_seed) * camera.camAperture / 2;
-        vec4  cam_right         = camera.viewInverse * vec4(1, 0, 0, 0);
-        vec4  cam_up            = camera.viewInverse * vec4(0, 1, 0, 0);
-        vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * cam_r2;
+	// Depth-of-Field
+	if(aperture > 0){
+		vec3  focalPoint        = camera.focusDist * direction.xyz;
+		float cam_r1            = rand(payload.random_seed) * TWO_PI;
+		float cam_r2            = rand(payload.random_seed) * aperture / 2;
+		vec4  cam_right         = camera.viewInverse * vec4(1, 0, 0, 0);
+		vec4  cam_up            = camera.viewInverse * vec4(0, 1, 0, 0);
+		vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * cam_r2;
 
-        origin = origin + randomAperturePos;
-        direction = normalize(focalPoint - randomAperturePos);
-		
+		origin = origin + randomAperturePos;
+		direction = normalize(focalPoint - randomAperturePos);
+	}
+	
+	resetPayload(payload, origin, direction);
+	
+	vec3 throughput = vec3(1.0);
+	for (depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
+		vec3 viewer = -payload.direction;
+
+		// Trazar el rayo
+		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
+
+		if (payload.status == RAY_HIT_LIGHT) {
+			output_color += throughput * payload.Le;
+			break;
+		} else if (payload.status == RAY_MISS) {
+			output_color += throughput * vec3(0);
+			break;
+		}
+
+		vec3 bsdf_sample = payload.bsdf_sample;
+		vec3 Le = payload.Le;
+		float pdf = payload.pdfF;
+		uint ray_status = payload.status;
+
+		origin      = payload.origin;
+		direction   = payload.direction;
+		vec3 normal = payload.surface_normal;
+		vec3 tangent = payload.tangent;
+
+		if(payload.bsdf_type == BSDF_DIFFUSE && payload.status != RAY_HIT_LIGHT)
+			output_color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed) + Le) * throughput;
+		else 
+			output_color += Le * throughput;
+
+		// Actualizar throughput
+		float cos_theta = abs(dot(normal, direction));
+		throughput *= (bsdf_sample * cos_theta) / pdf;
+
 		resetPayload(payload, origin, direction);
-		
-		vec3 throughput = vec3(1.0);
-		vec3 color = vec3(0.0);
-
-        for (int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
-			vec3 viewer = -payload.direction;
-
-            // Trazar el rayo
-            traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
-
-            if (payload.status == RAY_HIT_LIGHT) {
-                color += throughput * payload.Le;
-                break;
-            } else if (payload.status == RAY_MISS) {
-                color += throughput * vec3(0);
-                break;
-            }
-
-			vec3 bsdf_sample = payload.bsdf_sample;
-			vec3 Le = payload.Le;
-			float pdf = payload.pdfF;
-			uint ray_status = payload.status;
-
-			origin      = payload.origin;
-			direction   = payload.direction;
-			vec3 normal = payload.surface_normal;
-			vec3 tangent = payload.tangent;
-
-			if(payload.bsdf_type == BSDF_DIFFUSE && payload.status != RAY_HIT_LIGHT)
-				color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed) + Le) * throughput;
-			else 
-				color += Le * throughput;
-
-            // Actualizar throughput
-            float cos_theta = abs(dot(normal, direction));
-            throughput *= (bsdf_sample * cos_theta) / pdf;
-
-			resetPayload(payload, origin, direction);
-        }
-
-        if(isnan(color.r) || isnan(color.g) || isnan(color.b))
-            color = vec3(0.0);
-
-		output_color += color * int(depth < settings.max_depth);
 	}
 
-	output_color = output_color / NBSAMPLES;
+	if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+		output_color = vec3(0.0);
+
+	output_color = output_color * int(depth < settings.max_depth);
 
     if(settings.frame > 0)
     {   //Accumulation over time

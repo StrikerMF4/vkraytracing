@@ -3,8 +3,8 @@
 #include "raycommon.glsl"
 
 uint pcg_hash(inout uint seed) {
-	seed = seed*747796405u+2891336453u;
 	uint word = ((seed>>((seed>>28u)+4u))^seed)*277803737u;
+	seed = seed*747796405u+2891336453u;
 	return (word>>22u)^word;
 }
 
@@ -30,7 +30,7 @@ uint InitRandomSeed(uint val0, uint val1) {
 	return v0;
 }
 
-vec2 randomGaussian(inout uint rngState) {
+vec2 RandomGaussianVector(inout uint rngState) {
 
 	const float u1 = max(EPSILON, rand(rngState));
 	const float u2 = rand(rngState);  // In [0, 1]

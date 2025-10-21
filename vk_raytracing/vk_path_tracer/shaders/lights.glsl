@@ -17,17 +17,4 @@ float AreaLightPDFDirection(vec3 direction, vec3 normal) {
     return cosTheta > 0.0f ? cosTheta * INV_PI : 0.0f;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 #endif

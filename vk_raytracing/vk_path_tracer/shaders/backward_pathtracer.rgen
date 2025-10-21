@@ -25,85 +25,81 @@ layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-const int NBSAMPLES = 10;
-
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 
 void main() {
 	payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
 
 	vec3 output_color = vec3(0);
-	uint depth = 0;
-	for(int pixel_sample = 0; pixel_sample < NBSAMPLES; pixel_sample++){
-		// gaussian AA
-		vec2 randvec = randomGaussian(payload.random_seed);
-		float r1 = randvec.x;
-		float r2 = randvec.y;
 
-		// Subpixel jitter: send the ray through a different position inside the pixel
-		// each time, to provide antialiasing.
-		vec2 subpixel_jitter   = settings.frame == 0 ? vec2(0.5f, 0.5f) : vec2(r1, r2);
-		const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
-		const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
-		vec2       d           = inUV * 2.0 - 1.0;
+	float aperture = camera.camAperture;
+	float focus_dist = camera.focusDist;
 
-		vec3 origin    = (camera.viewInverse * vec4(0, 0, 0, 1)).xyz;
-		vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
-		vec3 direction = (camera.viewInverse * vec4(normalize(target), 0)).xyz;
+	// Gaussian Anti-Aliasing
+	vec2 subpixel_jitter = vec2(0.5f, 0.5f);
+	if(settings.frame > 0 && aperture <= 0)
+		subpixel_jitter = RandomGaussianVector(payload.random_seed);
 
-        // Depth-of-Field
-        vec3  focalPoint        = camera.focusDist * direction.xyz;
-        float cam_r1            = rand(payload.random_seed) * TWO_PI;
-        float cam_r2            = rand(payload.random_seed) * camera.camAperture / 2;
-        vec4  cam_right         = camera.viewInverse * vec4(1, 0, 0, 0);
-        vec4  cam_up            = camera.viewInverse * vec4(0, 1, 0, 0);
-        vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * cam_r2;
+    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
+    const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+    vec2       d           = inUV * 2.0 - 1.0;
 
-        origin = origin + randomAperturePos;
-        direction = normalize(focalPoint - randomAperturePos);
+    vec3 origin    = (camera.viewInverse * vec4(0, 0, 0, 1)).xyz;
+    vec3 target    = (camera.projInverse * vec4(d.x, d.y, 1, 1)).xyz;
+    vec3 direction = (camera.viewInverse * vec4(normalize(target), 0)).xyz;
 
-		resetPayload(payload, origin, direction);
-		vec3 throughput = vec3(1.0);
-        for (int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
-            // Trazar el rayo
-            traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
+    // Depth-of-Field
+	if(aperture > 0){
+		vec3  focalPoint        = camera.focusDist * direction.xyz;
+		float cam_r1            = rand(payload.random_seed) * TWO_PI;
+		float cam_r2            = rand(payload.random_seed) * aperture / 2;
+		vec4  cam_right         = camera.viewInverse * vec4(1, 0, 0, 0);
+		vec4  cam_up            = camera.viewInverse * vec4(0, 1, 0, 0);
+		vec3  randomAperturePos = (cos(cam_r1) * cam_right.xyz + sin(cam_r1) * cam_up.xyz) * cam_r2;
 
-            if (payload.status == RAY_HIT_LIGHT) {
-                Light light = lights.i[payload.light_id];
-                float pdf = AreaLightPDFDirection(-direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-                output_color += throughput * payload.Le / pdf;
-                break;
-            } else if (payload.status == RAY_MISS) {
-                output_color += throughput * vec3(0);
-                break;
-            }
-
-            // Actualizar throughput
-            if (payload.pdfF > 0) {
-                float cos_theta = abs(dot(payload.surface_normal, payload.direction));
-                throughput *= (payload.bsdf_sample * cos_theta) / (payload.pdfF + EPSILON);
-            }
-            else break;
-
-            // Actualizar origen y direccion para el siguiente rebote
-            origin = payload.origin;
-            direction = payload.direction;
-            if (depth >= MIN_DEPTH_ABSORPTION)
-            {
-                float q = min(max(throughput.x, max(throughput.y, throughput.z)) + EPSILON, 1);
-                if (rand(payload.random_seed) > q)
-                    break;
-                throughput /= q;
-            }
-
-		    resetPayload(payload, origin, direction);
-        }
-
-        if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
-            output_color = vec3(0.0);
+		origin = origin + randomAperturePos;
+		direction = normalize(focalPoint - randomAperturePos);
 	}
 
-	output_color = output_color / NBSAMPLES;
+    resetPayload(payload, origin, direction);
+    vec3 throughput = vec3(1.0);
+    for (int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
+        // Trazar el rayo
+        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
+
+        if (payload.status == RAY_HIT_LIGHT) {
+            Light light = lights.i[payload.light_id];
+            float pdf = AreaLightPDFDirection(-direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
+            output_color += throughput * payload.Le / pdf;
+            break;
+        } else if (payload.status == RAY_MISS) {
+            output_color += throughput * vec3(0);
+            break;
+        }
+
+        // Actualizar throughput
+        if (payload.pdfF > 0) {
+            float cos_theta = abs(dot(payload.surface_normal, payload.direction));
+            throughput *= (payload.bsdf_sample * cos_theta) / (payload.pdfF + EPSILON);
+        }
+        else break;
+
+        // Actualizar origen y direccion para el siguiente rebote
+        origin = payload.origin;
+        direction = payload.direction;
+        if (depth >= MIN_DEPTH_ABSORPTION)
+        {
+            float q = min(max(throughput.x, max(throughput.y, throughput.z)) + EPSILON, 1);
+            if (rand(payload.random_seed) > q)
+                break;
+            throughput /= q;
+        }
+
+        resetPayload(payload, origin, direction);
+    }
+
+    if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))
+        output_color = vec3(0.0);
 
     if(settings.frame > 0)
     {   //Accumulation over time
