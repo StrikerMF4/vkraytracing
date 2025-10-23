@@ -1,0 +1,41 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.0, 9.0],
+        "lookat": [0.0, 0.0, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Esfera",
+            "color": [1, 0.2, 0.2],
+            "roughness": 1,
+            "sheen": 1,
+            "sheenTint": 0.25
+        },
+        {
+            "name": "Light",
+            "emission": [2.0, 2.0, 2.0]
+        },
+        {
+            "name": "Paredes",
+			"color": [1.0, 1.0, 1.0],
+            "roughness": 1,
+            "albedotexture": "../textures/micro_test2.png"
+        }
+    ],
+    "entities": [
+        {
+            "type": "sphere",
+            "position": [0, 0, 0],
+			"material": "Esfera",
+			"radius": 2.5
+        },
+	    {
+            "type": "mesh",
+            "file": "../models/Escenario.obj",
+            "position": [0, 10, 0]
+        }
+    ]
+}
