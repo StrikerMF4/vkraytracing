@@ -1,6 +1,6 @@
 # Blender 3.6.4
 # www.blender.org
-mtllib screne.mtl
+mtllib scene.mtl
 o mono
 v 0.163681 0.276310 0.286045
 v 0.009156 0.268437 0.438064
