@@ -69,27 +69,27 @@ Scene::Scene(const std::string& filepath) {
 				);
 
 			if ((*it).contains("opacity"))
-				material.opacity = (*it)["opacity"].template get<double>();
+				material.opacity = (*it)["opacity"].template get<float>();
 			if ((*it).contains("metallic"))
-				material.metallic = (*it)["metallic"].template get<double>();
+				material.metallic = (*it)["metallic"].template get<float>();
 			if ((*it).contains("roughness"))
-				material.roughness = fmaxf((*it)["roughness"].template get<double>(), 0.0001f);
+				material.roughness = fmaxf((*it)["roughness"].template get<float>(), 0.0001f);
 			if ((*it).contains("subsurface"))
-				material.subsurface = (*it)["subsurface"].template get<double>();
+				material.subsurface = (*it)["subsurface"].template get<float>();
 			if ((*it).contains("speculartint"))
-				material.specularTint = (*it)["speculartint"].template get<double>();
+				material.specularTint = (*it)["speculartint"].template get<float>();
 			if ((*it).contains("anisotropic"))
-				material.anisotropic = (*it)["anisotropic"].template get<double>();
+				material.anisotropic = (*it)["anisotropic"].template get<float>();
 			if ((*it).contains("sheen"))
-				material.sheen = (*it)["sheen"].template get<double>();
+				material.sheen = (*it)["sheen"].template get<float>();
 			if ((*it).contains("sheentint"))
-				material.sheenTint = (*it)["sheentint"].template get<double>();
+				material.sheenTint = (*it)["sheentint"].template get<float>();
 			if ((*it).contains("clearcoat"))
-				material.clearcoat = (*it)["clearcoat"].template get<double>();
+				material.clearcoat = (*it)["clearcoat"].template get<float>();
 			if ((*it).contains("clearcoatgloss"))
-				material.clearcoatGloss = (*it)["clearcoatgloss"].template get<double>();
+				material.clearcoatGloss = (*it)["clearcoatgloss"].template get<float>();
 			if ((*it).contains("ior"))
-				material.ior = (*it)["ior"].template get<double>();
+				material.ior = (*it)["ior"].template get<float>();
 			if ((*it).contains("albedotexture")) {
 				material.albedoTextureID = textures.size();
 				textures.push_back((*it)["albedotexture"].template get<std::string>());
@@ -111,7 +111,7 @@ Scene::Scene(const std::string& filepath) {
 				textures.push_back((*it)["emissiontexture"].template get<std::string>());
 			}
 			if ((*it).contains("tiling"))
-				material.tiling = (*it)["tiling"].template get<double>();
+				material.tiling = (*it)["tiling"].template get<float>();
 
 			//Save the material
 			material.ID = materials.size();
