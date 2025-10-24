@@ -98,6 +98,8 @@ namespace objl
 		int normalTextureID;
 		int emissionTextureID;
 
+		float tiling;
+
 		float opacity;
 		float alphaMode;
 		float alphaCutoff;

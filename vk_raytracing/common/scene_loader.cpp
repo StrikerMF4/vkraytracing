@@ -110,6 +110,8 @@ Scene::Scene(const std::string& filepath) {
 				material.emissionTextureID = textures.size();
 				textures.push_back((*it)["emissiontexture"].template get<std::string>());
 			}
+			if ((*it).contains("tiling"))
+				material.tiling = (*it)["tiling"].template get<double>();
 
 			//Save the material
 			material.ID = materials.size();

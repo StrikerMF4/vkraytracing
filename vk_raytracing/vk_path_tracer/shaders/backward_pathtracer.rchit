@@ -63,7 +63,7 @@ void main() {
         uint txtId = payload.material.anisotropicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
         vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
         
-        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).rgb * 2.0 - 1.0;
+        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
 
         final_tangent = normalize(aniso_dir_tangent_space);
     }
@@ -75,7 +75,7 @@ void main() {
     if(payload.material.albedoTextureID >= 0) {
         uint txtId    = payload.material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
         vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-        texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
+        texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).xyz;
     }
     
     payload.material.baseColor = payload.material.baseColor * texture_color;

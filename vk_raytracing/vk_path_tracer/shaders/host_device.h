@@ -147,6 +147,8 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	int normalTextureID;
 	int emissionTextureID;
 
+	float tiling;
+
 	float opacity;
 	float alphaMode;
 	float alphaCutoff;

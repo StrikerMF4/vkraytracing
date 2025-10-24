@@ -60,7 +60,7 @@ void main() {
     vec3 texture_color = vec3(1);
     if(payload.material.albedoTextureID >= 0) {
         uint txtId    = payload.material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord).xyz;
+        texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).xyz;
     }
 
     payload.material.baseColor = payload.material.baseColor * texture_color;
