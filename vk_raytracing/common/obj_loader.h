@@ -67,6 +67,7 @@ namespace objl
 			normalTextureID = -1;
 			emissionTextureID = -1;
 			anisotropicTextureID = -1;
+			tiling = 1.0f;
 			opacity = 1.0f;
 			alphaMode = 0.0f;
 			alphaCutoff = 0.0f;
