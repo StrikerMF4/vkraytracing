@@ -141,7 +141,6 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	float specTrans;
 	float ior;
 
-	float tiling;
 
 	int albedoTextureID;
 	int anisotropicTextureID;
@@ -152,6 +151,8 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 	float opacity;
 	float alphaMode;
 	float alphaCutoff;
+
+	float tiling;
 };
 
 struct Light {

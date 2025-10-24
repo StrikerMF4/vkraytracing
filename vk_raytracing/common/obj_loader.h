@@ -93,7 +93,6 @@ namespace objl
 		float specTrans;
 		float ior;
 
-		float tiling;
 
 		int albedoTextureID;
 		int anisotropicTextureID;
@@ -104,6 +103,8 @@ namespace objl
 		float opacity;
 		float alphaMode;
 		float alphaCutoff;
+
+		float tiling;
 	};
 
 	// Structure: Mesh
