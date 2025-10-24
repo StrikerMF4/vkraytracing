@@ -205,7 +205,7 @@ public:
 			m_techniques[BACKWARD_PATHTRACER] = new Technique("backward_pathtracer", "Backward Pathtracer", 5);
 			break;
 		case BACKWARD_PATHTRACER_NEE:
-			m_techniques[BACKWARD_PATHTRACER_NEE] = new Technique("backward_pathtracer", "Backward Pathtracer (NEE)", 5);
+			m_techniques[BACKWARD_PATHTRACER_NEE] = new Technique("backward_pathtracer_nee", "Backward Pathtracer (NEE)", 5);
 			break;
 		case BIDIRECTIONAL_PATHTRACER:
 			m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 5);

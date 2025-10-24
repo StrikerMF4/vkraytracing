@@ -47,6 +47,7 @@ bool fullscreen = false;
 bool gui_visible = true;
 bool config_menu_visible = false;
 bool change_scene = false;
+bool g_autoExit = false;
 
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
@@ -104,6 +105,11 @@ int main(int argc, char** argv)
 		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	}
 
+	for (int i = 1; i < argc; ++i) {
+		if (std::string(argv[i]) == "--auto-exit") {
+			g_autoExit = true;
+		}
+	}
 
 	if (argc > 3) {
 		maxTime = atof(argv[3]); // o std::stod(argv[3])
@@ -694,6 +700,12 @@ static void render_loop(GLFWwindow* window) {
 
 			vulkanHandler.m_createScreenshot = false;
 			startTime = std::chrono::steady_clock::now();
+
+			if (g_autoExit) {
+				vkDeviceWaitIdle(vulkanHandler.getDevice());
+				glfwSetWindowShouldClose(window, GLFW_TRUE);
+				return;
+			}
 		}
 
 		// Submit for display
