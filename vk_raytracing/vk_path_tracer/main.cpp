@@ -280,6 +280,17 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 	case GLFW_KEY_R:
 		vulkanHandler.resetFrame();
 		break;
+	case GLFW_KEY_C:
+		const auto& view = CameraManip.getMatrix();
+		const auto& invView = glm::inverse(view);
+		glm::vec3 origin = glm::vec3(invView[3]);
+
+		glm::vec3 forward = -glm::vec3(invView[2]); // third column (z-axis), negative because camera looks -Z
+		glm::vec3 lookAt = origin + forward;
+
+		LOGI("Camera Position: (%.3f, %.3f, %.3f)", origin.x, origin.y, origin.z);
+		LOGI("Camera Lookat: (%.3f, %.3f, %.3f)", lookAt.x, lookAt.y, lookAt.z);
+		break;
 	}
 }
 
