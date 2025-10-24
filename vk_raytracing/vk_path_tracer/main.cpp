@@ -288,8 +288,8 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 		glm::vec3 forward = -glm::vec3(invView[2]); // third column (z-axis), negative because camera looks -Z
 		glm::vec3 lookAt = origin + forward;
 
-		LOGI("Camera Position: (%.3f, %.3f, %.3f)", origin.x, origin.y, origin.z);
-		LOGI("Camera Lookat: (%.3f, %.3f, %.3f)", lookAt.x, lookAt.y, lookAt.z);
+		LOGI("Camera Position: (%.3f, %.3f, %.3f)\n", origin.x, origin.y, origin.z);
+		LOGI("Camera Lookat: (%.3f, %.3f, %.3f)\n", lookAt.x, lookAt.y, lookAt.z);
 		break;
 	}
 }
