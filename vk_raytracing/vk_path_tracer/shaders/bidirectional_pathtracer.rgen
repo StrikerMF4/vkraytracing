@@ -453,7 +453,7 @@ void main() {
 				continue;
 			}
 
-			if (s > light_max_index || (s != 0 && t > eye_max_index + 1) || (s == 0 && t != eye_max_index + 2)) {
+			if (s > light_max_index + 1 || (s != 0 && t > eye_max_index + 1) || (s == 0 && t != eye_max_index + 2)) {
 				continue;
 			}
 

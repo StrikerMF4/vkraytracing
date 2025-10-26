@@ -305,7 +305,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, vec3 tangent, Material material
     float tmpPdfB = 0.0;
     float IDotH = clamp(dot(w_i, H), 0.0, 1.0);
 
-    if (true && reflect) { // Diffuse
+    if (diffPr > 0.0 && reflect) { // Diffuse
         f += EvalDisneyDiffuse(material, Csheen, w_i, w_o, H, normal, tmpPdfF, tmpPdfB) * dielectricWt;
         pdfF += tmpPdfF * diffPr;
         pdfB += tmpPdfB * diffPr;
@@ -417,8 +417,8 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-        bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
-//        bsdf_type = material.roughness <= 0.001 ? BSDF_REFLECTION : BSDF_DIFFUSE;
+//        bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
+        bsdf_type = material.roughness <= 0.001 ? BSDF_REFLECTION : BSDF_DIFFUSE;
 //        bsdf_type = BSDF_REFLECTION;
     }
     else { // Glass
