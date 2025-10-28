@@ -97,78 +97,78 @@ float eyeDirectionPDF(vec3 direction) {
     return camera.focusDist * camera.focusDist / (filmArea * cosTheta * cosTheta * cosTheta);
 }
 
-float misWeight(int s, int t, PDFConnection pdf) {
-	uint k = s + t - 1;
-    for (int i = 0; i < s - 1; ++i) {
-        misNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
-        misNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
-        misNodes[i].isSpecular = light_hits[i].isSpecular;
-    }
-    if (s > 0) {
-        misNodes[s - 1].light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
-        misNodes[s - 1].eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * pdf.G;
-        misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
-    }
-    for (int i = 0; i < t - 1; ++i) {
-        misNodes[k - i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
-        misNodes[k - i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
-        misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
-    }
-    if (t > 0) {
-        misNodes[k - (t - 1)].eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
-        misNodes[k - (t - 1)].light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * pdf.G;
-        misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
-    }
-
-	//  misNodes[0].light = pdf.eyeF 
-	//	misNodes[1].light = eye_hits[1].pdfF * eye_hits[2].G || 
-	//	misNodes[2].light = eye_hits[0].pdfF * eye_hits[1].G
-	//	misNodes[0].eye = pdf.eyeB * eye_hits[t - 1].G
-	//	misNodes[1].eye = eye_hits[1].pdfB * eye_hits[1].G
-	//	misNodes[2].eye = eye_hits[0].pdfB
-	// 1 + (misNodes[0].light / misNodes[1].light) ( 1 + (misNodes[0].eye / misNodes[2].light) (1 + (misNodes[1].eye / misNodes[2].eye)) 
-	// 1 + (pdf.eyeF / eye_hits[1].pdfF * eye_hits[2].G) ( 1 + (pdf.eyeB * eye_hits[t - 1].G / eye_hits[0].pdfF * eye_hits[1].G) (1 + (eye_hits[1].pdfB * eye_hits[1].G / eye_hits[0].pdfB)) 
-
-	float pK = 1.0f;
-    float misWeightSum = 1.0f;
-
-    for (int i = s; i <= k; ++i) {
-        if (i == 0) {
-            pK *= misNodes[0].light / misNodes[1].light;
-            if (misNodes[1].isSpecular) {
-                continue;
-            }
-        } else if (i == k) {
-            pK *= misNodes[k - 1].eye / misNodes[k].eye;
-        } else {
-            pK *= misNodes[i - 1].eye / misNodes[i + 1].light;
-            if (misNodes[i].isSpecular || misNodes[i + 1].isSpecular) {
-                continue;
-            }
-        }
-        misWeightSum += pK * pK;
-    }
-
-    pK = 1.0f;
-    for (int i = s; i > 0; --i) {
-        if (i == (k + 1)) {
-            pK *= misNodes[k].eye / misNodes[k - 1].eye;
-            if (misNodes[k - 1].isSpecular) {
-                continue;
-            }
-        } else if (i == 1) {
-            pK *= misNodes[1].light / misNodes[0].light;
-        } else {
-            pK *= misNodes[i].light / misNodes[i - 2].eye;
-            if (misNodes[i - 1].isSpecular || misNodes[i - 2].isSpecular) {
-                continue;
-            }
-        }
-        misWeightSum += pK * pK;
-	}
-
-	return 1 / misWeightSum;
-}
+//float misWeight(int s, int t, PDFConnection pdf) {
+//	uint k = s + t - 1;
+//    for (int i = 0; i < s - 1; ++i) {
+//        misNodes[i].light = i == 0 ? light_hits[0].pdfB : light_hits[i].pdfB * light_hits[i].G;
+//        misNodes[i].eye = light_hits[i].pdfF * light_hits[i + 1].G;
+//        misNodes[i].isSpecular = light_hits[i].isSpecular;
+//    }
+//    if (s > 0) {
+//        misNodes[s - 1].light = s == 1 ? pdf.lightB : pdf.lightB * light_hits[s - 1].G;
+//        misNodes[s - 1].eye = ((s - 1) == k) ? pdf.lightF : pdf.lightF * pdf.G;
+//        misNodes[s - 1].isSpecular = light_hits[s - 1].isSpecular;
+//    }
+//    for (int i = 0; i < t - 1; ++i) {
+//        misNodes[k - i].eye = i == 0 ? eye_hits[0].pdfB : eye_hits[i].pdfB * eye_hits[i].G;
+//        misNodes[k - i].light = eye_hits[i].pdfF * eye_hits[i + 1].G;
+//        misNodes[k - i].isSpecular = eye_hits[i].isSpecular;
+//    }
+//    if (t > 0) {
+//        misNodes[k - (t - 1)].eye = t == 1 ? pdf.eyeB : pdf.eyeB * eye_hits[t - 1].G;
+//        misNodes[k - (t - 1)].light = ((t - 1) == k) ? pdf.eyeF : pdf.eyeF * pdf.G;
+//        misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
+//    }
+//
+//	//  misNodes[0].light = pdf.eyeF 
+//	//	misNodes[1].light = eye_hits[1].pdfF * eye_hits[2].G || 
+//	//	misNodes[2].light = eye_hits[0].pdfF * eye_hits[1].G
+//	//	misNodes[0].eye = pdf.eyeB * eye_hits[t - 1].G
+//	//	misNodes[1].eye = eye_hits[1].pdfB * eye_hits[1].G
+//	//	misNodes[2].eye = eye_hits[0].pdfB
+//	// 1 + (misNodes[0].light / misNodes[1].light) ( 1 + (misNodes[0].eye / misNodes[2].light) (1 + (misNodes[1].eye / misNodes[2].eye)) 
+//	// 1 + (pdf.eyeF / eye_hits[1].pdfF * eye_hits[2].G) ( 1 + (pdf.eyeB * eye_hits[t - 1].G / eye_hits[0].pdfF * eye_hits[1].G) (1 + (eye_hits[1].pdfB * eye_hits[1].G / eye_hits[0].pdfB)) 
+//
+//	float pK = 1.0f;
+//    float misWeightSum = 1.0f;
+//
+//    for (int i = s; i <= k; ++i) {
+//        if (i == 0) {
+//            pK *= misNodes[0].light / misNodes[1].light;
+//            if (misNodes[1].isSpecular) {
+//                continue;
+//            }
+//        } else if (i == k) {
+//            pK *= misNodes[k - 1].eye / misNodes[k].eye;
+//        } else {
+//            pK *= misNodes[i - 1].eye / misNodes[i + 1].light;
+//            if (misNodes[i].isSpecular || misNodes[i + 1].isSpecular) {
+//                continue;
+//            }
+//        }
+//        misWeightSum += pK * pK;
+//    }
+//
+//    pK = 1.0f;
+//    for (int i = s; i > 0; --i) {
+//        if (i == (k + 1)) {
+//            pK *= misNodes[k].eye / misNodes[k - 1].eye;
+//            if (misNodes[k - 1].isSpecular) {
+//                continue;
+//            }
+//        } else if (i == 1) {
+//            pK *= misNodes[1].light / misNodes[0].light;
+//        } else {
+//            pK *= misNodes[i].light / misNodes[i - 2].eye;
+//            if (misNodes[i - 1].isSpecular || misNodes[i - 2].isSpecular) {
+//                continue;
+//            }
+//        }
+//        misWeightSum += pK * pK;
+//	}
+//
+//	return 1 / misWeightSum;
+//}
 
 float misWeight(int s, int t, PDFConnection connection) {
 	
@@ -189,6 +189,8 @@ float misWeight(int s, int t, PDFConnection connection) {
 				// Pa(x0) = light_hits[0].pdfB
 				// Po(x1->x0)G(x1,x0) = connection.eyeF * connection.G
 				pK *= connection.eyeF * connection.G / light_hits[0].pdfB;
+				if (light_hits[0].isSpecular)
+					continue;
 			} else {
 				// No es una conneccion s!=1
 				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
@@ -196,33 +198,48 @@ float misWeight(int s, int t, PDFConnection connection) {
 				// Po(x1->x0)G(x1,x0) = light_hits[1].pdfB * light_hits[1].G 
 				// TODO:Revisar si es light_hits[1].pdfB o light_hits[0].pdfF
 				pK *= light_hits[1].pdfB * light_hits[1].G / light_hits[0].pdfB;
+				if (light_hits[0].isSpecular || light_hits[1].isSpecular)
+					continue;
 			}
 		} else if (i < k) {
 			if (i == s - 1) {
 			// Es una conneccion i = s-1
 			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
-			// Po(x3->x2)G(x3,x2) = connection.eyeF*connection.G
+			// Po(xi+1->xi)G(xi+1,xi) = connection.eyeF * connection.G
 			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
-				pk *= connection.eyeF * connection.G /
+				pK *= connection.eyeF * connection.G /
+					  (light_hits[i - 1].pdfF * light_hits[i].G);
+			} else if (i == s - 2) {
+			// Es una conneccion i = s-2
+			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
+			// Po(x2->x1)G(x2,x1) = connection.lightB *  light_hits[2].G
+			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
+				pK *= connection.lightB *  light_hits[i + 1].G /
 					  (light_hits[i - 1].pdfF * light_hits[i].G);
 			} else {
 			// No es una conneccion
 			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
 			// Po(xi+1->xi)G(xi+1,xi) = light_hits[i+1].pdfB * light_hits[i+1].G
 			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
-				pk *= light_hits[i + 1].pdfB * light_hits[i + 1].G /
+				pK *= light_hits[i + 1].pdfB * light_hits[i + 1].G /
 					  (light_hits[i - 1].pdfF * light_hits[i].G);
 			}
+			if (light_hits[i - 1].isSpecular || light_hits[i].isSpecular)
+				continue;
 		} else { // t=0
 		 // pk/pk+1 = Pa(xk) / Po(xk-1->xk)G(xk-1,xk) 
 		 // Pa(xk) = light_hits[s-1].pdfF 
 		 // Po(xk-1->xk)G(xk-1,xk) = light_hits[s-2].pdfF * light_hits[s-1].G
 		 // Nota: no se usa porque no se implementa el caso t=0
-			pk *= light_hits[s - 1].pdfF /
+			pK *= light_hits[s - 1].pdfF /
 				  (light_hits[s - 2].pdfF * light_hits[s - 1].G);
+			if (light_hits[s - 2].isSpecular || light_hits[s - 1].isSpecular)
+				continue;
 		}
 		denom += pK * pK;
 	}
+
+	pK = 1.0f;
 
 	// (ps+1/ps)^2 + ... + (p(k)/ps)^2
 	for (int i = s+1; i <= k+1; i++) {
@@ -230,24 +247,37 @@ float misWeight(int s, int t, PDFConnection connection) {
 		if (i == 1) { // s=0
 		// p1/p0 = Pa(x0)/(Po(x1->x0)G(x1,x0))
 		// Pa(x0) = eye_hits[t-1].pdfF
-		// Po(x1->x0)G(x1,x0) = eye_hits[t-2].pdfF * light_hits[t-1].G 
-			pK *= eye_hits[t-1].pdfF / eye_hits[t-2].pdfF * light_hits[t-1].G;
+		// Po(x1->x0)G(x1,x0) = eye_hits[t-2].pdfF * eye_hits[t-1].G 
+			pK *= eye_hits[t - 1].pdfF / (eye_hits[t - 2].pdfF * eye_hits[t - 1].G);
+			if (eye_hits[t - 2].isSpecular || eye_hits[t - 1].isSpecular)
+				continue;
 		}
-		else if (i <= k) { 
-			íf (i == s + 1) {
+		else if (i <= k) {
+			if (i == s + 1) {
 			// Es una conneccion i=s+1
+			// pi/pi-1 = Po(xi-2->xi-1)G(xi-2,xi-1)/Po(xi->xi-1)G(xi,xi-1)
+			// ps+1/ps = Po(xs-1->xs)G(xs-1,xs)/Po(xs+1->xs)G(xs+1,xs)
+			// P4/p5 = Po(x2->x3)G(x2,x3)/Po(x4->x3)G(x4,x3)
+			// Po(x2->x3)G(x2,x3) = connection.lightF * connection.G
+			// Po(x4->x3)G(x4,x3) = eye_hits[k-i].pdfF * eye_hits[k-i+1].G
+				pK *= connection.lightF * connection.G /
+						(eye_hits[k - i].pdfF * eye_hits[k - i + 1].G);
+			} else if (i == s + 2) {
+			// pi/pi-1 = Po(xi-2->xi-1)G(xi-2,xi-1)/Po(xi->xi-1)G(xi,xi-1)
 			// ps+2/ps+1 = Po(xs->xs+1)G(xs,xs+1)/Po(xs+2->xs+1)G(xs+2,xs+1)
-			// Po(xs->xs+1)G(xs,xs+1) = connection.eyeB *  eye_hits[t - 1].G
-			// Po(xs+2->xs+1)G(xs+2,xs+1) = eye_hits[t - 1].pdfF * eye_hits[t - (i - s) - 1].G
-				pk *=;
+			// Po(xi-2->xi-1)G(xi-2,xi-1) = connection.eyeB * eye_hits[k-i+2].G 
+			// Po(xi->xi-1)G(xi,xi-1) = eye_hits[k-i].pdfF * eye_hits[k-i+1].G
+				pK *= connection.eyeB * eye_hits[k - i + 2].G /
+						  (eye_hits[k - i].pdfF * eye_hits[k - i + 1].G);
 			} else {
-			// pi/pi-1 = Po(xi-1->xi)G(xi-1,xi)/Po(xi+1->xi)G(xi+1,xi)
-			// Po(xi-1->xi)G(xi-1,xi) = eye_hits[t - (i - s) - 1].pdfB * eye_hits[t - (i - s)].G
-			// Po(xi+1->xi)G(xi+1,xi) = eye_hits[t - (i - s) + 1].pdfF * eye_hits[t - (i - s) - 1].G
-				pk *= eye_hits[t - (i - s) - 1].pdfB * eye_hits[t - (i - s)].G /
-						  (eye_hits[t - (i - s) + 1].pdfF * eye_hits[t - (i - s) - 1].G);
+			// pi/pi-1 = Po(xi-2->xi-1)G(xi-2,xi-1)/Po(xi->xi-1)G(xi,xi-1)
+			// Po(xi-2->xi-1)G(xi-2,xi-1) = eye_hits[k-i+2].pdfB * eye_hits[k-i+2].G 
+			// Po(xi->xi-1)G(xi,xi-1) = eye_hits[k-i].pdfF * eye_hits[k-i+1].G
+				pK *= eye_hits[k - i + 2].pdfB * eye_hits[k - i + 2].G /
+						  (eye_hits[k - i].pdfF * eye_hits[k - i + 1].G);
 			}
-
+			if (eye_hits[k - i].isSpecular || eye_hits[k - i + 1].isSpecular)
+				continue;
 		}
 		else { // i = k+1
 			if (t == 1) {
@@ -255,17 +285,20 @@ float misWeight(int s, int t, PDFConnection connection) {
 			// pk+1/pk = Po(xk-1->xk)G(xk-1,xk) / Pa(xk) 
 			// Po(xk-1->xk)G(xk-1,xk) = connection.lightF * connection.G
 			// Pa(xk) = eye_hits[0].pdfB
-				pk *= connection.lightF * connection.G / eye_hits[0].pdfB;
+				pK *= connection.lightF * connection.G / eye_hits[0].pdfB;
+				if (eye_hits[0].isSpecular) continue;
 			} else {
 			// pk+1/pk = Po(xk-1->xk)G(xk-1,xk) / Pa(xk) 
 			// Po(xk-1->xk)G(xk-1,xk) = eye_hits[1].pdfB * eye_hits[1].G
 			// Pa(xk) = eye_hits[0].pdfB
-				pk *= (eye_hits[1].pdfB * eye_hits[1].G) / eye_hits[0].pdfB;
+				pK *= (eye_hits[1].pdfB * eye_hits[1].G) / eye_hits[0].pdfB;
+				if (eye_hits[0].isSpecular || eye_hits[1].isSpecular) continue;
 			}
 		}
+		denom += pK * pK;
 	}
 
-
+	return 1 / denom;
 }
 
 
@@ -491,7 +524,6 @@ void main() {
 		direction = payload.direction;
 		resetPayload(payload, payload.origin, payload.direction);
 	}
-	eye_hits[1]pdfB;
 
 	/* LIGHT PATH */ 
 	float light_point_pdf, light_dir_pdf;
