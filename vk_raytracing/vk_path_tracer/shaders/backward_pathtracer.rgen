@@ -70,7 +70,8 @@ void main() {
         if (payload.status == RAY_HIT_LIGHT) {
             Light light = lights.i[payload.light_id];
             float pdf = AreaLightPDFDirection(-direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-            output_color += throughput * payload.Le / pdf;
+//            output_color += throughput * payload.Le / pdf;
+            output_color += throughput * payload.Le;
             break;
         } else if (payload.status == RAY_MISS) {
             output_color += throughput * vec3(0);

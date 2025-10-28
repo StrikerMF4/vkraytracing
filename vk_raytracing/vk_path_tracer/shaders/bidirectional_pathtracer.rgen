@@ -120,10 +120,19 @@ float misWeight(int s, int t, PDFConnection pdf) {
         misNodes[k - (t - 1)].isSpecular = eye_hits[t - 1].isSpecular;
     }
 
+	//  misNodes[0].light = pdf.eyeF 
+	//	misNodes[1].light = eye_hits[1].pdfF * eye_hits[2].G || 
+	//	misNodes[2].light = eye_hits[0].pdfF * eye_hits[1].G
+	//	misNodes[0].eye = pdf.eyeB * eye_hits[t - 1].G
+	//	misNodes[1].eye = eye_hits[1].pdfB * eye_hits[1].G
+	//	misNodes[2].eye = eye_hits[0].pdfB
+	// 1 + (misNodes[0].light / misNodes[1].light) ( 1 + (misNodes[0].eye / misNodes[2].light) (1 + (misNodes[1].eye / misNodes[2].eye)) 
+	// 1 + (pdf.eyeF / eye_hits[1].pdfF * eye_hits[2].G) ( 1 + (pdf.eyeB * eye_hits[t - 1].G / eye_hits[0].pdfF * eye_hits[1].G) (1 + (eye_hits[1].pdfB * eye_hits[1].G / eye_hits[0].pdfB)) 
+
 	float pK = 1.0f;
     float misWeightSum = 1.0f;
 
-    for (int i = s; i <= k - 1; ++i) {
+    for (int i = s; i <= k; ++i) {
         if (i == 0) {
             pK *= misNodes[0].light / misNodes[1].light;
             if (misNodes[1].isSpecular) {
@@ -160,6 +169,105 @@ float misWeight(int s, int t, PDFConnection pdf) {
 
 	return 1 / misWeightSum;
 }
+
+float misWeight(int s, int t, PDFConnection connection) {
+	
+	float denom = 1.0f;
+	int k = s + t - 1;
+
+	float pK = 1.0f;
+
+	// mis = 1/( (p0/ps)^2 + (p1/ps)^2 + ... + (pk/ps)^2 )
+
+	// (p0/ps)^2 + (p1/ps)^2 + ... + (p(s-1)/ps)^2
+	for (int i = s-1; i >= 0; i--) {
+	// p0/p1 * p1/p2 * ... * p(s-1)/p(s)
+		if (i == 0) {
+			if(s == 1) {
+				// Es una conneccion s=1
+				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
+				// Pa(x0) = light_hits[0].pdfB
+				// Po(x1->x0)G(x1,x0) = connection.eyeF * connection.G
+				pK *= connection.eyeF * connection.G / light_hits[0].pdfB;
+			} else {
+				// No es una conneccion s!=1
+				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
+				// Pa(x0) = light_hits[0].pdfB
+				// Po(x1->x0)G(x1,x0) = light_hits[1].pdfB * light_hits[1].G 
+				// TODO:Revisar si es light_hits[1].pdfB o light_hits[0].pdfF
+				pK *= light_hits[1].pdfB * light_hits[1].G / light_hits[0].pdfB;
+			}
+		} else if (i < k) {
+			if (i == s - 1) {
+			// Es una conneccion i = s-1
+			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
+			// Po(x3->x2)G(x3,x2) = connection.eyeF*connection.G
+			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
+				pk *= connection.eyeF * connection.G /
+					  (light_hits[i - 1].pdfF * light_hits[i].G);
+			} else {
+			// No es una conneccion
+			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
+			// Po(xi+1->xi)G(xi+1,xi) = light_hits[i+1].pdfB * light_hits[i+1].G
+			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
+				pk *= light_hits[i + 1].pdfB * light_hits[i + 1].G /
+					  (light_hits[i - 1].pdfF * light_hits[i].G);
+			}
+		} else { // t=0
+		 // pk/pk+1 = Pa(xk) / Po(xk-1->xk)G(xk-1,xk) 
+		 // Pa(xk) = light_hits[s-1].pdfF 
+		 // Po(xk-1->xk)G(xk-1,xk) = light_hits[s-2].pdfF * light_hits[s-1].G
+		 // Nota: no se usa porque no se implementa el caso t=0
+			pk *= light_hits[s - 1].pdfF /
+				  (light_hits[s - 2].pdfF * light_hits[s - 1].G);
+		}
+		denom += pK * pK;
+	}
+
+	// (ps+1/ps)^2 + ... + (p(k)/ps)^2
+	for (int i = s+1; i <= k+1; i++) {
+	// p1/p0 * p2/p1 * ... * p(k+1)/p(k)
+		if (i == 1) { // s=0
+		// p1/p0 = Pa(x0)/(Po(x1->x0)G(x1,x0))
+		// Pa(x0) = eye_hits[t-1].pdfF
+		// Po(x1->x0)G(x1,x0) = eye_hits[t-2].pdfF * light_hits[t-1].G 
+			pK *= eye_hits[t-1].pdfF / eye_hits[t-2].pdfF * light_hits[t-1].G;
+		}
+		else if (i <= k) { 
+			íf (i == s + 1) {
+			// Es una conneccion i=s+1
+			// ps+2/ps+1 = Po(xs->xs+1)G(xs,xs+1)/Po(xs+2->xs+1)G(xs+2,xs+1)
+			// Po(xs->xs+1)G(xs,xs+1) = connection.eyeB *  eye_hits[t - 1].G
+			// Po(xs+2->xs+1)G(xs+2,xs+1) = eye_hits[t - 1].pdfF * eye_hits[t - (i - s) - 1].G
+				pk *=;
+			} else {
+			// pi/pi-1 = Po(xi-1->xi)G(xi-1,xi)/Po(xi+1->xi)G(xi+1,xi)
+			// Po(xi-1->xi)G(xi-1,xi) = eye_hits[t - (i - s) - 1].pdfB * eye_hits[t - (i - s)].G
+			// Po(xi+1->xi)G(xi+1,xi) = eye_hits[t - (i - s) + 1].pdfF * eye_hits[t - (i - s) - 1].G
+				pk *= eye_hits[t - (i - s) - 1].pdfB * eye_hits[t - (i - s)].G /
+						  (eye_hits[t - (i - s) + 1].pdfF * eye_hits[t - (i - s) - 1].G);
+			}
+
+		}
+		else { // i = k+1
+			if (t == 1) {
+			// Es una conneccion t=1
+			// pk+1/pk = Po(xk-1->xk)G(xk-1,xk) / Pa(xk) 
+			// Po(xk-1->xk)G(xk-1,xk) = connection.lightF * connection.G
+			// Pa(xk) = eye_hits[0].pdfB
+				pk *= connection.lightF * connection.G / eye_hits[0].pdfB;
+			} else {
+			// pk+1/pk = Po(xk-1->xk)G(xk-1,xk) / Pa(xk) 
+			// Po(xk-1->xk)G(xk-1,xk) = eye_hits[1].pdfB * eye_hits[1].G
+			// Pa(xk) = eye_hits[0].pdfB
+				pk *= (eye_hits[1].pdfB * eye_hits[1].G) / eye_hits[0].pdfB;
+			}
+		}
+	}
+
+
+}
+
 
 ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
     vec4 pView = camera.view * vec4(pWorld, 1.0f);
@@ -346,10 +454,9 @@ void main() {
 			Light light = lights.i[payload.light_id];
 			eye_hits[depth + 1].pdfF = 1.0 / (settings.light_count * light.area);
 			eye_hits[depth + 1].pdfB = sampleLightDirectionPDF(light, -direction, payload.surface_normal) / abs(dot(payload.surface_normal, -direction));
-			eye_hits[depth + 1].alpha = alpha_E * payload.Le / eye_hits[depth + 1].pdfF;
+			eye_hits[depth + 1].alpha = alpha_E * payload.Le;
 			eye_hits[depth + 1].G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal, payload.origin, payload.surface_normal);
 			hitLight = true;
-//			output_color += eye_hits[depth + 1].alpha;
 			break;
 		} else if (payload.status == RAY_MISS)
 			break;
@@ -373,9 +480,9 @@ void main() {
 
 		alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
 
-		if (eye_hits[eye_max_index].isSpecular)
-			eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
-		else
+//		if (eye_hits[eye_max_index].isSpecular)
+//			eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
+//		else
 			eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
 
 		if (payload.pdfF < EPSILON2 || (payload.bsdf_sample.x < EPSILON2 && payload.bsdf_sample.y < EPSILON2 && payload.bsdf_sample.z < EPSILON2))
@@ -384,7 +491,7 @@ void main() {
 		direction = payload.direction;
 		resetPayload(payload, payload.origin, payload.direction);
 	}
-
+	eye_hits[1]pdfB;
 
 	/* LIGHT PATH */ 
 	float light_point_pdf, light_dir_pdf;
@@ -403,10 +510,10 @@ void main() {
 
 	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
 
-    for(int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
-        payload.backward_propagation = 0;
+	for(int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
+		payload.backward_propagation = 0;
 
-        traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
+		traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
 		if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT)
 			break;
@@ -427,9 +534,9 @@ void main() {
 		light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
 		light_hits[light_max_index].G = G;
 
-		if (light_hits[light_max_index].isSpecular)
-			light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
-		else
+//		if (light_hits[light_max_index].isSpecular)
+//			light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
+//		else
 			light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
 		
 		alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
@@ -448,8 +555,13 @@ void main() {
 		for (int s = 0; s <= pathVertexCount; s++) {
 			int t = pathVertexCount - s;
 				
-			if (settings.debug_technique_s >= 0 && settings.debug_technique_t >= 0 && 
-				((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
+//			if ((settings.debug_technique_s >= 0 || settings.debug_technique_t >= 0) && 
+//				((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
+//				continue;
+//			}
+
+			if ((settings.debug_technique_s >= 0 && s != settings.debug_technique_s) ||
+				(settings.debug_technique_t >= 0 && t != settings.debug_technique_t)) {
 				continue;
 			}
 
@@ -481,8 +593,8 @@ void main() {
 				pdf.eyeF = eye_hits[t-2].pdfF; // pdfTEndForward
 				pdf.eyeB = eye_hits[t-2].pdfB; // pdfTEndBackward
 				pdf.G = eye_hits[t -1].G;
-				pdf.lightF = 0.0;
-				pdf.lightB = 0.0;
+				pdf.lightF = eye_hits[t-1].pdfF;
+				pdf.lightB = eye_hits[t-1].pdfB;
 				contribution = eye_hits[t-1].alpha;
 			}
 			else {
