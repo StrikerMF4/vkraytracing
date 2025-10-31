@@ -57,6 +57,9 @@ auto pause_timer_start = std::chrono::high_resolution_clock::now();
 double maxTime = 500000.0;
 std::string scene_path;
 
+glm::vec3 camera_default_position;
+glm::vec3 camera_default_lookat;
+
 // GLFW Callback functions
 static void onErrorCallback(int error, const char* description);
 static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -210,6 +213,9 @@ int main(int argc, char** argv)
 	if (valid_scene) {
 		SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
 		vulkanHandler.loadScene(scene, scene_path);
+
+		camera_default_position = scene->camera_position;
+		camera_default_lookat = scene->camera_lookat;
 
 		render_initialization(scene, window);
 
@@ -471,6 +477,11 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 				float fov = CameraManip.getFov();
 				if (ImGui::DragFloat("Campo de visión", &fov, 0.1, 0.1f, 200.f, "%.1f")) {
 					CameraManip.setFov(fov);
+				}
+
+				if (ImGui::Button("Reiniciar Posición"))
+				{
+					CameraManip.setLookat(camera_default_position, camera_default_lookat, glm::vec3(0, 1, 0));
 				}
 
 				ImGui::EndTabItem();
