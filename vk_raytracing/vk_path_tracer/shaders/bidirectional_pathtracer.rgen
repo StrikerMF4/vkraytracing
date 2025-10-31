@@ -196,7 +196,6 @@ float misWeight(int s, int t, PDFConnection connection) {
 				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
 				// Pa(x0) = light_hits[0].pdfB
 				// Po(x1->x0)G(x1,x0) = light_hits[1].pdfB * light_hits[1].G 
-				// TODO:Revisar si es light_hits[1].pdfB o light_hits[0].pdfF
 				pK *= light_hits[1].pdfB * light_hits[1].G / light_hits[0].pdfB;
 				if (light_hits[0].isSpecular || light_hits[1].isSpecular)
 					continue;
@@ -379,7 +378,6 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 		eye_color = vec3(evalWe(eye_point.point, light_point.point));
 		pdf.eyeF = eyeDirectionPDF(direction) / (abs(dot(eye_point.normal, direction)) + EPSILON);
 		pdf.eyeB = eye_hits[0].pdfB;
-		pdf.G = 1;
 	}
 	else {
 		float eye_pdfF = 0;
@@ -387,7 +385,6 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 		DisneyBSDF(eye_point.w_i, direction, eye_point.normal, eye_point.tangent, eye_point.material, eye_color, eye_pdfF, eye_pdfB, payload.random_seed);
 		pdf.eyeF = eye_pdfF;
 		pdf.eyeB = eye_pdfB;
-		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 	vec3 light_color = vec3(0);
 	if ( s == 1 ) { // direct illumination
@@ -396,7 +393,6 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 		pdf.lightF = AreaLightPDFDirection(-direction, light_point.normal)
 					 / (abs(dot(light_point.normal, -direction)) + EPSILON);
 		pdf.lightB = light_hits[0].pdfB;
-		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 	else {
 		float light_pdfF = 0;
@@ -404,10 +400,10 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 		DisneyBSDF(-direction, light_point.w_i, light_point.normal, light_point.tangent, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
 		pdf.lightF = light_pdfF;
 		pdf.lightB = light_pdfB;
-		pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
 	}
 
-
+	pdf.G = GeometricTerm(eye_point.point, eye_point.normal, light_point.point, light_point.normal);
+	
 	return light_color * eye_color * pdf.G;
 }
 
@@ -447,7 +443,7 @@ void main() {
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
 	vec3 cameraForward = normalize((camera.viewInverse * vec4(0,0,-1,0)).xyz);
-	float lensToFilmDistance2 = (focus_dist * focus_dist) / abs(dot(normalize(target.xyz), vec3(0,0,1)));
+	float lensToFilmDistance2 = (focus_dist * focus_dist) / max(abs(dot(normalize(target.xyz), vec3(0,0,1))), EPSILON);
 	float cosTheta = abs(dot(cameraForward, direction));
 
 	float filmHeight = 2.0f * focus_dist * tan(radians(camera.fov) * 0.5f);
@@ -494,7 +490,7 @@ void main() {
 		} else if (payload.status == RAY_MISS)
 			break;
 
-		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+		float pdfF = payload.pdfF / max(abs(dot(payload.surface_normal, payload.direction)), EPSILON2);
 		
 
 		float G = GeometricTerm(eye_hits[eye_max_index].point, eye_hits[eye_max_index].normal,
@@ -513,10 +509,7 @@ void main() {
 
 		alpha_E *= payload.bsdf_sample / (pdfF + EPSILON);
 
-//		if (eye_hits[eye_max_index].isSpecular)
-//			eye_hits[eye_max_index].pdfB = eye_hits[eye_max_index].pdfF;
-//		else
-			eye_hits[eye_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+		eye_hits[eye_max_index].pdfB = payload.pdfB / max(abs(dot(payload.surface_normal, -direction)),EPSILON2);
 
 		if (payload.pdfF < EPSILON2 || (payload.bsdf_sample.x < EPSILON2 && payload.bsdf_sample.y < EPSILON2 && payload.bsdf_sample.z < EPSILON2))
 			break;
@@ -532,7 +525,7 @@ void main() {
 	vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 	
 
-	light_hits[0].pdfF = light_dir_pdf / dot(light_direction, light_hits[0].normal);
+	light_hits[0].pdfF = light_dir_pdf / max(dot(light_direction, light_hits[0].normal), EPSILON2);
 	light_hits[0].pdfB = light_point_pdf;
 	light_hits[0].alpha = vec3(1.0) / light_hits[0].pdfB;
 	light_hits[0].isSpecular = false;
@@ -550,7 +543,7 @@ void main() {
 		if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT)
 			break;
 
-		float pdfF = payload.pdfF / abs(dot(payload.surface_normal, payload.direction));
+		float pdfF = payload.pdfF / max(abs(dot(payload.surface_normal, payload.direction)), EPSILON2);
 
 		float G = GeometricTerm(light_hits[light_max_index].point, light_hits[light_max_index].normal,
 									payload.origin, payload.surface_normal);
@@ -566,10 +559,7 @@ void main() {
 		light_hits[light_max_index].isSpecular = payload.bsdf_type != BSDF_DIFFUSE;
 		light_hits[light_max_index].G = G;
 
-//		if (light_hits[light_max_index].isSpecular)
-//			light_hits[light_max_index].pdfB = light_hits[light_max_index].pdfF;
-//		else
-			light_hits[light_max_index].pdfB = payload.pdfB / abs(dot(payload.surface_normal, -direction));
+		light_hits[light_max_index].pdfB = payload.pdfB / max(abs(dot(payload.surface_normal, -light_direction)), EPSILON2);
 		
 		alpha_L *= payload.bsdf_sample / (pdfF + EPSILON);
 
@@ -586,11 +576,6 @@ void main() {
 		int pathVertexCount = pathLength + 1;
 		for (int s = 0; s <= pathVertexCount; s++) {
 			int t = pathVertexCount - s;
-				
-//			if ((settings.debug_technique_s >= 0 || settings.debug_technique_t >= 0) && 
-//				((s != settings.debug_technique_s) || (t != settings.debug_technique_t))) {
-//				continue;
-//			}
 
 			if ((settings.debug_technique_s >= 0 && s != settings.debug_technique_s) ||
 				(settings.debug_technique_t >= 0 && t != settings.debug_technique_t)) {
@@ -644,6 +629,10 @@ void main() {
 
 				if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
+				// TODO: Validar
+//				if (eye_hits[t-1].isSpecular || light_hits[s-1].isSpecular)
+//					continue;
+
 				resetPayload(payload, origin, direction);
 				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, dist - EPSILON, 0);
 				if (payload.status != RAY_MISS) continue;
@@ -663,7 +652,7 @@ void main() {
 			vec3 final_contribution = mis * contribution;
 
 			if(isnan(final_contribution.r) || isnan(final_contribution.g) || isnan(final_contribution.b))
-				final_contribution = vec3(0.0, 0.0, 0.0);
+				continue;
 
 			if(t == 1) {
 				pixel.x = pixel.x * 4;

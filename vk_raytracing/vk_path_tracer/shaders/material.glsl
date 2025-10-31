@@ -39,8 +39,8 @@ float GeometricTerm(vec3 xi, vec3 ni, vec3 xo, vec3 no) {
     vec3 x_diff = xo - xi;
     vec3 x_diff_norm = normalize(x_diff);
 
-    float cos_theta_i = dot(ni, x_diff_norm);
-    float cos_theta_o = dot(no, x_diff_norm);
+    float cos_theta_i = max(dot(ni, x_diff_norm), 0.0);
+    float cos_theta_o = max(dot(no, -x_diff_norm), 0.0);
 
     return abs(cos_theta_o * cos_theta_i) / (dot(x_diff, x_diff) + EPSILON);
 }
@@ -141,14 +141,14 @@ float GGXAnisotropicD(float NDotH, float HDotX, float HDotY, float ax, float ay)
     float a = HDotX / ax;
     float b = HDotY / ay;
     float c = a * a + b * b + NDotH * NDotH;
-    return 1.0 / (PI * ax * ay * c * c);
+    return 1.0 / (PI * ax * ay * c * c + EPSILON);
 }
 
 float GGXAnisotropicG(float NDotV, float VDotX, float VDotY, float ax, float ay) {
     float a = VDotX * ax;
     float b = VDotY * ay;
     float c = NDotV;
-    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
+    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c) + EPSILON);
 }
 
 vec3 EvalDisneyDiffuse(Material material, vec3 Csheen, vec3 w_i, vec3 w_o, vec3 H, vec3 normal, out float pdfF, out float pdfB) {
@@ -205,9 +205,9 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
-    pdfF = G1 * D / (4.0 * IDotN);
-    pdfB = G2 * D / (4.0 * ODotN);
-    return F * D * G / (4.0 * ODotN * IDotN);
+    pdfF = G1 * D / (4.0 * IDotN + EPSILON);
+    pdfB = G2 * D / (4.0 * ODotN + EPSILON);
+    return F * D * G / (4.0 * ODotN * IDotN + EPSILON);
 }
 
 vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal, vec3 tangent, vec3 H, vec3 F, float eta, out float pdfF, out float pdfB) {
@@ -229,14 +229,14 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     float eta2 = eta * eta;
     float denom = (abs(IDotH) + eta * abs(ODotH));
-    denom = denom * denom + EPSILON;
+    denom = denom * denom;
     float denom_f = denom * max(abs(IDotN) * abs(ODotN), EPSILON);
     float factor = eta2 * abs((IDotH * ODotH) / (denom_f));
 
     vec3 f = sqrt(material.baseColor) * (1.0 - F) * D * G * factor;
 
-    pdfF = eta2 * ((G1 * abs(IDotH) * abs(ODotH) * D) / (denom * IDotN));
-    pdfB = eta2 * ((G2 * abs(IDotH) * abs(ODotH) * D) / (denom * ODotN));
+    pdfF = eta2 * ((G1 * abs(IDotH) * abs(ODotH) * D) / (denom * IDotN + EPSILON));
+    pdfB = eta2 * ((G2 * abs(IDotH) * abs(ODotH) * D) / (denom * ODotN + EPSILON));
 
     return f;
 }
@@ -417,14 +417,11 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-//        bsdf_type = r3 < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
-        bsdf_type = material.roughness <= 0.001 ? BSDF_REFLECTION : BSDF_DIFFUSE;
-//        bsdf_type = BSDF_REFLECTION;
+        bsdf_type = material.roughness <= 0.001 ? BSDF_REFLECTION : BSDF_DIFFUSE; //dirac
     }
     else { // Glass
         float theta_m;
         vec3 micro_normal = GGXMicronormal(normal, alpha, random_seed, theta_m);
-        float VDotH = dot(w_i, micro_normal);
 
         float sin_theta = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
 
@@ -457,10 +454,7 @@ void DisneyBSDFSample(inout rayPayload payload) {
         vec3 new_direction = DisneyBSDFDirection(-payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_type, payload.random_seed);
         new_direction = normalize(new_direction);
 
-        if(payload.backward_propagation == 0)
-            DisneyBSDF(new_direction, -payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
-        else
-            DisneyBSDF(-payload.direction, new_direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
+        DisneyBSDF(new_direction, -payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
 
         payload.direction = new_direction;
         payload.status = RAY_CONTINUE;
