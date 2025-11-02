@@ -437,22 +437,22 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 							vulkanHandler.m_pcRay.debug_technique_t = new_technique_t;
 							vulkanHandler.resetFrame();
 						}
-
-						bool bidirectional_debug_include_mis = vulkanHandler.m_pcRay.debug_multiply_mis == 1;
-						if (ImGui::Checkbox("Aplicar MIS", &bidirectional_debug_include_mis)) {
-							vulkanHandler.m_pcRay.debug_multiply_mis = bidirectional_debug_include_mis ? 1 : 0;
-							vulkanHandler.resetFrame();
-						}
-
-						bool bidirectional_debug_include_contribution = vulkanHandler.m_pcRay.debug_multiply_contribution == 1;
-						if (ImGui::Checkbox("Aplicar Contribución", &bidirectional_debug_include_contribution)) {
-							vulkanHandler.m_pcRay.debug_multiply_contribution = bidirectional_debug_include_contribution ? 1 : 0;
-							vulkanHandler.resetFrame();
-						}
 					}
 					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
 						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
 						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+						vulkanHandler.resetFrame();
+					}
+
+					bool bidirectional_debug_include_mis = vulkanHandler.m_pcRay.debug_multiply_mis == 1;
+					if (ImGui::Checkbox("Aplicar MIS", &bidirectional_debug_include_mis)) {
+						vulkanHandler.m_pcRay.debug_multiply_mis = bidirectional_debug_include_mis ? 1 : 0;
+						vulkanHandler.resetFrame();
+					}
+
+					bool bidirectional_debug_include_contribution = vulkanHandler.m_pcRay.debug_multiply_contribution == 1;
+					if (ImGui::Checkbox("Aplicar Contribución", &bidirectional_debug_include_contribution)) {
+						vulkanHandler.m_pcRay.debug_multiply_contribution = bidirectional_debug_include_contribution ? 1 : 0;
 						vulkanHandler.resetFrame();
 					}
 				}
