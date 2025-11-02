@@ -427,11 +427,11 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 						int new_technique_s = bidirectional_debug_technique_s;
 						int new_technique_t = bidirectional_debug_technique_t;
 
-						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= 0 && new_technique_s <= max_depth) {
+						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= -1 && new_technique_s <= max_depth) {
 							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
 							vulkanHandler.resetFrame();
 						}
-						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= 0 && new_technique_t <= max_depth) {
+						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= -1 && new_technique_t <= max_depth) {
 							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
 							vulkanHandler.resetFrame();
 						}
