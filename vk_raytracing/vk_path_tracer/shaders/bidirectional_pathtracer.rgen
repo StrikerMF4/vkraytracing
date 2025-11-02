@@ -186,16 +186,16 @@ float misWeight(int s, int t, PDFConnection connection) {
 			if(s == 1) {
 				// Es una conneccion s=1
 				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
-				// Pa(x0) = light_hits[0].pdfB
 				// Po(x1->x0)G(x1,x0) = connection.eyeF * connection.G
+				// Pa(x0) = light_hits[0].pdfB
 				pK *= connection.eyeF * connection.G / light_hits[0].pdfB;
 				if (light_hits[0].isSpecular)
 					continue;
 			} else {
 				// No es una conneccion s!=1
 				// p0/p1 = (Po(x1->x0)G(x1,x0))/Pa(x0) 
-				// Pa(x0) = light_hits[0].pdfB
 				// Po(x1->x0)G(x1,x0) = light_hits[1].pdfB * light_hits[1].G 
+				// Pa(x0) = light_hits[0].pdfB
 				pK *= light_hits[1].pdfB * light_hits[1].G / light_hits[0].pdfB;
 				if (light_hits[0].isSpecular || light_hits[1].isSpecular)
 					continue;
@@ -204,11 +204,12 @@ float misWeight(int s, int t, PDFConnection connection) {
 			if (i == s - 1) {
 			// Es una conneccion i = s-1
 			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
+			// ps-1/ps = Po(xs->xs-1)G(xs,xs-1)/Po(xs-2->xs-1)G(xs-2,xs-1)
 			// Po(xi+1->xi)G(xi+1,xi) = connection.eyeF * connection.G
 			// Po(xi-1->xi)G(xi-1,xi) = light_hits[i-1].pdfF * light_hits[i].G
 				pK *= connection.eyeF * connection.G /
 					  (light_hits[i - 1].pdfF * light_hits[i].G);
-			} else if (i == s - 2) {
+			} else if (i == s - 2 && t != 0) {
 			// Es una conneccion i = s-2
 			// pi/pi+1 = Po(xi+1->xi)G(xi+1,xi)/Po(xi-1->xi)G(xi-1,xi)
 			// Po(x2->x1)G(x2,x1) = connection.lightB *  light_hits[2].G
@@ -256,12 +257,11 @@ float misWeight(int s, int t, PDFConnection connection) {
 			// Es una conneccion i=s+1
 			// pi/pi-1 = Po(xi-2->xi-1)G(xi-2,xi-1)/Po(xi->xi-1)G(xi,xi-1)
 			// ps+1/ps = Po(xs-1->xs)G(xs-1,xs)/Po(xs+1->xs)G(xs+1,xs)
-			// P4/p5 = Po(x2->x3)G(x2,x3)/Po(x4->x3)G(x4,x3)
-			// Po(x2->x3)G(x2,x3) = connection.lightF * connection.G
-			// Po(x4->x3)G(x4,x3) = eye_hits[k-i].pdfF * eye_hits[k-i+1].G
+			// Po(xs-1->xs)G(xs-1,xs) = connection.lightF * connection.G
+			// Po(xs+1->xs)G(xs+1,xs) = eye_hits[k-i].pdfF * eye_hits[k-i+1].G
 				pK *= connection.lightF * connection.G /
 						(eye_hits[k - i].pdfF * eye_hits[k - i + 1].G);
-			} else if (i == s + 2) {
+			} else if (i == s + 2 && s != 0) {
 			// pi/pi-1 = Po(xi-2->xi-1)G(xi-2,xi-1)/Po(xi->xi-1)G(xi,xi-1)
 			// ps+2/ps+1 = Po(xs->xs+1)G(xs,xs+1)/Po(xs+2->xs+1)G(xs+2,xs+1)
 			// Po(xi-2->xi-1)G(xi-2,xi-1) = connection.eyeB * eye_hits[k-i+2].G 
@@ -586,18 +586,11 @@ void main() {
 				continue;
 			}
 
-			// Can not form a path with 0 or 1 vertex
-			if ((s == 0 && t < 2) || (t == 0 && s < 2) || (s + t) < 2) {
-				continue;
-			}
-
 			// We dont support direct camera connections
 			if ((t == 0)) {
 				continue;
 			}
 				
-			vec3 eye_point = eye_hits[t-1].point;
-			vec3 light_point;
 			PDFConnection pdf;
 			pdf.G = 1.0;
 			vec3 contribution = vec3(0.0);
@@ -615,7 +608,8 @@ void main() {
 				contribution = eye_hits[t-1].alpha;
 			}
 			else {
-				light_point = light_hits[s-1].point;
+				vec3 eye_point = eye_hits[t-1].point;
+				vec3 light_point = light_hits[s-1].point;
 				origin = eye_point;
 				direction = light_point - eye_point;
 
@@ -630,8 +624,8 @@ void main() {
 				if ( dot(direction, light_hits[s-1].normal) > 0 ) continue;
 
 				// TODO: Validar
-//				if (eye_hits[t-1].isSpecular || light_hits[s-1].isSpecular)
-//					continue;
+				if (eye_hits[t-1].isSpecular || light_hits[s-1].isSpecular)
+					continue;
 
 				resetPayload(payload, origin, direction);
 				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, dist - EPSILON, 0);
