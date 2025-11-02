@@ -51,7 +51,6 @@ bool g_autoExit = false;
 
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
-int bidirectional_debug_technique_s = -1, bidirectional_debug_technique_t = -1;
 auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
 double maxTime = 500000.0;
@@ -438,9 +437,9 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 							vulkanHandler.resetFrame();
 						}
 					}
-					else if (bidirectional_debug_technique_s != -1 || bidirectional_debug_technique_t != -1) {
-						bidirectional_debug_technique_s = vulkanHandler.m_pcRay.debug_technique_s = -1;
-						bidirectional_debug_technique_t = vulkanHandler.m_pcRay.debug_technique_t = -1;
+					else if (vulkanHandler.m_pcRay.debug_technique_s != -1 || vulkanHandler.m_pcRay.debug_technique_s != -1) {
+						vulkanHandler.m_pcRay.debug_technique_s = -1;
+						vulkanHandler.m_pcRay.debug_technique_t = -1;
 						vulkanHandler.resetFrame();
 					}
 
