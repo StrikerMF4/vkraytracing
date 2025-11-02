@@ -438,15 +438,15 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 							vulkanHandler.resetFrame();
 						}
 
-						bool bidirectional_debug_include_mis = vulkanHandler.m_pcRay.debug_multiply_mis;
+						bool bidirectional_debug_include_mis = vulkanHandler.m_pcRay.debug_multiply_mis == 1;
 						if (ImGui::Checkbox("Aplicar MIS", &bidirectional_debug_include_mis)) {
-							vulkanHandler.m_pcRay.debug_multiply_mis = bidirectional_debug_include_mis;
+							vulkanHandler.m_pcRay.debug_multiply_mis = bidirectional_debug_include_mis ? 1 : 0;
 							vulkanHandler.resetFrame();
 						}
 
-						bool bidirectional_debug_include_contribution = vulkanHandler.m_pcRay.debug_multiply_contribution;
+						bool bidirectional_debug_include_contribution = vulkanHandler.m_pcRay.debug_multiply_contribution == 1;
 						if (ImGui::Checkbox("Aplicar Contribución", &bidirectional_debug_include_contribution)) {
-							vulkanHandler.m_pcRay.debug_multiply_contribution = bidirectional_debug_include_contribution;
+							vulkanHandler.m_pcRay.debug_multiply_contribution = bidirectional_debug_include_contribution ? 1 : 0;
 							vulkanHandler.resetFrame();
 						}
 					}
@@ -457,8 +457,10 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					}
 				}
 
+				ImGui::SeparatorText("Ejecución:");
+
 				float new_time_limit = time_limit;
-				if (ImGui::InputFloat("Límite de tiempo", &new_time_limit, 0.0f, 0.0f, "%.3f") && new_time_limit >= 0.0f)
+				if (ImGui::InputFloat("Límite de tiempo (s)", &new_time_limit, 0.0f, 0.0f, "%.3f") && new_time_limit >= 0.0f)
 					time_limit = new_time_limit;
 
 				int new_iterations_limit = iteration_limit;
@@ -612,6 +614,9 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
+
+	vulkanHandler.m_pcRay.debug_multiply_mis = 1;
+	vulkanHandler.m_pcRay.debug_multiply_contribution = 1;
 }
 
 std::string techniqueToString(TechniqueType t) {

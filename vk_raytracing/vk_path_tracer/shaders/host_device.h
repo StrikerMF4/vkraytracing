@@ -93,8 +93,8 @@ struct PushConstantRayTracer
 	int debug_technique_s;
 	int debug_technique_t;
 	
-	bool debug_multiply_mis;
-	bool debug_multiply_contribution;
+	int debug_multiply_mis;
+	int debug_multiply_contribution;
 };
 
 struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device
