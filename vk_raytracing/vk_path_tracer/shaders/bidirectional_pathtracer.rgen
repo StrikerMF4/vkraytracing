@@ -644,8 +644,8 @@ void main() {
 			mis = misWeight(s, t, pdf);
 
 			vec3 final_contribution =	
-				(settings.debug_multiply_contribution ? vec3(1.0) : contribution) * 
-				(settings.debug_multiply_mis ? 1.0 : mis);
+				(settings.debug_multiply_contribution ? contribution : vec3(1.0)) * 
+				(settings.debug_multiply_mis ? mis : 1.0);
 
 			if(isnan(final_contribution.r) || isnan(final_contribution.g) || isnan(final_contribution.b))
 				continue;

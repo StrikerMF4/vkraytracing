@@ -421,6 +421,8 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 				}
 
 				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+					ImGui::SeparatorText("Bidirectional PathTracer:");
+
 					ImGui::Checkbox("Fijar técnica", &bidirectional_debug_technique);
 
 					if (bidirectional_debug_technique) {
