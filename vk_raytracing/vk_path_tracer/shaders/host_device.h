@@ -92,6 +92,9 @@ struct PushConstantRayTracer
 	int max_depth;
 	int debug_technique_s;
 	int debug_technique_t;
+	
+	bool debug_multiply_mis;
+	bool debug_multiply_contribution;
 };
 
 struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for device

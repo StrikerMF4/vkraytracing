@@ -421,18 +421,30 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 				}
 
 				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
-					ImGui::Checkbox("Debug Technique", &bidirectional_debug_technique);
+					ImGui::Checkbox("Fijar técnica", &bidirectional_debug_technique);
 
 					if (bidirectional_debug_technique) {
-						int new_technique_s = bidirectional_debug_technique_s;
-						int new_technique_t = bidirectional_debug_technique_t;
-
-						if (ImGui::InputInt("Debug Technique S", &new_technique_s, 1) && new_technique_s >= -1 && new_technique_s <= max_depth) {
-							vulkanHandler.m_pcRay.debug_technique_s = bidirectional_debug_technique_s = new_technique_s;
+						int new_technique_s = vulkanHandler.m_pcRay.debug_technique_s;
+						if (ImGui::InputInt("s (-1 = todos)", &new_technique_s, 1) && new_technique_s >= -1 && new_technique_s <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_s = new_technique_s;
 							vulkanHandler.resetFrame();
 						}
-						if (ImGui::InputInt("Debug Technique T", &new_technique_t, 1) && new_technique_t >= -1 && new_technique_t <= max_depth) {
-							vulkanHandler.m_pcRay.debug_technique_t = bidirectional_debug_technique_t = new_technique_t;
+
+						int new_technique_t = vulkanHandler.m_pcRay.debug_technique_t;
+						if (ImGui::InputInt("t (-1 = todos)", &new_technique_t, 1) && new_technique_t >= -1 && new_technique_t <= max_depth) {
+							vulkanHandler.m_pcRay.debug_technique_t = new_technique_t;
+							vulkanHandler.resetFrame();
+						}
+
+						bool bidirectional_debug_include_mis = vulkanHandler.m_pcRay.debug_multiply_mis;
+						if (ImGui::Checkbox("Aplicar MIS", &bidirectional_debug_include_mis)) {
+							vulkanHandler.m_pcRay.debug_multiply_mis = bidirectional_debug_include_mis;
+							vulkanHandler.resetFrame();
+						}
+
+						bool bidirectional_debug_include_contribution = vulkanHandler.m_pcRay.debug_multiply_contribution;
+						if (ImGui::Checkbox("Aplicar Contribución", &bidirectional_debug_include_contribution)) {
+							vulkanHandler.m_pcRay.debug_multiply_contribution = bidirectional_debug_include_contribution;
 							vulkanHandler.resetFrame();
 						}
 					}
