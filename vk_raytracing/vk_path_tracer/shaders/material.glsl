@@ -417,7 +417,7 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-        bsdf_type = material.roughness <= 0.001 ? BSDF_REFLECTION : BSDF_DIFFUSE; //dirac
+        bsdf_type = material.roughness <= 0.01 ? BSDF_REFLECTION : BSDF_DIFFUSE; //dirac
     }
     else { // Glass
         float theta_m;
@@ -435,6 +435,8 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
             w_o = MicroTransmit(w_i, micro_normal, normal, eta);
             bsdf_type = BSDF_TRANSMISSION;
         }
+
+        bsdf_type = material.roughness <= 0.01 ? bsdf_type : BSDF_DIFFUSE; //dirac
     }
     
     return w_o;
