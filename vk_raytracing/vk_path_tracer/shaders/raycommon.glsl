@@ -37,7 +37,8 @@ struct rayPayload
 	float pdfF;
 	float pdfB;
 	uint light_id;
-	vec3 tangent; 
+	vec3 tangent;
+	bool isDeltaDirac;
 
 	Material material;
 
@@ -59,6 +60,7 @@ void resetPayload(inout rayPayload payload, vec3 origin, vec3 direction){
 	payload.light_id = 0;
 	payload.theta = 0;
 	payload.backward_propagation = 0;
+	payload.isDeltaDirac = false;
 }
 
 struct Node {
