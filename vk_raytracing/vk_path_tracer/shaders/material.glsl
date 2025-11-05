@@ -346,7 +346,7 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, vec3 tangent, Material material
     outputColor = f;
 }
 
-vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material, inout uint bsdf_type, inout uint random_seed) {
+vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material, inout uint bsdf_type, inout bool isDeltaDirac, inout uint random_seed) {
     float cos_theta_i = dot(normal, w_i);
     cos_theta_i = clamp(cos_theta_i, -1.0, 1.0);
     // Determine if the ray is entering or exiting the material
@@ -404,6 +404,7 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
     if (r3 < cdf[0]) { // Diffuse
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
         bsdf_type = BSDF_DIFFUSE;
+        isDeltaDirac = false;
     }
     else if (r3 < cdf[2]) { // Dielectric + Metallic reflection
         float aspect = sqrt(1.0 - material.anisotropic * 0.9);
@@ -417,7 +418,8 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-        bsdf_type = material.roughness <= 0.01 ? BSDF_REFLECTION : BSDF_DIFFUSE; //dirac
+        bsdf_type = BSDF_REFLECTION;
+        isDeltaDirac = material.roughness <= 0.01; //dirac
     }
     else { // Glass
         float theta_m;
@@ -436,7 +438,7 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
             bsdf_type = BSDF_TRANSMISSION;
         }
 
-        bsdf_type = material.roughness <= 0.01 ? bsdf_type : BSDF_DIFFUSE; //dirac
+        isDeltaDirac = material.roughness <= 0.01; //dirac
     }
     
     return w_o;
@@ -453,7 +455,7 @@ void DisneyBSDFSample(inout rayPayload payload) {
     }
     else {
         payload.direction = normalize(payload.direction);
-        vec3 new_direction = DisneyBSDFDirection(-payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_type, payload.random_seed);
+        vec3 new_direction = DisneyBSDFDirection(-payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_type, payload.isDeltaDirac, payload.random_seed);
         new_direction = normalize(new_direction);
 
         DisneyBSDF(new_direction, -payload.direction, payload.surface_normal, payload.tangent, payload.material, payload.bsdf_sample, payload.pdfF, payload.pdfB, payload.random_seed);
