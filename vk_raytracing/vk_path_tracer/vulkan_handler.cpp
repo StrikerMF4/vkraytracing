@@ -496,7 +496,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
 				result.object_id = m_objDesc.size();
 				result.object_to_world = transform;
-				result.world_to_object = glm::inverse(transform);
+				result.world_to_object = glm::transpose(glm::inverse(transform));
 
 				result.emission = light.emission;
 
