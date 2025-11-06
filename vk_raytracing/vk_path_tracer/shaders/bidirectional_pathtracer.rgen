@@ -45,18 +45,19 @@ uint RandomPointInLight(out vec3 point, out vec3 surface_normal, out vec3 emissi
 	Light light = lights.i[light_index];
 	emission = light.emission;
 
-	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
+	uint random_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
 	// Get buffers for the light object
 	ObjDesc objResource = objDesc.i[light.object_id];
 	Indices    indices     = Indices(objResource.indexAddress);
 	Vertices   vertices    = Vertices(objResource.vertexAddress);
 
+	ivec3 light_triangle_index = indices.i[random_index];
+
 	// Vertex of the triangle
-	light_triangle_index = (light.first_index + light_triangle_index) * 3;
-	Vertex v0 = vertices.v[light_triangle_index];
-	Vertex v1 = vertices.v[light_triangle_index + 1];
-	Vertex v2 = vertices.v[light_triangle_index + 2];
+	Vertex v0 = vertices.v[light_triangle_index.x];
+	Vertex v1 = vertices.v[light_triangle_index.y];
+	Vertex v2 = vertices.v[light_triangle_index.z];
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.position, v1.position, v2.position, payload.random_seed);
 
