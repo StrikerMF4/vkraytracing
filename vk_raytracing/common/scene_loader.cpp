@@ -40,6 +40,9 @@ Scene::Scene(const std::string& filepath) {
 				camera_data["lookat"][0].template get<double>(),
 				camera_data["lookat"][1].template get<double>(),
 				camera_data["lookat"][2].template get<double>());
+
+		if (camera_data.contains("antialiasing_radius"))
+			antialiasing_radius = camera_data["antialiasing_radius"].template get<float>();
 	}
 
 	bool defines_default_material = false;

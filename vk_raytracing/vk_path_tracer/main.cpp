@@ -494,6 +494,7 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					CameraManip.setFov(fov);
 				}
 
+
 				if (ImGui::Button("Reiniciar Posición"))
 				{
 					CameraManip.setLookat(camera_default_position, camera_default_lookat, glm::vec3(0, 1, 0));
@@ -610,9 +611,11 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 
 	vulkanHandler.m_cameraAperture = 0.f;
 	vulkanHandler.m_cameraFocalLength = 1.f;
+
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = -1;
 	vulkanHandler.m_pcRay.debug_technique_t = -1;
+	vulkanHandler.m_pcRay.antialiasing_radius = scene->antialiasing_radius;
 
 	vulkanHandler.m_pcRay.debug_multiply_mis = 1;
 	vulkanHandler.m_pcRay.debug_multiply_contribution = 1;

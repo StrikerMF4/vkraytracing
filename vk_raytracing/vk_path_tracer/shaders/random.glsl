@@ -36,7 +36,7 @@ vec2 RandomGaussianVector(inout uint rngState) {
 	const float u2 = rand(rngState);  // In [0, 1]
 	const float r = sqrt(-2.0 * log(u1));
 	const float theta = 2 * PI * u2;  // Random in [0, 2pi]
-	return r*vec2(cos(theta), sin(theta));
+	return 2 * r*vec2(cos(theta), sin(theta)) - vec2(0.5);
 }
 
 vec2 RandomDiskDirection(inout uint seed) {

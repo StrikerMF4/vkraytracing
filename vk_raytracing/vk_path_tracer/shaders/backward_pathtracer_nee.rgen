@@ -101,7 +101,7 @@ void main()
 	// Gaussian Anti-Aliasing
 	vec2 subpixel_jitter = vec2(0.5f, 0.5f);
 	if(settings.frame > 0 && aperture <= 0)
-		subpixel_jitter = RandomGaussianVector(payload.random_seed);
+		subpixel_jitter = subpixel_jitter + RandomGaussianVector(payload.random_seed) * settings.antialiasing_radius;
 
 	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + subpixel_jitter;
 	const vec2 inUV        = pixelCenter / vec2(gl_LaunchSizeEXT.xy);

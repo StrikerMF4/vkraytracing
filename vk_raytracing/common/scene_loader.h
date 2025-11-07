@@ -59,6 +59,7 @@ namespace SceneLoader {
 		glm::vec3 camera_position = glm::vec3(0, 0, 0);
 		glm::vec3 camera_lookat = glm::vec3(0, 0, 2);
 		float camera_fov = 45;
+		float antialiasing_radius = 0.01;
 
 		//Models in scene
 		std::vector<Entity*> entities;

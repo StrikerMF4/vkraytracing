@@ -89,6 +89,8 @@ struct PushConstantRayTracer
 	uint light_count;
 	int   frame;
 
+	float antialiasing_radius;
+
 	int max_depth;
 	int debug_technique_s;
 	int debug_technique_t;
