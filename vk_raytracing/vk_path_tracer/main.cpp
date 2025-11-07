@@ -494,6 +494,7 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					CameraManip.setFov(fov);
 				}
 
+				ImGui::DragFloat("Radio Antialiasing", &vulkanHandler.m_pcRay.antialiasing_radius, 0.0001, 0.0f, 1.0f, "%.4f");
 
 				if (ImGui::Button("Reiniciar Posición"))
 				{
