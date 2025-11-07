@@ -396,17 +396,17 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
     cdf[3] = cdf[2] + glassPr;
 
     // Sample a lobe based on its importance
-    float r3 = rand(random_seed);
+    float random = rand(random_seed);
 
     float tmpPdf;
     vec3 L, f;
     vec3 w_o;
-    if (r3 < cdf[0]) { // Diffuse
+    if (random < cdf[0]) { // Diffuse
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
         bsdf_type = BSDF_DIFFUSE;
         isDeltaDirac = false;
     }
-    else if (r3 < cdf[2]) { // Dielectric + Metallic reflection
+    else if (random < cdf[2]) { // Dielectric + Metallic reflection
         float aspect = sqrt(1.0 - material.anisotropic * 0.9);
         float ax = max(0.001, alpha / aspect);
         float ay = max(0.001, alpha * aspect);
@@ -418,7 +418,7 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-        bsdf_type = BSDF_REFLECTION;
+        bsdf_type = random < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
         isDeltaDirac = material.roughness <= 0.01; //dirac
     }
     else { // Glass

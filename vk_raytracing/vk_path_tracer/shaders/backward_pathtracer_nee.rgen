@@ -29,18 +29,19 @@ const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out float pdf){
 	// Pick a triangle in the light
 	Light light = lights.i[light_index];
-	uint light_triangle_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1); 
+	uint random_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
 	// Get buffers for the light object
 	ObjDesc objResource = objDesc.i[light.object_id];
 	Indices    indices     = Indices(objResource.indexAddress);
 	Vertices   vertices    = Vertices(objResource.vertexAddress);
 
+	ivec3 light_triangle_index = indices.i[random_index];
+
 	// Vertex of the triangle
-	light_triangle_index = (light.first_index + light_triangle_index) * 3;
-	Vertex v0 = vertices.v[light_triangle_index];
-	Vertex v1 = vertices.v[light_triangle_index + 1];
-	Vertex v2 = vertices.v[light_triangle_index + 2];
+	Vertex v0 = vertices.v[light_triangle_index.x];
+	Vertex v1 = vertices.v[light_triangle_index.y];
+	Vertex v2 = vertices.v[light_triangle_index.z];
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.position, v1.position, v2.position, payload.random_seed);
 
@@ -68,25 +69,24 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 		float lightdist = length(L);
 		L /= lightdist; // Normalize
 
-		if (dot(-L, light_normal) <= 0) continue; 
+		if (dot(-L, light_normal) <= 0 || dot(N, L) <= 0) continue; 
 
 		resetPayload(payload, origin, L);
 		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, L, lightdist - 0.001f, 0);
 
-		if (payload.status == RAY_MISS) {
-			float cost = dot(N, L);
-			if (cost > 0) {
-				Light light = lights.i[light_index];
-				vec3 bsdf = vec3(0);
-				float pdfF, pdfB;
-				float g = GeometricTerm(origin, N, light_point, light_normal);
-				DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
-				output_color += light.emission * g * bsdf / pdfLight;
-			}
-		}
+		if (payload.status != RAY_MISS) continue; // Occluded
+
+		Light light = lights.i[light_index];
+		vec3 bsdf = vec3(0);
+		float pdfF, pdfB;
+		float g = GeometricTerm(origin, N, light_point, light_normal);
+		DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
+		output_color += light.emission * g * bsdf / pdfLight;
 	}
 	return output_color;
 }
+
+
 
 void main()
 {
@@ -137,12 +137,10 @@ void main()
 			output_color += throughput * payload.Le;
 			break;
 		} else if (payload.status == RAY_MISS) {
-			output_color += throughput * vec3(0);
 			break;
 		}
 
 		vec3 bsdf_sample = payload.bsdf_sample;
-		vec3 Le = payload.Le;
 		float pdf = payload.pdfF;
 		uint ray_status = payload.status;
 
@@ -151,10 +149,15 @@ void main()
 		vec3 normal = payload.surface_normal;
 		vec3 tangent = payload.tangent;
 
-		if(payload.bsdf_type == BSDF_DIFFUSE && payload.status != RAY_HIT_LIGHT)
-			output_color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed) + Le) * throughput;
-		else 
-			output_color += Le * throughput;
+		if(payload.bsdf_type == BSDF_DIFFUSE)
+			output_color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed)) * throughput;
+
+
+		if (depth >= 4) {
+			float p = clamp(max(throughput.r, max(throughput.g, throughput.b)), 0.05, 0.95);
+			if (rand(payload.random_seed) > p) break;
+			throughput /= p;
+		}
 
 		// Actualizar throughput
 		float cos_theta = abs(dot(normal, direction));
