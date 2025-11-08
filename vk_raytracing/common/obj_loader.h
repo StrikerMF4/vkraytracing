@@ -63,7 +63,10 @@ namespace objl
 			specTrans = 0.0f;
 			ior = 1.5f;
 			albedoTextureID = -1;
-			metallicRoughnessTextureID = -1;
+			metallicTextureID = -1;
+			roughnessTextureID = -1;
+			opacityTextureID = -1;
+			maskTextureID = -1;
 			normalTextureID = -1;
 			emissionTextureID = -1;
 			anisotropicTextureID = -1;
@@ -96,7 +99,10 @@ namespace objl
 
 		int albedoTextureID;
 		int anisotropicTextureID;
-		int metallicRoughnessTextureID;
+		int metallicTextureID;
+		int roughnessTextureID;
+		int opacityTextureID;
+		int maskTextureID;
 		int normalTextureID;
 		int emissionTextureID;
 

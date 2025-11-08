@@ -131,11 +131,15 @@ void main()
 		vec3 viewer = -payload.direction;
 
 		// Trazar el rayo
-		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
+		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
 		if (payload.status == RAY_HIT_LIGHT) {
 			output_color += throughput * payload.Le;
 			break;
+		} else if (payload.status == RAY_RETRY) {
+			depth--;
+			resetPayload(payload, payload.origin, payload.direction);
+			continue;
 		} else if (payload.status == RAY_MISS) {
 			break;
 		}

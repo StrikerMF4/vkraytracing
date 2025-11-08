@@ -657,6 +657,7 @@ static void render_loop(GLFWwindow* window) {
 		iterations = vulkanHandler.m_pcRay.frame + 1;
 
 		glfwPollEvents();
+		CameraManip.updateAnim();
 		if (vulkanHandler.isMinimized())
 			continue;
 

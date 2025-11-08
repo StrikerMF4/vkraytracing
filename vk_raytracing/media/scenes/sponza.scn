@@ -1,171 +1,373 @@
 {
-    "resolution": [1280, 720],
-    "maxdepth": 5,
+    "resolution": [
+        1280,
+        720
+    ],
+    "maxdepth": 3,
     "camera": {
-        "position": [0.0, 0.7, 2.2],
-        "lookat": [0.0, 0.7, 0.0],
+        "position": [
+            -93.071,
+            91.465,
+            -1.760
+        ],
+        "lookat": [
+            -92.218,
+            90.947,
+            -1.831
+        ],
         "fov": 60
     },
     "materials": [
         {
-            "name": "leaf",
-            "ior": 1.5,
-            "albedotexture": "textures/sponza_thorn_diff.png",
-            "normaltexture": "textures/sponza_thorn_bump.png",
-            "alphatexture": "textures/sponza_thorn_mask.png"
-        },
-        {
-            "name": "vase_round",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/vase_round.png",
-            "normaltexture": "textures/vase_round_bump.png"
-        },
-        {
-            "name": "Material__57",
-            "ior": 1.5,
-            "albedotexture": "textures/vase_plant.png",
-            "alphatexture": "textures/vase_plant_mask.png"
+            "name": "Material__25",
+            "albedotexture": "models/sponza/textures/lion.png",
+            "displacementtexture": "models/sponza/textures/lion_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.60,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
             "name": "Material__298",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/background.png",
-            "normaltexture": "textures/background_bump.png"
-        },
-        {
-            "name": "bricks",
-            "ior": 1.5,
-            "metallic": 0.015,
-            "albedotexture": "textures/spnza_bricks_a_diff.png",
-            "normaltexture": "textures/spnza_bricks_a_bump.png",
-            "speculartexture": "textures/spnza_bricks_a_spec.png"
-        },
-        {
-            "name": "arch",
-            "ior": 1.5,
-            "metallic": 0.1,
-            "albedotexture": "textures/sponza_arch_diff.png"
-        },
-        {
-            "name": "ceiling",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/sponza_ceiling_a_diff.png"
-        },
-        {
-            "name": "column_a",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/sponza_column_a_diff.png",
-            "normaltexture": "textures/sponza_column_a_bump.png"
-        },
-        {
-            "name": "floor",
-            "ior": 1.5,
-            "metallic": 0.5,
-            "albedotexture": "textures/sponza_floor_a_diff.png",
-            "speculartexture": "textures/floor_gloss.png"
-        },
-        {
-            "name": "column_b",
-            "ior": 1.5,
-            "albedotexture": "textures/sponza_column_b_diff.png",
-            "normaltexture": "textures/sponza_column_b_bump.png"
-        },
-        {
-            "name": "column_c",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/sponza_column_c_diff.png",
-            "normaltexture": "textures/sponza_column_c_bump.png"
-        },
-        {
-            "name": "details",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/sponza_details_diff.png"
+            "albedotexture": "models/sponza/textures/background.png",
+            "displacementtexture": "models/sponza/textures/background_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.60,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
             "name": "Material__47",
-            "ior": 1.5
+            "metallic": 0.0,
+            "roughness": 0.60,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "flagpole",
-            "ior": 1.5,
-            "metallic": 0.05,
-            "albedotexture": "textures/sponza_flagpole_diff.png"
+            "name": "Material__57",
+            "albedotexture": "models/sponza/textures/vase_plant.png",
+            "masktexture": "models/sponza/textures/vase_plant_mask.png",
+            "metallic": 0.0,
+            "roughness": 0.50,
+            "specularTint": 0.05,
+            "subsurface": 0.30,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "opacity": 0.65,
+            "ior": 1.33
         },
         {
-            "name": "fabric_e",
-            "ior": 1,
-            "albedotexture": "textures/sponza_fabric_green_diff.png"
+            "name": "arch",
+            "albedotexture": "models/sponza/textures/sponza_arch_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_arch_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.60,
+            "specularTint": 0.08,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "fabric_d",
-            "ior": 1,
-            "albedotexture": "textures/sponza_fabric_blue_diff.png"
+            "name": "bricks",
+            "albedotexture": "models/sponza/textures/spnza_bricks_a_diff.png",
+            "displacementtexture": "models/sponza/textures/spnza_bricks_a_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.62,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "fabric_a",
-            "ior": 1,
-            "albedotexture": "textures/sponza_fabric_diff.png"
-        },
-        {
-            "name": "fabric_g",
-            "ior": 1,
-            "albedotexture": "textures/sponza_curtain_blue_diff.png"
-        },
-        {
-            "name": "fabric_c",
-            "ior": 1,
-            "albedotexture": "textures/sponza_curtain_diff.png"
-        },
-        {
-            "name": "fabric_f",
-            "ior": 1,
-            "albedotexture": "textures/sponza_curtain_green_diff.png"
+            "name": "ceiling",
+            "albedotexture": "models/sponza/textures/sponza_ceiling_a_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_ceiling_a_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
             "name": "chain",
-            "ior": 1.5,
-            "emission": 0.1,
-            "albedotexture": "textures/chain_texture.png",
-            "normaltexture": "textures/chain_texture_bump.png",
-            "alphatexture": "textures/chain_texture_mask.png"
+            "albedotexture": "models/sponza/textures/chain_texture.png",
+            "masktexture": "models/sponza/textures/chain_texture_mask.png",
+            "displacementtexture": "models/sponza/textures/chain_texture_bump.png",
+            "metallic": 1.0,
+            "roughness": 0.30,
+            "specularTint": 0.0,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "vase_hanging",
-            "ior": 1.5,
-            "emission": 0.5,
-            "albedotexture": "textures/vase_hanging.png",
-            "speculartexture": "textures/vase_hanging.png"
+            "name": "column_a",
+            "albedotexture": "models/sponza/textures/sponza_column_a_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_column_a_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.58,
+            "specularTint": 0.07,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "vase",
-            "ior": 1.5,
-            "albedotexture": "textures/vase_dif.png",
-            "normaltexture": "textures/vase_bump.png"
+            "name": "column_b",
+            "albedotexture": "models/sponza/textures/sponza_column_b_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_column_b_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.58,
+            "specularTint": 0.07,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
         },
         {
-            "name": "Material__25",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/lion.png",
-            "normaltexture": "textures/lion_bump.png"
+            "name": "column_c",
+            "albedotexture": "models/sponza/textures/sponza_column_c_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_column_c_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.58,
+            "specularTint": 0.07,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
+        },
+        {
+            "name": "details",
+            "albedotexture": "models/sponza/textures/sponza_details_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_details_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.60,
+            "specularTint": 0.05,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
+        },
+        {
+            "name": "fabric_a",
+            "albedotexture": "models/sponza/textures/sponza_fabric_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_fabric_bump.png",
+            "metallictexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.10,
+            "sheen": 0.40,
+            "sheenTint": 0.50,
+            "opacity": 0.92,
+            "ior": 1.45
+        },
+        {
+            "name": "fabric_c",
+            "albedotexture": "models/sponza/textures/sponza_curtain_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_curtain_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.12,
+            "sheen": 0.45,
+            "sheenTint": 0.55,
+            "opacity": 0.70,
+            "ior": 1.45
+        },
+        {
+            "name": "fabric_d",
+            "albedotexture": "models/sponza/textures/sponza_fabric_blue_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_fabric_bump.png",
+            "metallictexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.10,
+            "sheen": 0.40,
+            "sheenTint": 0.50,
+            "opacity": 0.90,
+            "ior": 1.45
+        },
+        {
+            "name": "fabric_e",
+            "albedotexture": "models/sponza/textures/sponza_fabric_green_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_fabric_bump.png",
+            "metallictexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.10,
+            "sheen": 0.40,
+            "sheenTint": 0.50,
+            "opacity": 0.90,
+            "ior": 1.45
+        },
+        {
+            "name": "fabric_f",
+            "albedotexture": "models/sponza/textures/sponza_curtain_green_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_curtain_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.12,
+            "sheen": 0.45,
+            "sheenTint": 0.55,
+            "opacity": 0.70,
+            "ior": 1.45
+        },
+        {
+            "name": "fabric_g",
+            "albedotexture": "models/sponza/textures/sponza_curtain_blue_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_curtain_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.80,
+            "specularTint": 0.10,
+            "subsurface": 0.12,
+            "sheen": 0.45,
+            "sheenTint": 0.55,
+            "opacity": 0.70,
+            "ior": 1.45
+        },
+        {
+            "name": "flagpole",
+            "albedotexture": "models/sponza/textures/sponza_flagpole_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_flagpole_bump.png",
+            "metallic": 1.0,
+            "roughness": 0.22,
+            "specularTint": 0.0,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
+        },
+        {
+            "name": "floor",
+            "albedotexture": "models/sponza/textures/sponza_floor_a_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_floor_a_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.48,
+            "specularTint": 0.08,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
+        },
+        {
+            "name": "leaf",
+            "albedotexture": "models/sponza/textures/sponza_thorn_diff.png",
+            "masktexture": "models/sponza/textures/sponza_thorn_mask.png",
+            "displacementtexture": "models/sponza/textures/sponza_thorn_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.50,
+            "specularTint": 0.05,
+            "subsurface": 0.30,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "opacity": 0.55,
+            "ior": 1.33
         },
         {
             "name": "roof",
-            "ior": 1.5,
-            "metallic": 0.01,
-            "albedotexture": "textures/sponza_roof_diff.png"
+            "albedotexture": "models/sponza/textures/sponza_roof_diff.png",
+            "displacementtexture": "models/sponza/textures/sponza_roof_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.55,
+            "specularTint": 0.06,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.50
+        },
+        {
+            "name": "vase",
+            "albedotexture": "models/sponza/textures/vase_dif.png",
+            "displacementtexture": "models/sponza/textures/vase_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.32,
+            "specularTint": 0.10,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "vase_hanging",
+            "albedotexture": "models/sponza/textures/vase_hanging.png",
+            "displacementtexture": "models/sponza/textures/vase_hanging_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.30,
+            "specularTint": 0.10,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "vase_round",
+            "albedotexture": "models/sponza/textures/vase_round.png",
+            "displacementtexture": "models/sponza/textures/vase_round_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.28,
+            "specularTint": 0.10,
+            "subsurface": 0.0,
+            "sheen": 0.0,
+            "sheenTint": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "Light",
+            "emission": [
+                16.0,
+                15.62,
+                14.87
+            ]
+        },
+        {
+            "name": "Paredes",
+            "emission": [
+                20.0,
+                20.0,
+                20.0
+            ]
         }
     ],
     "entities": [
         {
             "type": "mesh",
-            "file": "models/sponza/sponza.obj"
+            "file": "models/sponza/sponza.obj",
+            "scale": [
+                0.1,
+                0.1,
+                0.1
+            ]
+        },
+        {
+            "type": "mesh",
+            "file": "models/sponza/skybox.obj",
+            "material": "Paredes",
+            "scale": [
+                200,
+                200,
+                200
+            ]
         }
     ]
 }

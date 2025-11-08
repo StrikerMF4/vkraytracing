@@ -416,6 +416,10 @@ void main() {
 			eye_hits[depth + 1].isSpecular = false;
 			hitLight = true;
 			break;
+		} else if (payload.status == RAY_RETRY) {
+			depth--;
+			resetPayload(payload, payload.origin, payload.direction);
+			continue;
 		} else if (payload.status == RAY_MISS)
 			break;
 
@@ -481,7 +485,11 @@ void main() {
 
 		traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 0, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
-		if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT)
+		if (payload.status == RAY_RETRY) {
+			depth--;
+			resetPayload(payload, payload.origin, payload.direction);
+			continue;
+		} else if(payload.status == RAY_MISS || payload.status == RAY_HIT_LIGHT)
 			break;
 
 		float pdfF = payload.pdfF / max(abs(dot(payload.surface_normal, payload.direction)), EPSILON2);

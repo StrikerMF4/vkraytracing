@@ -65,7 +65,7 @@ void main() {
     vec3 throughput = vec3(1.0);
     for (int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; ++depth) {
         // Trazar el rayo
-        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, origin, T_MIN, direction, T_MAX, 0);
+        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
         if (payload.status == RAY_HIT_LIGHT) {
             Light light = lights.i[payload.light_id];
@@ -73,10 +73,14 @@ void main() {
 //            output_color += throughput * payload.Le / pdf;
             output_color += throughput * payload.Le;
             break;
+        } else if (payload.status == RAY_RETRY) {
+			depth--;
+			resetPayload(payload, payload.origin, payload.direction);
+			continue;
         } else if (payload.status == RAY_MISS) {
             output_color += throughput * vec3(0);
             break;
-        }
+		}
 
         // Actualizar throughput
         if (payload.pdfF > 0) {
@@ -85,9 +89,6 @@ void main() {
         }
         else break;
 
-        // Actualizar origen y direccion para el siguiente rebote
-        origin = payload.origin;
-        direction = payload.direction;
         if (depth >= MIN_DEPTH_ABSORPTION)
         {
             float q = min(max(throughput.x, max(throughput.y, throughput.z)) + EPSILON, 1);
@@ -96,7 +97,7 @@ void main() {
             throughput /= q;
         }
 
-        resetPayload(payload, origin, direction);
+        resetPayload(payload, payload.origin, payload.direction);
     }
 
     if(isnan(output_color.r) || isnan(output_color.g) || isnan(output_color.b))

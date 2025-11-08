@@ -101,9 +101,21 @@ Scene::Scene(const std::string& filepath) {
 				material.anisotropicTextureID = textures.size();
 				textures.push_back((*it)["anisotropictexture"].template get<std::string>());
 			}
-			if ((*it).contains("metallicroughnesstexture")) {
-				material.metallicRoughnessTextureID = textures.size();
-				textures.push_back((*it)["metallicroughnesstexture"].template get<std::string>());
+			if ((*it).contains("metallictexture")) {
+				material.metallicTextureID = textures.size();
+				textures.push_back((*it)["metallictexture"].template get<std::string>());
+			}
+			if ((*it).contains("roughnesstexture")) {
+				material.roughnessTextureID = textures.size();
+				textures.push_back((*it)["roughnesstexture"].template get<std::string>());
+			}
+			if ((*it).contains("opacitytexture")) {
+				material.opacityTextureID = textures.size();
+				textures.push_back((*it)["opacitytexture"].template get<std::string>());
+			}
+			if ((*it).contains("masktexture")) {
+				material.maskTextureID = textures.size();
+				textures.push_back((*it)["masktexture"].template get<std::string>());
 			}
 			if ((*it).contains("normaltexture")) {
 				material.normalTextureID = textures.size();

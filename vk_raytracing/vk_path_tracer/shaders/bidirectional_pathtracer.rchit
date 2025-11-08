@@ -32,8 +32,8 @@ void main() {
     //Object data
     ObjDesc    objResource = objDesc.i[gl_InstanceCustomIndexEXT];
     MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
-    LightIndices lightIndices = LightIndices(objResource.lightIndexAddress);
     Materials  materials   = Materials(objResource.materialAddress);
+    LightIndices lightIndices = LightIndices(objResource.lightIndexAddress);
     Indices    indices     = Indices(objResource.indexAddress);
     Vertices   vertices    = Vertices(objResource.vertexAddress);
 
@@ -47,17 +47,28 @@ void main() {
     // Computing the coordinates of the hit position
     const vec3 local_position = v0.position * barycentrics.x + v1.position * barycentrics.y + v2.position * barycentrics.z;
     const vec3 hit_position = vec3(gl_ObjectToWorldEXT * vec4(local_position, 1.0));  // Transforming the position to world space
-    
-    mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
     // Computing the normal at hit position
     const vec3 local_normal = v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z;
+    mat3 objToWorld = mat3(gl_ObjectToWorldEXT);
     payload.surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
 
     payload.light_id = lightIndices.i[gl_PrimitiveID];
-    
+
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
+
+    // Masking test
+    if(payload.material.maskTextureID >= 0) {
+        uint txtId    = payload.material.maskTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        float mask = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+        if (mask < 0.5) {
+            payload.origin = hit_position + payload.direction * EPSILON2;
+            payload.status = RAY_RETRY;
+            return;
+        }
+    }
 
     vec3 final_tangent = vec3(0,0,0);
     if (payload.material.anisotropicTextureID >= 0) {
@@ -69,6 +80,7 @@ void main() {
         final_tangent = normalize(aniso_dir_tangent_space);
     }
     payload.tangent = final_tangent;
+    
 
     // Texture
     vec3 texture_color = vec3(1);
@@ -77,7 +89,25 @@ void main() {
         vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).xyz;
     }
-    
+        
+    if(payload.material.metallicTextureID >= 0) {
+        uint txtId    = payload.material.metallicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        payload.material.metallic = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+    }
+
+    if(payload.material.roughnessTextureID >= 0) {
+        uint txtId    = payload.material.roughnessTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        payload.material.roughness = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+    }
+
+    if(payload.material.opacityTextureID >= 0) {
+        uint txtId    = payload.material.opacityTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        payload.material.opacity = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+    }
+
     payload.material.baseColor = payload.material.baseColor * texture_color;
     payload.origin = hit_position;
 
@@ -85,4 +115,3 @@ void main() {
 
     payload.origin = hit_position + payload.direction * EPSILON2;
 }
-
