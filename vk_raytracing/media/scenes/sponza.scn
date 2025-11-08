@@ -213,7 +213,7 @@
             "albedotexture": "models/sponza/textures/sponza_fabric_blue_diff.png",
             "displacementtexture": "models/sponza/textures/sponza_fabric_bump.png",
             "metallictexture": "models/sponza/textures/sponza_fabric_spec.png",
-            "roughnesstexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_fabric_rough.png",
             "metallic": 0.0,
             "roughness": 0.80,
             "specularTint": 0.10,
@@ -228,7 +228,7 @@
             "albedotexture": "models/sponza/textures/sponza_fabric_green_diff.png",
             "displacementtexture": "models/sponza/textures/sponza_fabric_bump.png",
             "metallictexture": "models/sponza/textures/sponza_fabric_spec.png",
-            "roughnesstexture": "models/sponza/textures/sponza_fabric_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_fabric_rough.png",
             "metallic": 0.0,
             "roughness": 0.80,
             "specularTint": 0.10,
@@ -242,6 +242,8 @@
             "name": "fabric_f",
             "albedotexture": "models/sponza/textures/sponza_curtain_green_diff.png",
             "displacementtexture": "models/sponza/textures/sponza_curtain_bump.png",
+            "metallictexture": "models/sponza/textures/sponza_curtain_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_curtain_rough.png",
             "metallic": 0.0,
             "roughness": 0.80,
             "specularTint": 0.10,
@@ -255,8 +257,8 @@
             "name": "fabric_g",
             "albedotexture": "models/sponza/textures/sponza_curtain_blue_diff.png",
             "displacementtexture": "models/sponza/textures/sponza_curtain_bump.png",
-            "metallic": 0.0,
-            "roughness": 0.80,
+            "metallictexture": "models/sponza/textures/sponza_curtain_spec.png",
+            "roughnesstexture": "models/sponza/textures/sponza_curtain_rough.png",
             "specularTint": 0.10,
             "subsurface": 0.12,
             "sheen": 0.45,
@@ -368,10 +370,11 @@
         },
         {
             "name": "Paredes",
+            "albedotexture": "models/sponza/textures/Daylight.png",
             "emission": [
-                20.0,
-                20.0,
-                20.0
+                1.0,
+                1.0,
+                1.0
             ]
         }
     ],

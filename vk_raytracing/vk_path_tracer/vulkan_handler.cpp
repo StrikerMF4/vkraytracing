@@ -1,4 +1,5 @@
 #include <sstream>
+#include <filesystem> 
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -1356,6 +1357,12 @@ void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
 
 void VulkanHandler::createScreenshot(const std::string& outFilename)
 {
+	const std::filesystem::path outDir = std::filesystem::path("screenshots");
+	std::error_code ec;
+	std::filesystem::create_directories(outDir, ec);
+
+	std::filesystem::path outPath = outDir / outFilename;
+
 	// Create a temporary buffer to hold the pixels of the image
 	const VkBufferUsageFlags usage{ VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
 	const VkDeviceSize buffer_size = 4 * sizeof(uint8_t) * m_size.width * m_size.height;
@@ -1368,7 +1375,7 @@ void VulkanHandler::createScreenshot(const std::string& outFilename)
 	// Write the buffer to disk
 	LOGI(" - Size: %d, %d\n", m_size.width, m_size.height);
 	LOGI(" - Bytes: %d\n", m_size.width * m_size.height * 4);
-	LOGI(" - Out name: %s\n", outFilename.c_str());
+	LOGI(" - Out path: %s\n", outPath.string().c_str());
 	const uint8_t* src = static_cast<const uint8_t*>(m_alloc.map(pixel_buffer));
 
 	std::vector<uint8_t> rgba;
@@ -1384,7 +1391,7 @@ void VulkanHandler::createScreenshot(const std::string& outFilename)
 		}
 	}
 
-	stbi_write_png(outFilename.c_str(), m_size.width, m_size.height, 4, rgba.data(), 0);
+	stbi_write_png(outPath.string().c_str(), m_size.width, m_size.height, 4, rgba.data(), 0);
 	m_alloc.unmap(pixel_buffer);
 
 	// Destroy temporary buffer

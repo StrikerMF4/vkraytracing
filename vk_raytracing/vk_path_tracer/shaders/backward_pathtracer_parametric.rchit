@@ -39,31 +39,62 @@ void main() {
 
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
-    Sphere sphere = allSpheres.i[object.kind_id];
-
     // Computing the normal and uv at hit position
     vec2 texCoord;
     if(gl_HitKindEXT == KIND_SPHERE) {
         Sphere instance = allSpheres.i[object.kind_id];
-
         payload.surface_normal = normalize(hit_position - instance.center);
         payload.tangent = instance.anisotropic_direction;
-
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
             payload.surface_normal.y * 0.5 + 0.5
         );
     }
+
     // Material of the object
-    int               matIdx = matIndices.i[gl_PrimitiveID];
+    int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
 
+    // Masking test
+    if(payload.material.maskTextureID >= 0) {
+        uint txtId    = payload.material.maskTextureID + objResource.txtOffset;
+        float mask = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+        if (mask < 0.5) {
+            payload.origin = hit_position + payload.direction * EPSILON2;
+            payload.status = RAY_RETRY;
+            return;
+        }
+    }
+
     // Texture
+    if (payload.material.anisotropicTextureID >= 0) {
+        uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
+        
+        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
+
+        payload.tangent = normalize(aniso_dir_tangent_space);
+    }
+
     vec3 texture_color = vec3(1);
     if(payload.material.albedoTextureID >= 0) {
-        uint txtId    = payload.material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
+        uint txtId    = payload.material.albedoTextureID + objResource.txtOffset;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).xyz;
+    }
+        
+    if(payload.material.metallicTextureID >= 0) {
+        uint txtId    = payload.material.metallicTextureID + objResource.txtOffset;
+        payload.material.metallic = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+    }
+
+    if(payload.material.roughnessTextureID >= 0) {
+        uint txtId    = payload.material.roughnessTextureID + objResource.txtOffset;
+        payload.material.roughness = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
+    }
+
+    if(payload.material.opacityTextureID >= 0) {
+        uint txtId    = payload.material.opacityTextureID + objResource.txtOffset;
+        payload.material.opacity = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
     }
 
     payload.material.baseColor = payload.material.baseColor * texture_color;

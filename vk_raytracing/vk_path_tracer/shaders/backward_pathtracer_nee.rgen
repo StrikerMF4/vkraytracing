@@ -2,6 +2,7 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
@@ -13,6 +14,8 @@ layout(location = 0) rayPayloadEXT rayPayload payload;
 
 layout(buffer_reference, scalar) buffer Vertices { Vertex v[]; }; // Positions of an object
 layout(buffer_reference, scalar) buffer Indices { ivec3 i[]; }; // Triangle indices
+layout(buffer_reference, scalar) buffer Materials {Material m[]; }; // Array of all materials on an object
+layout(buffer_reference, scalar) buffer MatIndices { int i[]; }; // Material index per triangle
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = eOutImage, rgba32f) uniform image2D image;
@@ -20,23 +23,31 @@ layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms cam
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
 
-vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out float pdf){
+vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out vec3 emission, out float pdf) {
 	// Pick a triangle in the light
 	Light light = lights.i[light_index];
-	uint random_index = pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
+	emission = light.emission;
+
+	uint random_index = light.first_index + pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
 	// Get buffers for the light object
-	ObjDesc objResource = objDesc.i[light.object_id];
+	ObjDesc	   objResource = objDesc.i[light.object_id];
+	Materials  materials   = Materials(objResource.materialAddress);
 	Indices    indices     = Indices(objResource.indexAddress);
 	Vertices   vertices    = Vertices(objResource.vertexAddress);
+	MatIndices matIndices  = MatIndices(objResource.materialIndexAddress);
 
 	ivec3 light_triangle_index = indices.i[random_index];
+
+	int matIdx = matIndices.i[random_index];
+    Material material = materials.m[matIdx];
 
 	// Vertex of the triangle
 	Vertex v0 = vertices.v[light_triangle_index.x];
@@ -45,14 +56,24 @@ vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out float pdf
 
 	vec3 barycentric = randomBarycentricPointInTriangle(v0.position, v1.position, v2.position, payload.random_seed);
 
-	vec4 local_normal = vec4(v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z, 1.0);
+	if(material.albedoTextureID >= 0) {
+        uint txtId    = material.albedoTextureID + objResource.txtOffset;
+        vec2 texCoord = v0.texCoord * barycentric.x + v1.texCoord * barycentric.y + v2.texCoord * barycentric.z;
+        emission *= texture(textureSamplers[nonuniformEXT(txtId)], texCoord * material.tiling).xyz;
+    }
+
+	vec3 local_normal = v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z;
 	vec4 local_point = vec4(barycentric.x * v0.position + barycentric.y * v1.position + barycentric.z * v2.position, 1.0);
 
-	surface_normal = normalize((local_normal * light.world_to_object).xyz);
 
-	pdf = 1.0 / (light.area);
+	mat3 objToWorld = mat3(light.object_to_world);
+	surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
 
-    return (light.object_to_world * local_point).xyz;
+	vec3 point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
+
+	pdf = 1.0 / light.area;
+
+	return point;
 }
 
 vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material material, inout uint random_seed){
@@ -64,7 +85,8 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 	for (uint light_index = 0; light_index < settings.light_count; light_index++){
 		vec3 light_normal;
 		float pdfLight = 0;
-		vec3 light_point = RandomPointInLight(light_index, light_normal, pdfLight);
+		vec3 emission = vec3(0);
+		vec3 light_point = RandomPointInLight(light_index, light_normal, emission, pdfLight);
 		vec3 L = light_point - origin;
 		float lightdist = length(L);
 		L /= lightdist; // Normalize
@@ -76,12 +98,11 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 
 		if (payload.status != RAY_MISS) continue; // Occluded
 
-		Light light = lights.i[light_index];
 		vec3 bsdf = vec3(0);
 		float pdfF, pdfB;
 		float g = GeometricTerm(origin, N, light_point, light_normal);
 		DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
-		output_color += light.emission * g * bsdf / pdfLight;
+		output_color += emission * g * bsdf / pdfLight;
 	}
 	return output_color;
 }

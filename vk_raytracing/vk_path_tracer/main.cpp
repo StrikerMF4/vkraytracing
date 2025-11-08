@@ -611,6 +611,7 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	glfwSetWindowSize(window, scene->resolution_x, scene->resolution_y);
 	CameraManip.setLookat(scene->camera_position, scene->camera_lookat, glm::vec3(0, 1, 0));
 	CameraManip.setFov(scene->camera_fov);
+	CameraManip.setSpeed(5.0f);
 
 	vulkanHandler.m_cameraAperture = 0.f;
 	vulkanHandler.m_cameraFocalLength = 1.f;

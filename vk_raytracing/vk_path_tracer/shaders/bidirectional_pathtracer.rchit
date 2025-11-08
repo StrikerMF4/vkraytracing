@@ -58,10 +58,11 @@ void main() {
     int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
 
+    vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+
     // Masking test
     if(payload.material.maskTextureID >= 0) {
-        uint txtId    = payload.material.maskTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId    = payload.material.maskTextureID + objResource.txtOffset;
         float mask = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
         if (mask < 0.5) {
             payload.origin = hit_position + payload.direction * EPSILON2;
@@ -72,8 +73,7 @@ void main() {
 
     vec3 final_tangent = vec3(0,0,0);
     if (payload.material.anisotropicTextureID >= 0) {
-        uint txtId = payload.material.anisotropicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
         
         vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
 
@@ -85,26 +85,22 @@ void main() {
     // Texture
     vec3 texture_color = vec3(1);
     if(payload.material.albedoTextureID >= 0) {
-        uint txtId    = payload.material.albedoTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId    = payload.material.albedoTextureID + objResource.txtOffset;
         texture_color = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).xyz;
     }
         
     if(payload.material.metallicTextureID >= 0) {
-        uint txtId    = payload.material.metallicTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId    = payload.material.metallicTextureID + objResource.txtOffset;
         payload.material.metallic = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
     }
 
     if(payload.material.roughnessTextureID >= 0) {
-        uint txtId    = payload.material.roughnessTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId    = payload.material.roughnessTextureID + objResource.txtOffset;
         payload.material.roughness = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
     }
 
     if(payload.material.opacityTextureID >= 0) {
-        uint txtId    = payload.material.opacityTextureID + objDesc.i[gl_InstanceCustomIndexEXT].txtOffset;
-        vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
+        uint txtId    = payload.material.opacityTextureID + objResource.txtOffset;
         payload.material.opacity = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
     }
 
