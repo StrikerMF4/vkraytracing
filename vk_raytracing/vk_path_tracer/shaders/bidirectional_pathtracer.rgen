@@ -42,12 +42,18 @@ MISNode misNodes[MAX_DEPTH + 1];
 uint RandomPointInLight(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf) {
 	// Pick a random light
 	const uint lightCount = settings.light_count;
-	uint light_index = pcg_hash(payload.random_seed) % lightCount;
+	uint light_index = 0;
+	float random = rand(payload.random_seed);
 
-	// Pick a triangle in the light
+	// Select light based on weights
+	for (light_index = 0; light_index < lightCount; light_index++) {
+		if (random <= lights.i[light_index].weight) break;
+	}
+
 	Light light = lights.i[light_index];
 	emission = light.emission;
 
+	// Pick a triangle in the light
 	uint random_index = light.first_index + pcg_hash(payload.random_seed) % (light.last_index - light.first_index + 1);
 
 	// Get buffers for the light object

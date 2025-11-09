@@ -169,6 +169,7 @@ struct Light {
 	mat4 world_to_object;
 	vec3 emission;
 	float area;
+	float weight; 
 	uint mesh_type;
 	//If mesh_type is KIND_GEOMETRY, first_index is the index of the sphere in the implicit objects buffer
 	uint first_index;

@@ -82,6 +82,7 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 	float theta = payload.theta;
 
 	vec3 output_color = vec3(0);
+//	uint light_index = pcg_hash(payload.random_seed) % (settings.light_count);
 	for (uint light_index = 0; light_index < settings.light_count; light_index++){
 		vec3 light_normal;
 		float pdfLight = 0;

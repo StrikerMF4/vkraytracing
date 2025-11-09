@@ -413,6 +413,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 		materialAddress = nvvk::getBufferDeviceAddress(m_device, material_buffer->buffer);
 	}
 
+	float total_area = 0.0f;
 
 	// Upload all entities from scene to Vulkan
 	for (int i = 0; i < scene->entities.size(); i++) {
@@ -464,6 +465,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 				result.emission = material.emission;
 
 				result.area = 4 * glm::pi<float>() * sphere->radius * sphere->radius;
+				total_area += result.area;
 				result.mesh_type = KIND_SPHERE;
 				result.first_index = m_implicitObj.size() - 1;
 
@@ -504,6 +506,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 				result.first_index = light.first_index;
 				result.last_index = light.last_index;
 				result.area = light.area;
+				total_area += result.area;
 				result.mesh_type = KIND_GEOMETRY;
 
 				unsigned int lightID = m_lights.size();
@@ -564,6 +567,11 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 			m_objModel.emplace_back(model);
 			m_objDesc.emplace_back(desc);
 		}
+	}
+	float cumulative_weight = 0.0f;
+	for (int i = 0; i < m_lights.size(); i++) {
+		cumulative_weight += m_lights[i].area / total_area;
+		m_lights[i].weight = cumulative_weight;
 	}
 }
 
