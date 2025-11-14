@@ -18,6 +18,7 @@
 #include <chrono>
 #include <ctime>
 #include <time.h>
+#include <fstream>
 
 //////////////////////////////////////////////////////////////////////////
 #define UNUSED(x) (void)(x)
@@ -46,14 +47,15 @@ bool paused = false;
 bool fullscreen = false;
 bool gui_visible = true;
 bool config_menu_visible = false;
-bool change_scene = false;
-bool g_autoExit = false;
+int g_auto_exit = 0;
+int screenshot_count = 0;
 
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
 auto pause_timer_start = std::chrono::high_resolution_clock::now();
 
-double maxTime = 500000.0;
+double screenshot_time = 0;
+int screenshot_iter = 0;
 std::string scene_path;
 
 glm::vec3 camera_default_position;
@@ -79,44 +81,113 @@ int main(int argc, char** argv)
 {
 	//UNUSED(argc);
 
-	if (argc > 1) {
-		// Usar el primer argumento como ruta de la escena
-		scene_path = argv[1];
+	auto print_usage = []() {
+		std::cerr <<
+			"Uso:\n"
+			"  programa -scene <ruta_escena>\n"
+			"          [-technique <bpt|nee|bdpt>]\n"
+			"          [-screenshot_time <segundos>]\n"
+			"          [-screenshot_iter <iteraciones>]\n"
+			"          [-auto-exit <num_capturas>]\n"
+			"          [-h | --help]\n"
+			"\n"
+			"Descripcion de parametros:\n"
+			"  -scene <ruta>              Ruta al archivo .scn de la escena.\n"
+			"  -technique <...>           Tecnica de render: bpt | nee | bdpt.\n"
+			"  -screenshot_time <s>       Toma una captura cada <s> segundos.\n"
+			"  -screenshot_iter <n>       Toma una captura cada <n> iteraciones.\n"
+			"  -auto-exit <k>             Cierra el programa luego de <k> capturas.\n"
+			"  -h, --help                 Muestra esta ayuda.\n";
+		};
+
+	std::string technique = "bdpt";  // valor por defecto
+
+	for (int i = 1; i < argc; ++i) {
+		std::string arg = argv[i];
+
+		if (arg == "-auto-exit") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -auto-exit requiere valor entero.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				g_auto_exit = std::stoi(argv[++i]);
+			}
+			catch (...) {
+				std::cerr << "Error: valor inválido para -auto-exit.\n";
+				print_usage();
+				return 1;
+			}
+		}
+		else if (arg == "-scene") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -scene requiere una ruta de escena.\n";
+				print_usage();
+				return 1;
+			}
+			scene_path = argv[++i];
+		}
+		else if (arg == "-technique") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -technique requiere un valor (bpt|nee|bdpt).\n";
+				print_usage();
+				return 1;
+			}
+			technique = argv[++i];
+		}
+		else if (arg == "-screenshot_time") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -screenshot_time requiere un valor en segundos.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				screenshot_time = std::stod(argv[++i]);
+			}
+			catch (...) {
+				std::cerr << "Error: valor inválido para -screenshot_time.\n";
+				print_usage();
+				return 1;
+			}
+		}
+		else if (arg == "-screenshot_iter") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -screenshot_iter requiere valor entero.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				screenshot_iter = std::stoi(argv[++i]);
+			}
+			catch (...) {
+				std::cerr << "Error: valor inválido para -screenshot_iter.\n";
+				print_usage();
+				return 1;
+			}
+		}
+		else if (arg == "-h" || arg == "--help") {
+			print_usage();
+			return 0;
+		}
 	}
-	else {
-		// Sin argumento, se podría usar un valor por defecto o mostrar error
-		std::cerr << "Uso: programa <ruta_escena> [tecnica] [tiempo_segundos]\n";
+	
+	if (screenshot_iter > 0 || screenshot_time > 0) {
+		gui_visible = false;
 	}
+
 	bool valid_scene = true;
 
-
-
-	std::string technique = "path";  // valor por defecto
-	if (argc > 2) {
-		technique = argv[2];
-	}
-
 	// Seleccionar la técnica inicial según el parámetro
-	if (technique == "path") {
+	if (technique == "bpt") {
 		current_technique = TechniqueType::BACKWARD_PATHTRACER;
 	}
-	else if (technique == "shadow") {
+	else if (technique == "nee") {
 		current_technique = TechniqueType::BACKWARD_PATHTRACER_NEE;
 	}
 	else if (technique == "bdpt") {
 		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
 	}
-
-	for (int i = 1; i < argc; ++i) {
-		if (std::string(argv[i]) == "--auto-exit") {
-			g_autoExit = true;
-		}
-	}
-
-	if (argc > 3) {
-		maxTime = atof(argv[3]); // o std::stod(argv[3])
-	}
-
 
 	// Setup GLFW window
 	glfwSetErrorCallback(onErrorCallback);
@@ -254,9 +325,6 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 		break;
 	case GLFW_KEY_F2:
 		vulkanHandler.m_createScreenshot = true;
-		break;
-	case GLFW_KEY_F3:
-		change_scene = true;
 		break;
 	case GLFW_KEY_F11:
 		fullscreen = !fullscreen;
@@ -733,6 +801,18 @@ static void render_loop(GLFWwindow* window) {
 			vkCmdEndRenderPass(cmdBuf);
 		}
 
+		// Submit for display
+		vkEndCommandBuffer(cmdBuf);
+		vulkanHandler.submitFrame();
+
+
+		auto now = std::chrono::steady_clock::now();
+		double elapsedSec = std::chrono::duration<double>(now - startTime).count();
+		if ((screenshot_time > 0 && elapsedSec >= screenshot_time) ||
+			(screenshot_iter > 0 && (iterations) % screenshot_iter == 0)) {
+			vulkanHandler.m_createScreenshot = true;
+		}
+
 		if (vulkanHandler.m_createScreenshot)
 		{
 			std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -742,29 +822,27 @@ static void render_loop(GLFWwindow* window) {
 			s.resize(len);
 			std::filesystem::path p(scene_path);
 			LOGI(scene_path.c_str());
-			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + ".png";
+			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + std::to_string(iterations) + ".png";
 
 			vulkanHandler.createScreenshot(filename);
-
 			vulkanHandler.m_createScreenshot = false;
-			startTime = std::chrono::steady_clock::now();
+			screenshot_count++;
 
-			if (g_autoExit) {
+			std::ofstream logFile("log.txt", std::ios::app);
+			if (logFile) {
+				logFile << filename << " " << elapsedSec << " " << iterations << "\n";
+				logFile.flush();
+			}
+			else if (!logFile) {
+				std::cerr << "No se pudo abrir el archivo de log: log.txt\n";
+			}
+
+			if (g_auto_exit > 0 && g_auto_exit <= screenshot_count) {
 				vkDeviceWaitIdle(vulkanHandler.getDevice());
 				glfwSetWindowShouldClose(window, GLFW_TRUE);
 				return;
 			}
-		}
-
-		// Submit for display
-		vkEndCommandBuffer(cmdBuf);
-		vulkanHandler.submitFrame();
-
-		auto now = std::chrono::steady_clock::now();
-		double elapsedSec = std::chrono::duration<double>(now - startTime).count();
-		if (elapsedSec >= maxTime) {
-			// Tiempo cumplido: tomar captura y salir
-			vulkanHandler.m_createScreenshot = true;
+			startTime = std::chrono::steady_clock::now();
 		}
 	}
 }

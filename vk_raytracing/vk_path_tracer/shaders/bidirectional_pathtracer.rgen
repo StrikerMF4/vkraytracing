@@ -317,7 +317,7 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     return We;
 }
 
-vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint t, vec3 direction, out PDFConnection pdf, uint light_index) {
+vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint t, vec3 direction, vec3 light_emission, out PDFConnection pdf) {
 	vec3 eye_color = vec3(0);
 	if (t == 1) {
 		eye_color = vec3(evalWe(eye_point.point, light_point.point));
@@ -333,8 +333,7 @@ vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint
 	}
 	vec3 light_color = vec3(0);
 	if ( s == 1 ) { // direct illumination
-		Light light = lights.i[light_index];
-		light_color = dot(light_point.normal, -direction) > 0 ? light.emission : vec3(0.0);
+		light_color = dot(light_point.normal, -direction) > 0 ? light_emission : vec3(0.0);
 		pdf.lightF = AreaLightPDFDirection(-direction, light_point.normal)
 					 / (abs(dot(light_point.normal, -direction)) + EPSILON);
 		pdf.lightB = light_hits[0].pdfB;
@@ -611,7 +610,7 @@ void main() {
 				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, dist - EPSILON, 0);
 				if (payload.status != RAY_MISS) continue;
 
-				contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, pdf, light_index);
+				contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, Le, pdf);
 			}
 
 			if (t > 0 && s != 0) {
