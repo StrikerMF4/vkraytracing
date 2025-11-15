@@ -84,9 +84,7 @@ uint RandomPointInLight(out vec3 point, out vec3 surface_normal, out vec3 emissi
 	vec3 local_normal = v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z;
 	vec4 local_point = vec4(barycentric.x * v0.position + barycentric.y * v1.position + barycentric.z * v2.position, 1.0);
 
-
-	mat3 objToWorld = mat3(light.object_to_world);
-	surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
+	surface_normal = normalize(light.world_to_object * local_normal);
 
 	point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
 

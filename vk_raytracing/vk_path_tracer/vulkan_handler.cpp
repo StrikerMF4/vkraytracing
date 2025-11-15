@@ -310,7 +310,7 @@ void VulkanHandler::createDescriptorSetLayout()
 		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	// Textures
 	m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
-		VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR);
+		VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	// Lights
 	m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -499,7 +499,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 
 				result.object_id = m_objDesc.size();
 				result.object_to_world = transform;
-				result.world_to_object = glm::transpose(glm::inverse(transform));
+				result.world_to_object = glm::transpose(glm::inverse(glm::mat3(transform)));
 
 				result.emission = light.emission;
 
@@ -1363,14 +1363,8 @@ void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
 		m_createScreenshot = true;
 }
 
-void VulkanHandler::createScreenshot(const std::string& outFilename)
+void VulkanHandler::createScreenshot(const std::filesystem::path& outPath)
 {
-	const std::filesystem::path outDir = std::filesystem::path("screenshots");
-	std::error_code ec;
-	std::filesystem::create_directories(outDir, ec);
-
-	std::filesystem::path outPath = outDir / outFilename;
-
 	// Create a temporary buffer to hold the pixels of the image
 	const VkBufferUsageFlags usage{ VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
 	const VkDeviceSize buffer_size = 4 * sizeof(uint8_t) * m_size.width * m_size.height;

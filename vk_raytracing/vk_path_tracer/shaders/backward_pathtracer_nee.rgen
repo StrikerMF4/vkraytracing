@@ -65,9 +65,7 @@ vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out vec3 emis
 	vec3 local_normal = v0.normal * barycentric.x + v1.normal * barycentric.y + v2.normal * barycentric.z;
 	vec4 local_point = vec4(barycentric.x * v0.position + barycentric.y * v1.position + barycentric.z * v2.position, 1.0);
 
-
-	mat3 objToWorld = mat3(light.object_to_world);
-	surface_normal = normalize(transpose(inverse(objToWorld)) * local_normal);
+	surface_normal = normalize(light.world_to_object * local_normal);
 
 	vec3 point = (light.object_to_world * local_point).xyz + surface_normal * 0.01;
 
@@ -76,7 +74,7 @@ vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out vec3 emis
 	return point;
 }
 
-vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material material, inout uint random_seed){
+vec3 DirectLightsource(vec3 origin, vec3 viewer, vec3 normal, vec3 tangent, Material material, inout uint random_seed){
 	float IOR = payload.material.ior;
 	float roughness = payload.material.roughness;
 	float theta = payload.theta;
@@ -85,25 +83,25 @@ vec3 GGX_shadow_ray(vec3 origin, vec3 viewer, vec3 N, vec3 tangent, Material mat
 //	uint light_index = pcg_hash(payload.random_seed) % (settings.light_count);
 	for (uint light_index = 0; light_index < settings.light_count; light_index++){
 		vec3 light_normal;
-		float pdfLight = 0;
+		float pdf_light = 0;
 		vec3 emission = vec3(0);
-		vec3 light_point = RandomPointInLight(light_index, light_normal, emission, pdfLight);
-		vec3 L = light_point - origin;
-		float lightdist = length(L);
-		L /= lightdist; // Normalize
+		vec3 light_point = RandomPointInLight(light_index, light_normal, emission, pdf_light);
+		vec3 direction = light_point - origin;
+		float light_distance = length(direction);
+		direction /= light_distance; // Normalize
 
-		if (dot(-L, light_normal) <= 0 || dot(N, L) <= 0) continue; 
+		if (dot(-direction, light_normal) <= 0 || dot(normal, direction) <= 0) continue; 
 
-		resetPayload(payload, origin, L);
-		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, L, lightdist - 0.001f, 0);
+		resetPayload(payload, origin, direction);
+		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, light_distance - EPSILON2, 0);
 
 		if (payload.status != RAY_MISS) continue; // Occluded
 
 		vec3 bsdf = vec3(0);
 		float pdfF, pdfB;
-		float g = GeometricTerm(origin, N, light_point, light_normal);
-		DisneyBSDF(viewer, L, N, tangent, material, bsdf, pdfF, pdfB, random_seed);
-		output_color += emission * g * bsdf / pdfLight;
+		float g = GeometricTerm(origin, normal, light_point, light_normal);
+		DisneyBSDF(viewer, direction, normal, tangent, material, bsdf, pdfF, pdfB, random_seed);
+		output_color += emission * g * bsdf / pdf_light;
 	}
 	return output_color;
 }
@@ -175,8 +173,8 @@ void main()
 		vec3 normal = payload.surface_normal;
 		vec3 tangent = payload.tangent;
 
-		if(payload.bsdf_type == BSDF_DIFFUSE)
-			output_color += (GGX_shadow_ray(origin, viewer, normal, tangent, payload.material, payload.random_seed)) * throughput;
+		if(!payload.isDeltaDirac)
+			output_color += (DirectLightsource(origin, viewer, normal, tangent, payload.material, payload.random_seed)) * throughput;
 
 
 		if (depth >= 4) {

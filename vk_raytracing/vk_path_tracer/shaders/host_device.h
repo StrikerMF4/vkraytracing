@@ -8,6 +8,7 @@
 using vec2 = glm::vec2;
 using vec3 = glm::vec3;
 using vec4 = glm::vec4;
+using mat3 = glm::mat3;
 using mat4 = glm::mat4;
 using uint = unsigned int;
 #endif
@@ -166,7 +167,7 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 struct Light {
 	int object_id;
 	mat4 object_to_world;
-	mat4 world_to_object;
+	mat3 world_to_object;
 	vec3 emission;
 	float area;
 	float weight; 

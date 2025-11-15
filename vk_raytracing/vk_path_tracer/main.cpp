@@ -57,6 +57,7 @@ auto pause_timer_start = std::chrono::high_resolution_clock::now();
 double screenshot_time = 0;
 int screenshot_iter = 0;
 std::string scene_path;
+std::string screenshot_path = "screenshots";
 
 glm::vec3 camera_default_position;
 glm::vec3 camera_default_lookat;
@@ -96,6 +97,7 @@ int main(int argc, char** argv)
 			"  -technique <...>           Tecnica de render: bpt | nee | bdpt.\n"
 			"  -screenshot_time <s>       Toma una captura cada <s> segundos.\n"
 			"  -screenshot_iter <n>       Toma una captura cada <n> iteraciones.\n"
+			"  -screenshot_path <ruta>    Ruta donde se guardan las capturas.\n"
 			"  -auto-exit <k>             Cierra el programa luego de <k> capturas.\n"
 			"  -h, --help                 Muestra esta ayuda.\n";
 		};
@@ -165,6 +167,14 @@ int main(int argc, char** argv)
 				print_usage();
 				return 1;
 			}
+		}
+		else if (arg == "-screenshot_path") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -screenshot_path requiere una ruta.\n";
+				print_usage();
+				return 1;
+			}
+			screenshot_path = argv[++i];
 		}
 		else if (arg == "-h" || arg == "--help") {
 			print_usage();
@@ -822,9 +832,15 @@ static void render_loop(GLFWwindow* window) {
 			s.resize(len);
 			std::filesystem::path p(scene_path);
 			LOGI(scene_path.c_str());
-			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + std::to_string(iterations) + ".png";
+			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + "-" + std::to_string(iterations) + ".png";
+			
+			const std::filesystem::path outDir = std::filesystem::path(screenshot_path);
+			std::error_code ec;
+			std::filesystem::create_directories(outDir, ec);
 
-			vulkanHandler.createScreenshot(filename);
+			std::filesystem::path outPath = outDir / filename;
+
+			vulkanHandler.createScreenshot(outPath);
 			vulkanHandler.m_createScreenshot = false;
 			screenshot_count++;
 

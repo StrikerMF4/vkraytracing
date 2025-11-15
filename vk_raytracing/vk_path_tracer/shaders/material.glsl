@@ -42,7 +42,7 @@ float GeometricTerm(vec3 xi, vec3 ni, vec3 xo, vec3 no) {
     float cos_theta_i = max(dot(ni, x_diff_norm), 0.0);
     float cos_theta_o = max(dot(no, -x_diff_norm), 0.0);
 
-    return abs(cos_theta_o * cos_theta_i) / (dot(x_diff, x_diff) + EPSILON);
+    return abs(cos_theta_o * cos_theta_i) / (dot(x_diff, x_diff) + EPSILON2);
 }
 
 float Schlick(const float cosine, const float refractionIndex) {
@@ -278,15 +278,13 @@ void DisneyBSDF(vec3 w_o, vec3 w_i, vec3 normal, vec3 tangent, Material material
     float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
     float metalPr = metalWt * Luminance(mix(material.baseColor, vec3(1.0), schlickWt));
     float glassPr = glassWt;
-    float clearCtPr = 0.25 * material.clearcoat;
 
     // Normalize probabilities
-    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
+    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr);
     diffPr *= invTotalWt;
     dielectricPr *= invTotalWt;
     metalPr *= invTotalWt;
     glassPr *= invTotalWt;
-    clearCtPr *= invTotalWt;
 
     bool reflect = ODotN * IDotN > 0;
 
@@ -401,10 +399,12 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
     float tmpPdf;
     vec3 L, f;
     vec3 w_o;
+
+    isDeltaDirac = material.roughness <= EPSILON2; //dirac
+    
     if (random < cdf[0]) { // Diffuse
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
         bsdf_type = BSDF_DIFFUSE;
-        isDeltaDirac = false;
     }
     else if (random < cdf[2]) { // Dielectric + Metallic reflection
         float aspect = sqrt(1.0 - material.anisotropic * 0.9);
@@ -418,8 +418,8 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         
         w_o = normalize(MicroReflect(w_i, micro_normal));
 
-        bsdf_type = random < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
-        isDeltaDirac = material.roughness <= EPSILON2; //dirac
+//        bsdf_type = random < cdf[1] ? BSDF_DIFFUSE : BSDF_REFLECTION;
+        bsdf_type = BSDF_REFLECTION;
     }
     else { // Glass
         float theta_m;
@@ -437,8 +437,6 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
             w_o = MicroTransmit(w_i, micro_normal, normal, eta);
             bsdf_type = BSDF_TRANSMISSION;
         }
-
-        isDeltaDirac = material.roughness <= EPSILON2; //dirac
     }
     
     return w_o;

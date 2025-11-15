@@ -192,7 +192,7 @@ public:
 	float m_cameraFocalLength{ 0.0f };  // Camera focal length
 
 	bool m_createScreenshot{ false };  // Create screenshot at the end of the next render cycle
-	void createScreenshot(const std::string& filename);
+	void createScreenshot(const std::filesystem::path& filename);
 	void imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBufferOut);
 
 	// Techniques
