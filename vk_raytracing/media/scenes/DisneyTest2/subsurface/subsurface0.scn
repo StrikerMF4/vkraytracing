@@ -14,7 +14,7 @@
         },
         {
             "name": "Light",
-            "emission": [2.0, 2.0, 2.0]
+            "emission": [10.0, 10.0, 10.0]
         },
         {
             "name": "Paredes",
