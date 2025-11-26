@@ -29,6 +29,9 @@ layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer set
 // clang-format on
 
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const uint connectionFlags = gl_RayFlagsOpaqueEXT | 
+							gl_RayFlagsSkipClosestHitShaderEXT |
+							gl_RayFlagsTerminateOnFirstHitEXT;
 
 vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out vec3 emission, out float pdf) {
 	// Pick a triangle in the light
@@ -93,7 +96,7 @@ vec3 DirectLightsource(vec3 origin, vec3 viewer, vec3 normal, vec3 tangent, Mate
 		if (dot(-direction, light_normal) <= 0 || dot(normal, direction) <= 0) continue; 
 
 		resetPayload(payload, origin, direction);
-		traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, light_distance - EPSILON2, 0);
+		traceRayEXT(topLevelAS, connectionFlags, 0xFF, 0, 0, 0, origin, T_MIN, direction, light_distance - EPSILON2, 0);
 
 		if (payload.status != RAY_MISS) continue; // Occluded
 
@@ -151,7 +154,7 @@ void main()
 		vec3 viewer = -payload.direction;
 
 		// Trazar el rayo
-		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
+		traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
 		if (payload.status == RAY_HIT_LIGHT) {
 			output_color += throughput * payload.Le;

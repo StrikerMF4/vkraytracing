@@ -49,6 +49,8 @@ bool gui_visible = true;
 bool config_menu_visible = false;
 int g_auto_exit = 0;
 int screenshot_count = 0;
+int debug_technique_s = -1;
+int debug_technique_t = -1;
 
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
@@ -99,6 +101,8 @@ int main(int argc, char** argv)
 			"  -screenshot_iter <n>       Toma una captura cada <n> iteraciones.\n"
 			"  -screenshot_path <ruta>    Ruta donde se guardan las capturas.\n"
 			"  -auto-exit <k>             Cierra el programa luego de <k> capturas.\n"
+			"  -debug_technique_s <s>	  Bidirectional s.\n"
+			"  -debug_technique_t <t>     Bidirectional t.\n"
 			"  -h, --help                 Muestra esta ayuda.\n";
 		};
 
@@ -168,6 +172,38 @@ int main(int argc, char** argv)
 				return 1;
 			}
 		}
+		else if (arg == "-debug_technique_s") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -debug_technique_s requiere valor entero.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				debug_technique_s = std::stoi(argv[++i]);
+				bidirectional_debug_technique = true;
+			}
+			catch (...) {
+				std::cerr << "Error: valor inválido para -debug_technique_s.\n";
+				print_usage();
+				return 1;
+			}
+		}
+		else if (arg == "-debug_technique_t") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -debug_technique_t requiere valor entero.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				debug_technique_t = std::stoi(argv[++i]);
+				bidirectional_debug_technique = true;
+			}
+			catch (...) {
+				std::cerr << "Error: valor inválido para -debug_technique_t.\n";
+				print_usage();
+				return 1;
+			}
+		}
 		else if (arg == "-screenshot_path") {
 			if (i + 1 >= argc) {
 				std::cerr << "Error: -screenshot_path requiere una ruta.\n";
@@ -197,6 +233,7 @@ int main(int argc, char** argv)
 	}
 	else if (technique == "bdpt") {
 		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
+
 	}
 
 	// Setup GLFW window
@@ -245,15 +282,6 @@ int main(int argc, char** argv)
 	contextInfo.addDeviceExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME, false, &rtPipelineFeature);  // To use vkCmdTraceRaysKHR
 	contextInfo.addDeviceExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);  // Required by ray tracing pipeline
 
-	// Add extensions for atomic image manipulation (used in the bidirectional renderer)
-	VkPhysicalDeviceShaderAtomicFloatFeaturesEXT floatFeatures;
-	floatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
-	floatFeatures.shaderImageFloat32AtomicAdd = true; //atomic operations on images
-	//floatFeatures.shaderImageFloat32Atomics = true;
-	//To-Do: Revisar si sparseImage es más útil o eficiente en el caso de bidirectional, ya que no todos los pixeles tendrán información
-	//floatFeatures.sparseImageFloat32Atomics = true;
-	//floatFeatures.sparseImageFloat32AtomicAdd = true;
-	contextInfo.addDeviceExtension(VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME, false, &floatFeatures);
 
 	// Creating Vulkan base application
 	nvvk::Context vkctx{};
@@ -695,8 +723,8 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_cameraFocalLength = 1.f;
 
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
-	vulkanHandler.m_pcRay.debug_technique_s = -1;
-	vulkanHandler.m_pcRay.debug_technique_t = -1;
+	vulkanHandler.m_pcRay.debug_technique_s = debug_technique_s;
+	vulkanHandler.m_pcRay.debug_technique_t = debug_technique_t;
 	vulkanHandler.m_pcRay.antialiasing_radius = scene->antialiasing_radius;
 
 	vulkanHandler.m_pcRay.debug_multiply_mis = 1;
@@ -707,7 +735,12 @@ std::string techniqueToString(TechniqueType t) {
 	switch (t) {
 	case TechniqueType::BACKWARD_PATHTRACER: return "BPT";
 	case TechniqueType::BACKWARD_PATHTRACER_NEE: return "BPTNEE";
-	case TechniqueType::BIDIRECTIONAL_PATHTRACER: return "BDPT";
+	case TechniqueType::BIDIRECTIONAL_PATHTRACER: 
+		if (bidirectional_debug_technique)
+			return "BDPT(s=" + std::to_string(vulkanHandler.m_pcRay.debug_technique_s) 
+					+ ",t=" + std::to_string(vulkanHandler.m_pcRay.debug_technique_t) + ")";
+		else
+		return "BDPT";
 	default: return "Unknown";
 	}
 }

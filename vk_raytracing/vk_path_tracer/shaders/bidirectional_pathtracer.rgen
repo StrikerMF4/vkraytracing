@@ -22,7 +22,7 @@ layout(buffer_reference, scalar) buffer Materials {Material m[]; }; // Array of 
 layout(buffer_reference, scalar) buffer MatIndices { int i[]; }; // Material index per triangle
 
 layout(set = 0, binding = eTlas) uniform accelerationStructureEXT topLevelAS;
-layout(set = 0, binding = eOutImage, rgba16f) uniform image2D output_image;
+layout(set = 0, binding = eOutImage, rgba32f) uniform image2D output_image;
 layout(set = 0, binding = eBidirectionalLightImage, r32ui) uniform uimage2D light_output_image;
 
 layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms camera; };
@@ -35,6 +35,10 @@ layout(push_constant, std430) uniform _PushConstantRayTracer { PushConstantRayTr
 // clang-format on
 
 const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const uint connectionFlags = gl_RayFlagsOpaqueEXT | 
+					gl_RayFlagsSkipClosestHitShaderEXT |
+					gl_RayFlagsTerminateOnFirstHitEXT;
+
 Node eye_hits[MAX_DEPTH + 1];
 Node light_hits[MAX_DEPTH + 1];
 MISNode misNodes[MAX_DEPTH + 1];
@@ -422,7 +426,7 @@ void main() {
 	for(int depth = 0; depth < settings.max_depth && payload.status == RAY_CONTINUE; depth++) {
 
 		// Trazar el rayo
-		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
+		traceRayEXT(topLevelAS, rayFlags, 0xFF, 0, 1, 0, payload.origin, T_MIN, payload.direction, T_MAX, 0);
 
 		if (payload.status == RAY_HIT_LIGHT) {
 			Light light = lights.i[payload.light_id];
@@ -605,7 +609,7 @@ void main() {
 					continue;
 
 				resetPayload(payload, origin, direction);
-				traceRayEXT(topLevelAS, gl_RayFlagsSkipClosestHitShaderNV, 0xFF, 0, 0, 0, origin, T_MIN, direction, dist - EPSILON, 0);
+				traceRayEXT(topLevelAS, connectionFlags, 0xFF, 0, 0, 0, origin, T_MIN, direction, dist - EPSILON, 0);
 				if (payload.status != RAY_MISS) continue;
 
 				contribution = connectionFactor(light_hits[s-1], eye_hits[t-1], s, t, direction, Le, pdf);
