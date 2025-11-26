@@ -51,6 +51,8 @@ int g_auto_exit = 0;
 int screenshot_count = 0;
 int debug_technique_s = -1;
 int debug_technique_t = -1;
+bool debug_mis_disabled = false;
+bool debug_contribution_disabled = false;
 
 int max_depth = MAX_DEPTH / 2;
 bool bidirectional_debug_technique = false;
@@ -101,8 +103,10 @@ int main(int argc, char** argv)
 			"  -screenshot_iter <n>       Toma una captura cada <n> iteraciones.\n"
 			"  -screenshot_path <ruta>    Ruta donde se guardan las capturas.\n"
 			"  -auto-exit <k>             Cierra el programa luego de <k> capturas.\n"
-			"  -debug_technique_s <s>	  Bidirectional s.\n"
-			"  -debug_technique_t <t>     Bidirectional t.\n"
+			"  -debug_technique_s <s>	  Valor de debug - bidirectional s.\n"
+			"  -debug_technique_t <t>     Valor de debug - bidirectional t.\n"
+			"  -debug_mis_disabled <s>	  Valor de debug - deshabilitar el mis.\n"
+			"  -debug_contribution_disabled <t>     Valor de debug - deshabilitar la contribucion.\n"
 			"  -h, --help                 Muestra esta ayuda.\n";
 		};
 
@@ -203,6 +207,12 @@ int main(int argc, char** argv)
 				print_usage();
 				return 1;
 			}
+		}
+		else if (arg == "-debug_mis_disabled") {
+			debug_mis_disabled = true;
+		}
+		else if (arg == "-debug_contribution_disabled") {
+			debug_contribution_disabled = true;
 		}
 		else if (arg == "-screenshot_path") {
 			if (i + 1 >= argc) {
@@ -727,8 +737,8 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_pcRay.debug_technique_t = debug_technique_t;
 	vulkanHandler.m_pcRay.antialiasing_radius = scene->antialiasing_radius;
 
-	vulkanHandler.m_pcRay.debug_multiply_mis = 1;
-	vulkanHandler.m_pcRay.debug_multiply_contribution = 1;
+	vulkanHandler.m_pcRay.debug_multiply_mis = !debug_mis_disabled;
+	vulkanHandler.m_pcRay.debug_multiply_contribution = !debug_contribution_disabled;
 }
 
 std::string techniqueToString(TechniqueType t) {
@@ -852,7 +862,7 @@ static void render_loop(GLFWwindow* window) {
 		auto now = std::chrono::steady_clock::now();
 		double elapsedSec = std::chrono::duration<double>(now - startTime).count();
 		if ((screenshot_time > 0 && elapsedSec >= screenshot_time) ||
-			(screenshot_iter > 0 && (iterations) % screenshot_iter == 0)) {
+			(screenshot_iter > 0 && (iterations+1) % screenshot_iter == 0)) {
 			vulkanHandler.m_createScreenshot = true;
 		}
 
