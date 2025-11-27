@@ -1,0 +1,34 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 5,
+    "camera": {
+        "position": [0.0, 0.7, 2.2],
+        "lookat": [0.0, 0.7, 0.0],
+        "fov": 60
+    },
+    "materials": [
+        {
+            "name": "Vinilo",
+			"color": [0.047, 0.047, 0.047],
+            "metallic": 0.5,
+            "roughnesstexture": "Vinilo/roughness.png",
+            "anisotropictexture": "Vinilo/anisotropic.png",
+            "anisotropic": 1
+        },
+        {
+            "name": "CentroVinilo",
+			"color": [0.8, 0.8, 0.0],
+			"roughness": 0.7,
+        }
+        {
+            "name": "Light",
+            "emission": [20.0, 20.0, 20.0]
+        }
+    ],
+    "entities": [
+		{
+            "type": "mesh",
+            "file": "Vinilo/escena.obj"
+        }
+    ]
+}
