@@ -486,11 +486,11 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 			SceneLoader::Shape* shape = (SceneLoader::Shape*)entity;
 
 
-			glm::mat4 transform = glm::scale(glm::mat4(1.0f), shape->scale);
+			glm::mat4 transform = glm::translate(glm::mat4(1.0f), shape->scale);
 			transform = glm::rotate(transform, shape->rotation.x, glm::vec3(1.0, 0.0, 0.0));
 			transform = glm::rotate(transform, shape->rotation.y, glm::vec3(0.0, 1.0, 0.0));
 			transform = glm::rotate(transform, shape->rotation.z, glm::vec3(0.0, 0.0, 1.0));
-			transform = glm::translate(transform, shape->position);
+			transform = glm::scale(transform, shape->position);
 
 			unsigned int last_index = 0;
 			for (auto& light : shape->model_loader.LoadedLights)
