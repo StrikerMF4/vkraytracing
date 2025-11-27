@@ -17,9 +17,9 @@
         },
         {
             "name": "CentroVinilo",
-			"color": [0.8, 0.8, 0.0],
-			"roughness": 0.7,
-        }
+			"color": [0.8, 0.8, 0.8],
+			"roughness": 0.7
+        },
         {
             "name": "Light",
             "emission": [20.0, 20.0, 20.0]
