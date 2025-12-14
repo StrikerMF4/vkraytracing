@@ -30,54 +30,32 @@ include_directories(${TUTO_KHR_DIR}/common)
 
 
 #--------------------------------------------------------------------------------------------------
-# Delete outdated .spv files if the source GLSL files change
-#
-set(SPV_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/spv")
-
-# Get all GLSL source files
-file(GLOB GLSL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag" 
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.geom"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tesc"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.tese"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.rgen"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.rmiss"
-                        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.rhit")
-
-# Check if SPV output directory exists
-if(EXISTS ${SPV_OUTPUT_DIR})
-    file(GLOB SPV_FILES "${SPV_OUTPUT_DIR}/*.spv")
-    list(LENGTH SPV_FILES SPV_COUNT)
-
-    if(SPV_COUNT GREATER 0)
-        add_custom_command(
-            TARGET ${PROJNAME} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E rm -f ${SPV_FILES}
-            COMMENT "Deleting outdated .spv files"
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            DEPENDS ${GLSL_SOURCES}  # Only delete if GLSL files change
-        )
-    endif()
-endif()
-
-#--------------------------------------------------------------------------------------------------
 # GLSL to SPIR-V custom build
+
+set(SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+set(SPV_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/spv")
+
 compile_glsl_directory(
-	SRC "${CMAKE_CURRENT_SOURCE_DIR}/shaders" 
-	DST "${CMAKE_CURRENT_SOURCE_DIR}/spv" 
-	VULKAN_TARGET "vulkan1.2"
-	DEPENDENCY ${VULKAN_BUILD_DEPENDENCIES}
-	)
+  SRC "${SHADER_DIR}"
+  DST "${SPV_DIR}"
+  VULKAN_TARGET "vulkan1.2"
+  DEPENDENCY ON
+  FLAGS
+    -g
+    -I "${SHADER_DIR}"
+)
 
 
 #--------------------------------------------------------------------------------------------------
 # Sources
-target_sources(${PROJNAME} PUBLIC ${SOURCE_FILES} ${HEADER_FILES})
-target_sources(${PROJNAME} PUBLIC ${COMMON_SOURCE_FILES})
-target_sources(${PROJNAME} PUBLIC ${PACKAGE_SOURCE_FILES})
-target_sources(${PROJNAME} PUBLIC ${GLSL_SOURCES} ${GLSL_HEADERS})
-
+target_sources(${PROJNAME} PUBLIC
+  ${SOURCE_FILES}
+  ${HEADER_FILES}
+  ${COMMON_SOURCE_FILES}
+  ${PACKAGE_SOURCE_FILES}
+  ${GLSL_SOURCES}
+  ${GLSL_HEADERS}
+)
 
 #--------------------------------------------------------------------------------------------------
 # Sub-folders in Visual Studio
