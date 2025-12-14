@@ -32,45 +32,45 @@ echo k entre 2 y 5, sin t=0
 echo ==========================================================
 echo.
 
-for /L %%S in (0,1,5) do (
-  for /L %%T in (1,1,5) do (
-    set /A K=%%S+%%T-1
+@REM for /L %%S in (0,1,5) do (
+@REM   for /L %%T in (1,1,5) do (
+@REM     set /A K=%%S+%%T-1
 
-    REM Solo ejecutamos si 2 <= k <= 5
-    if !K! GEQ 2 if !K! LEQ 5 (
-      echo Ejecutando k=!K!, s=%%S, t=%%T
+@REM     REM Solo ejecutamos si 2 <= k <= 5
+@REM     if !K! GEQ 2 if !K! LEQ 5 (
+@REM       echo Ejecutando k=!K!, s=%%S, t=%%T
 
       "%EXE_PATH%" ^
         -scene "%BASE_PATH%veach_lamps_piramide.scn" ^
         -technique %TECHNIQUE% ^
         -screenshot_iter %SCREENSHOT_ITER% ^
         -screenshot_path "screenshots\veach_lamps_piramide" ^
-        -debug_technique_s %%S ^
-        -debug_technique_t %%T ^
+        -debug_technique_s 0 ^
+        -debug_technique_t 6 ^
         -auto-exit %AUTO_EXIT_CAPTURES%
-    )
-  )
-)
+@REM     )
+@REM   )
+@REM )
 
-for /L %%S in (0,1,5) do (
-  for /L %%T in (1,1,5) do (
-    set /A K=%%S+%%T-1
+@REM for /L %%S in (0,1,5) do (
+@REM   for /L %%T in (1,1,5) do (
+@REM     set /A K=%%S+%%T-1
 
-    REM Solo ejecutamos si 2 <= k <= 5
-    if !K! GEQ 2 if !K! LEQ 5 (
-      echo Ejecutando k=!K!, s=%%S, t=%%T
+@REM     REM Solo ejecutamos si 2 <= k <= 5
+@REM     if !K! GEQ 2 if !K! LEQ 5 (
+@REM       echo Ejecutando k=!K!, s=%%S, t=%%T
 
-      "%EXE_PATH%" ^
-        -scene "%BASE_PATH%veach_lamps_piramide.scn" ^
-        -technique %TECHNIQUE% ^
-        -screenshot_iter %SCREENSHOT_ITER% ^
-        -screenshot_path "screenshots\veach_lamps_piramide_sin_mis" ^
-        -debug_technique_s %%S ^
-        -debug_technique_t %%T ^
-        -debug_mis_disabled ^
-        -auto-exit %AUTO_EXIT_CAPTURES%
-    )
-  )
-)
+@REM       "%EXE_PATH%" ^
+@REM         -scene "%BASE_PATH%veach_lamps_piramide.scn" ^
+@REM         -technique %TECHNIQUE% ^
+@REM         -screenshot_iter %SCREENSHOT_ITER% ^
+@REM         -screenshot_path "screenshots\veach_lamps_piramide_sin_mis" ^
+@REM         -debug_technique_s %%S ^
+@REM         -debug_technique_t %%T ^
+@REM         -debug_mis_disabled ^
+@REM         -auto-exit %AUTO_EXIT_CAPTURES%
+@REM     )
+@REM   )
+@REM )
 
 endlocal

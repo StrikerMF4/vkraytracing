@@ -875,7 +875,7 @@ static void render_loop(GLFWwindow* window) {
 			s.resize(len);
 			std::filesystem::path p(scene_path);
 			LOGI(scene_path.c_str());
-			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + "-" + std::to_string(iterations) + ".png";
+			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + "-" + std::to_string(iterations + 1) + ".png";
 			
 			const std::filesystem::path outDir = std::filesystem::path(screenshot_path);
 			std::error_code ec;

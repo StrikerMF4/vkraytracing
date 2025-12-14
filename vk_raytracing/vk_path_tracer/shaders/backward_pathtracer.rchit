@@ -71,13 +71,25 @@ void main() {
         }
     }
 
-    vec3 final_tangent = vec3(0,0,0);
-    if (payload.material.anisotropicTextureID >= 0) {
-        uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
-        
-        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
+    vec3 local_geom_tangent = v0.tangent.xyz * barycentrics.x + v1.tangent.xyz * barycentrics.y + v2.tangent.xyz * barycentrics.z;
+    vec3 final_tangent = vec3(0.0);
 
-        final_tangent = normalize(aniso_dir_tangent_space);
+    if (dot(local_geom_tangent, local_geom_tangent) > EPSILON2) {
+        vec3 world_geom_tangent = normalize(objToWorld * local_geom_tangent);
+        world_geom_tangent = normalize(world_geom_tangent - dot(world_geom_tangent, payload.surface_normal) * payload.surface_normal);
+        vec3 world_geom_bitangent = cross(payload.surface_normal, world_geom_tangent) * v0.tangent.w;
+        final_tangent = world_geom_tangent;
+
+        if (payload.material.anisotropicTextureID >= 0) {
+            uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
+            vec3 map_vector = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
+
+            final_tangent = normalize(
+                map_vector.x * world_geom_tangent +
+                map_vector.y * world_geom_bitangent + 
+                map_vector.z * payload.surface_normal
+            );
+        }
     }
     payload.tangent = final_tangent;
     

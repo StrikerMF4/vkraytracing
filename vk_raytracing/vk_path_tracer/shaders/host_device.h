@@ -105,6 +105,7 @@ struct Vertex  // See ObjLoader, copy of VertexObj, could be compressed for devi
 	vec3 position;
 	vec3 normal;
 	vec2 texCoord;
+	vec4 tangent;
 };
 
 struct ImplicitObj {

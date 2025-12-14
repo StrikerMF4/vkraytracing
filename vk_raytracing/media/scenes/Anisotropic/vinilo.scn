@@ -11,8 +11,8 @@
             "name": "Vinilo",
 			"color": [0.047, 0.047, 0.047],
             "metallic": 0.5,
-            "roughnesstexture": "Vinilo/roughness.png",
             "anisotropictexture": "Vinilo/anisotropic.png",
+            "roughnesstexture": "Vinilo/roughness.png",
             "anisotropic": 1
         },
         {
@@ -29,6 +29,16 @@
 		{
             "type": "mesh",
             "file": "Vinilo/escena.obj"
+        },
+        {
+            "type": "mesh",
+            "file": "../models/sponza/skybox.obj",
+            "material": "Paredes",
+            "scale": [
+                200,
+                200,
+                200
+            ]
         }
     ]
 }

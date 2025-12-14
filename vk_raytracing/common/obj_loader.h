@@ -42,6 +42,9 @@ namespace objl
 
 		// Texture Coordinate Vector
 		glm::vec2 TextureCoordinate;
+
+		// Tangent Vector
+		glm::vec4 Tangent;
 	};
 
 	struct Material
@@ -258,5 +261,7 @@ namespace objl
 		//	inducies corresponding with triangles within it
 		void VertexTriangluation(std::vector<unsigned int>& oIndices,
 			const std::vector<Vertex>& iVerts);
+		
+		void CalcTangents();
 	};
 }

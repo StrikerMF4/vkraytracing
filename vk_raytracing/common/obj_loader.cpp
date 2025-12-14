@@ -457,6 +457,10 @@ bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, o
 		LoadedMeshes.push_back(tempMesh);
 	}
 
+	if (!LoadedVertices.empty() && !LoadedIndices.empty()) {
+		CalcTangents();
+	}
+
 	file.close();
 
 	if (LoadedMeshes.empty() && LoadedVertices.empty() && LoadedIndices.empty())
@@ -739,5 +743,75 @@ void Loader::VertexTriangluation(std::vector<unsigned int>& oIndices,
 		// if no more vertices
 		if (tVerts.size() == 0)
 			break;
+	}
+}
+
+void Loader::CalcTangents()
+{
+	// Vector temporal para acumular bitangentes (necesario para calcular el signo W)
+	std::vector<glm::vec3> tempBitangents(LoadedVertices.size(), glm::vec3(0.0f));
+
+	// 1. Inicializar tangentes en 0
+	for (auto& vert : LoadedVertices) {
+		vert.Tangent = glm::vec4(0.0f);
+	}
+
+	// 2. Acumular tangentes y bitangentes por triángulo
+	for (size_t i = 0; i < LoadedIndices.size(); i += 3) {
+		unsigned int i0 = LoadedIndices[i];
+		unsigned int i1 = LoadedIndices[i + 1];
+		unsigned int i2 = LoadedIndices[i + 2];
+
+		Vertex& v0 = LoadedVertices[i0];
+		Vertex& v1 = LoadedVertices[i1];
+		Vertex& v2 = LoadedVertices[i2];
+
+		glm::vec3 edge1 = v1.Position - v0.Position;
+		glm::vec3 edge2 = v2.Position - v0.Position;
+
+		glm::vec2 deltaUV1 = v1.TextureCoordinate - v0.TextureCoordinate;
+		glm::vec2 deltaUV2 = v2.TextureCoordinate - v0.TextureCoordinate;
+
+		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+		if (isinf(f) || isnan(f)) continue;
+
+		// Tangente (U)
+		glm::vec3 tangent;
+		tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+		tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+		tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+		// Bitangente (V) - Necesaria para el signo
+		glm::vec3 bitangent;
+		bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+		bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+		bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+
+		// Acumular
+		v0.Tangent += glm::vec4(tangent, 0.0f);
+		v1.Tangent += glm::vec4(tangent, 0.0f);
+		v2.Tangent += glm::vec4(tangent, 0.0f);
+
+		tempBitangents[i0] += bitangent;
+		tempBitangents[i1] += bitangent;
+		tempBitangents[i2] += bitangent;
+	}
+
+	// 3. Orthonormalizar y calcular signo W
+	for (size_t i = 0; i < LoadedVertices.size(); i++) {
+		Vertex& vert = LoadedVertices[i];
+		glm::vec3 t = glm::vec3(vert.Tangent);
+		glm::vec3 b = tempBitangents[i];
+		glm::vec3 n = vert.Normal;
+
+		// Gram-Schmidt
+		glm::vec3 orthoT = glm::normalize(t - n * glm::dot(n, t));
+
+		// Calcular Handedness (Signo del determinante)
+		// Si el producto cruz N x T va en dirección opuesta a la bitangente B, invertimos.
+		float w = (glm::dot(glm::cross(n, orthoT), b) < 0.0f) ? -1.0f : 1.0f;
+
+		vert.Tangent = glm::vec4(orthoT, w);
 	}
 }
