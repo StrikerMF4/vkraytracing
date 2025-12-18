@@ -3,7 +3,7 @@
     "maxdepth": 5,
     "camera": {
         "position": [0.0, 0.7, 2.2],
-        "lookat": [0.0, 0.7, 0.0],
+        "lookat": [0.0, 0.7, 0],
         "fov": 60
     },
     "materials": [
@@ -36,13 +36,13 @@
 		{
             "name": "rightSphere",
 			"color": [0.725, 0.71, 0.68],
-			"roughness": 0.0001,
-			"opacity": 0.0,
+			"roughness": 0.0,
+            "opacity": 0.0,
             "ior": 2.5
         },
         {
             "name": "light",
-            "emission": [1.0, 1.0, 1.0]
+            "emission": [10.0, 10.0, 10.0]
         }
     ],
     "entities": [
@@ -50,17 +50,19 @@
             "type": "mesh",
             "file": "models/CornellBox-Empty.obj"
         },
-		{
-            "type": "sphere",
+        {
+            "type": "mesh",
+            "file": "models/sphere.obj",
+            "material": "leftSphere",
             "position": [-0.42, 0.33, -0.28],
-			"material": "leftSphere",
-			"radius": 0.33
+            "scale": [0.33, 0.33, 0.33]
         },
-		{
-            "type": "sphere",
+        {
+            "type": "mesh",
+            "file": "models/sphere.obj",
+            "material": "rightSphere",
             "position": [0.44, 0.33, 0.38],
-			"material": "rightSphere",
-			"radius": 0.33
+            "scale": [0.33, 0.33, 0.33]
         }
     ]
 }
