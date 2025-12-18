@@ -400,7 +400,7 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
     vec3 L, f;
     vec3 w_o;
 
-    isDeltaDirac = material.roughness <= EPSILON2; //dirac
+    isDeltaDirac = material.roughness <= 0.01; //dirac
     
     if (random < cdf[0]) { // Diffuse
         w_o = RandomCosineHemisphereDirection(normal, random_seed);
@@ -422,8 +422,15 @@ vec3 DisneyBSDFDirection(vec3 w_i, vec3 normal, vec3 tangent, Material material,
         bsdf_type = BSDF_REFLECTION;
     }
     else { // Glass
-        float theta_m;
-        vec3 micro_normal = GGXMicronormal(normal, alpha, random_seed, theta_m);
+        float aspect = sqrt(1.0 - material.anisotropic * 0.9);
+        float ax = max(0.001, alpha / aspect);
+        float ay = max(0.001, alpha * aspect);
+
+        vec3 T, B;
+        TangentVectors(normal, tangent, T, B);
+
+        vec3 micro_normal = GGXAnisotropicMicronormal(normal, T, B, ax, ay, random_seed);
+        if (dot(w_i, micro_normal) < 0.0) micro_normal = -micro_normal;
 
         float sin_theta = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
 
