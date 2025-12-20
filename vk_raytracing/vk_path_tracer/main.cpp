@@ -858,7 +858,6 @@ static void render_loop(GLFWwindow* window) {
 		vkEndCommandBuffer(cmdBuf);
 		vulkanHandler.submitFrame();
 
-
 		auto now = std::chrono::steady_clock::now();
 		double elapsedSec = std::chrono::duration<double>(now - startTime).count();
 		if ((screenshot_time > 0 && elapsedSec >= screenshot_time) ||
@@ -875,7 +874,7 @@ static void render_loop(GLFWwindow* window) {
 			s.resize(len);
 			std::filesystem::path p(scene_path);
 			LOGI(scene_path.c_str());
-			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + "-" + std::to_string(iterations + 1) + ".png";
+			std::string filename = p.filename().string() + "_" + techniqueToString(current_technique) + s + "-" + std::to_string(iterations + 1) + ".exr";
 			
 			const std::filesystem::path outDir = std::filesystem::path(screenshot_path);
 			std::error_code ec;

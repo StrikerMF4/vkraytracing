@@ -20,6 +20,11 @@
 #include "nvvk/shaders_vk.hpp"
 #include "nvvk/buffers_vk.hpp"
 
+#define TINYEXR_IMPLEMENTATION
+#define TINYEXR_USE_STB_ZLIB 1
+#define TINYEXR_USE_MINIZ 0
+#include "tinyexr.h"
+
 extern std::vector<std::string> defaultSearchPaths;
 
 
@@ -1366,39 +1371,173 @@ void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
 
 void VulkanHandler::createScreenshot(const std::filesystem::path& outPath)
 {
-	// Create a temporary buffer to hold the pixels of the image
-	const VkBufferUsageFlags usage{ VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT };
-	const VkDeviceSize buffer_size = 4 * sizeof(uint8_t) * m_size.width * m_size.height;
-	nvvk::Buffer       pixel_buffer = m_alloc.createBuffer(buffer_size, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
 
-	VkImage srcImage = m_swapChain.getActiveImage();
 
-	imageToBuffer(srcImage, pixel_buffer.buffer);
+	const uint32_t width = m_size.width;
+	const uint32_t height = m_size.height;
 
-	// Write the buffer to disk
-	LOGI(" - Size: %d, %d\n", m_size.width, m_size.height);
-	LOGI(" - Bytes: %d\n", m_size.width * m_size.height * 4);
-	LOGI(" - Out path: %s\n", outPath.string().c_str());
-	const uint8_t* src = static_cast<const uint8_t*>(m_alloc.map(pixel_buffer));
+	VkDeviceSize bufferSize =
+		VkDeviceSize(width) * height * 4 * sizeof(float);
 
-	std::vector<uint8_t> rgba;
-	rgba.resize(buffer_size);
+	// ------------------------------------------------------------
+	// 1. Crear buffer CPU-visible
+	// ------------------------------------------------------------
+	nvvk::Buffer readback =
+		m_alloc.createBuffer(
+			bufferSize,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	for (uint32_t y = 0; y < m_size.height; ++y) {
-		for (uint32_t x = 0; x < m_size.width; ++x) {
-			size_t i = (y * m_size.width + x) * 4;
-			rgba[i + 0] = src[i + 2];  // R = B
-			rgba[i + 1] = src[i + 1];  // G = G
-			rgba[i + 2] = src[i + 0];  // B = R
-			rgba[i + 3] = src[i + 3];  // A = A
-		}
+	// ------------------------------------------------------------
+	// 2. Command buffer
+	// ------------------------------------------------------------
+	VkCommandBuffer cmd = cmdBufGet.createCommandBuffer();
+
+	// ------------------------------------------------------------
+	// 3. Barrier: GENERAL => TRANSFER_SRC
+	// ------------------------------------------------------------
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.image = m_offscreenColor.image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	vkCmdPipelineBarrier(
+		cmd,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
+	// ------------------------------------------------------------
+	// 4. Copiar imagen => buffer
+	// ------------------------------------------------------------
+	VkBufferImageCopy region{};
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+	region.imageExtent = { width, height, 1 };
+
+	vkCmdCopyImageToBuffer(
+		cmd,
+		m_offscreenColor.image,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		readback.buffer,
+		1,
+		&region);
+
+	// ------------------------------------------------------------
+	// 5. Barrier: TRANSFER_SRC => GENERAL
+	// ------------------------------------------------------------
+	std::swap(barrier.srcAccessMask, barrier.dstAccessMask);
+	std::swap(barrier.oldLayout, barrier.newLayout);
+
+	vkCmdPipelineBarrier(
+		cmd,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
+	// ------------------------------------------------------------
+	// 6. Submit + wait
+	// ------------------------------------------------------------
+	cmdBufGet.submitAndWait(cmd);
+
+	// ------------------------------------------------------------
+	// 7. Mapear buffer
+	// ------------------------------------------------------------
+	float* pixels = reinterpret_cast<float*>(m_alloc.map(readback));
+	assert(pixels);
+
+	// ------------------------------------------------------------
+	// 8. Guardar EXR (tinyexr)
+	// ------------------------------------------------------------
+	EXRHeader header;
+	InitEXRHeader(&header);
+
+	EXRImage image;
+	InitEXRImage(&image);
+
+	image.num_channels = 3;
+	image.width = width;
+	image.height = height;
+
+	// tinyexr espera canales separados (planar)
+	std::vector<float> r(width * height);
+	std::vector<float> g(width * height);
+	std::vector<float> b(width * height);
+	//std::vector<float> a(width * height);
+
+	//BGR to RGB
+	for (uint32_t i = 0; i < width * height; i++) {
+		r[i] = pixels[4 * i + 2];
+		g[i] = pixels[4 * i + 1];
+		b[i] = pixels[4 * i + 0];
+		//a[i] = 1.0f;
 	}
 
-	stbi_write_png(outPath.string().c_str(), m_size.width, m_size.height, 4, rgba.data(), 0);
-	m_alloc.unmap(pixel_buffer);
+	float* image_ptrs[3];
+	image_ptrs[0] = r.data();
+	image_ptrs[1] = g.data();
+	image_ptrs[2] = b.data();
+	//image_ptrs[3] = a.data();
 
-	// Destroy temporary buffer
-	m_alloc.destroy(pixel_buffer);
+	image.images = reinterpret_cast<unsigned char**>(image_ptrs);
+
+	header.num_channels = 3;
+	header.channels = (EXRChannelInfo*)malloc(sizeof(EXRChannelInfo) * 3);
+
+	strcpy(header.channels[0].name, "R");
+	strcpy(header.channels[1].name, "G");
+	strcpy(header.channels[2].name, "B");
+	//strcpy(header.channels[3].name, "A");
+
+	header.pixel_types = (int*)malloc(sizeof(int) * 3);
+	header.requested_pixel_types = (int*)malloc(sizeof(int) * 3);
+
+	for (int i = 0; i < 3; i++) {
+		header.pixel_types[i] = TINYEXR_PIXELTYPE_FLOAT;   // en GPU
+		header.requested_pixel_types[i] = TINYEXR_PIXELTYPE_HALF; // en archivo
+	}
+
+	const char* err = nullptr;
+	int ret = SaveEXRImageToFile(
+		&image,
+		&header,
+		outPath.string().c_str(),
+		&err);
+
+	if (ret != TINYEXR_SUCCESS) {
+		fprintf(stderr, "EXR save error: %s\n", err);
+		FreeEXRErrorMessage(err);
+	}
+
+	// ------------------------------------------------------------
+	// 9. Cleanup
+	// ------------------------------------------------------------
+	m_alloc.unmap(readback);
+	m_alloc.destroy(readback);
+
+	free(header.channels);
+	free(header.pixel_types);
+	free(header.requested_pixel_types);
+
+	printf("HDR EXR saved: %s\n", outPath.string().c_str());
 }
 
 void VulkanHandler::imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBufferOut)
