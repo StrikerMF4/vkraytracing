@@ -21,14 +21,14 @@
 	}																									                                    \
 }
 
-enum TechniqueType
+enum Technique
 {
 	BACKWARD_PATHTRACER = 0,
 	BACKWARD_PATHTRACER_NEE = 1,
 	BIDIRECTIONAL_PATHTRACER = 2,
 };
 
-class Technique
+class RayTracingPipeline
 {
 	std::vector<VkRayTracingShaderGroupCreateInfoKHR> m_rtShaderGroups;
 	VkPipelineLayout                                  m_rtPipelineLayout;
@@ -46,9 +46,9 @@ public:
 	std::string formatted_name;
 	int default_depth;
 
-	Technique() = default;
+	RayTracingPipeline() = default;
 
-	Technique(std::string codename, std::string formatted_name, int default_depth) {
+	RayTracingPipeline(std::string codename, std::string formatted_name, int default_depth) {
 		this->codename = codename;
 		this->formatted_name = formatted_name;
 		this->default_depth = default_depth;
@@ -196,24 +196,24 @@ public:
 	void imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBufferOut);
 
 	// Techniques
-	std::unordered_map<TechniqueType, Technique*> m_techniques;
-	Technique* current_technique;
+	std::unordered_map<Technique, RayTracingPipeline*> m_techniques;
+	RayTracingPipeline* current_technique;
 
-	void setupTechnique(TechniqueType type) {
+	void setupTechnique(Technique type) {
 		switch (type) {
 		case BACKWARD_PATHTRACER:
-			m_techniques[BACKWARD_PATHTRACER] = new Technique("backward_pathtracer", "Backward Pathtracer", 5);
+			m_techniques[BACKWARD_PATHTRACER] = new RayTracingPipeline("backward_pathtracer", "Backward Pathtracer", 5);
 			break;
 		case BACKWARD_PATHTRACER_NEE:
-			m_techniques[BACKWARD_PATHTRACER_NEE] = new Technique("backward_pathtracer_nee", "Backward Pathtracer (NEE)", 5);
+			m_techniques[BACKWARD_PATHTRACER_NEE] = new RayTracingPipeline("backward_pathtracer_nee", "Backward Pathtracer (NEE)", 5);
 			break;
 		case BIDIRECTIONAL_PATHTRACER:
-			m_techniques[BIDIRECTIONAL_PATHTRACER] = new Technique("bidirectional_pathtracer", "Bidirectional Pathtracer", 5);
+			m_techniques[BIDIRECTIONAL_PATHTRACER] = new RayTracingPipeline("bidirectional_pathtracer", "Bidirectional Pathtracer", 5);
 			break;
 		}
 	}
 
-	void changeTechnique(TechniqueType type) {
+	void changeTechnique(Technique type) {
 		current_technique = m_techniques[type];
 
 		m_pcPost.bidirectional_correction = type == BIDIRECTIONAL_PATHTRACER;

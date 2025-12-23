@@ -28,7 +28,7 @@
 extern std::vector<std::string> defaultSearchPaths;
 
 
-void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout)
+void RayTracingPipeline::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rtDescSetLayout, VkDescriptorSetLayout* m_descSetLayout)
 {
 	enum StageIndices
 	{
@@ -150,7 +150,7 @@ void Technique::createRtPipeline(VkDevice* m_device, VkDescriptorSetLayout* m_rt
 		vkDestroyShaderModule(*m_device, s.module, nullptr);
 }
 
-void Technique::createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc, nvvk::DebugUtil* m_debug, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* m_rtProperties)
+void RayTracingPipeline::createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc, nvvk::DebugUtil* m_debug, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* m_rtProperties)
 {
 	uint32_t missCount{ 1 };
 	uint32_t hitCount{ 2 };
@@ -218,7 +218,7 @@ void Technique::createRtShaderBindingTable(VkDevice* m_device, nvvk::ResourceAll
 	m_alloc->finalizeAndReleaseStaging();
 }
 
-void Technique::raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m_pcRay, std::vector<VkDescriptorSet>* descSets, VkExtent2D* m_size) {
+void RayTracingPipeline::raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m_pcRay, std::vector<VkDescriptorSet>* descSets, VkExtent2D* m_size) {
 	vkCmdBindPipeline(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipeline);
 	vkCmdBindDescriptorSets(cmdBuf, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, m_rtPipelineLayout, 0,
 		(uint32_t)descSets->size(), descSets->data(), 0, nullptr);
@@ -230,7 +230,7 @@ void Technique::raytrace(const VkCommandBuffer& cmdBuf, PushConstantRayTracer* m
 }
 
 
-void Technique::destroyResources(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc)
+void RayTracingPipeline::destroyResources(VkDevice* m_device, nvvk::ResourceAllocatorDma* m_alloc)
 {
 	vkDestroyPipeline(*m_device, m_rtPipeline, nullptr);
 	vkDestroyPipelineLayout(*m_device, m_rtPipelineLayout, nullptr);

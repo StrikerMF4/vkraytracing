@@ -38,7 +38,7 @@ std::vector<std::string> defaultSearchPaths;
 
 //Shared
 VulkanHandler vulkanHandler;
-TechniqueType current_technique = TechniqueType::BACKWARD_PATHTRACER;
+Technique current_technique = Technique::BACKWARD_PATHTRACER;
 
 VkExtent2D window_size{};
 int window_posx, window_posy;
@@ -236,14 +236,13 @@ int main(int argc, char** argv)
 
 	// Seleccionar la técnica inicial según el parámetro
 	if (technique == "bpt") {
-		current_technique = TechniqueType::BACKWARD_PATHTRACER;
+		current_technique = Technique::BACKWARD_PATHTRACER;
 	}
 	else if (technique == "nee") {
-		current_technique = TechniqueType::BACKWARD_PATHTRACER_NEE;
+		current_technique = Technique::BACKWARD_PATHTRACER_NEE;
 	}
 	else if (technique == "bdpt") {
-		current_technique = TechniqueType::BIDIRECTIONAL_PATHTRACER;
-
+		current_technique = Technique::BIDIRECTIONAL_PATHTRACER;
 	}
 
 	// Setup GLFW window
@@ -518,9 +517,9 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					ImGui::EndCombo();
 				}
 
-				if (current_technique != (TechniqueType)item_current_idx)
+				if (current_technique != (Technique)item_current_idx)
 				{
-					current_technique = (TechniqueType)item_current_idx;
+					current_technique = (Technique)item_current_idx;
 					vulkanHandler.changeTechnique(current_technique);
 					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
@@ -535,7 +534,7 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					vulkanHandler.resetFrame();
 				}
 
-				if (current_technique == TechniqueType::BIDIRECTIONAL_PATHTRACER) {
+				if (current_technique == Technique::BIDIRECTIONAL_PATHTRACER) {
 					ImGui::SeparatorText("Bidirectional PathTracer:");
 
 					ImGui::Checkbox("Fijar técnica", &bidirectional_debug_technique);
@@ -696,9 +695,9 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 }
 
 static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window) {
-	vulkanHandler.setupTechnique(TechniqueType::BACKWARD_PATHTRACER_NEE);
-	vulkanHandler.setupTechnique(TechniqueType::BACKWARD_PATHTRACER);
-	vulkanHandler.setupTechnique(TechniqueType::BIDIRECTIONAL_PATHTRACER);
+	vulkanHandler.setupTechnique(Technique::BACKWARD_PATHTRACER_NEE);
+	vulkanHandler.setupTechnique(Technique::BACKWARD_PATHTRACER);
+	vulkanHandler.setupTechnique(Technique::BIDIRECTIONAL_PATHTRACER);
 
 	vulkanHandler.changeTechnique(current_technique);
 	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
@@ -741,11 +740,11 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_pcRay.debug_multiply_contribution = !debug_contribution_disabled;
 }
 
-std::string techniqueToString(TechniqueType t) {
+std::string techniqueToString(Technique t) {
 	switch (t) {
-	case TechniqueType::BACKWARD_PATHTRACER: return "BPT";
-	case TechniqueType::BACKWARD_PATHTRACER_NEE: return "BPTNEE";
-	case TechniqueType::BIDIRECTIONAL_PATHTRACER: 
+	case Technique::BACKWARD_PATHTRACER: return "BPT";
+	case Technique::BACKWARD_PATHTRACER_NEE: return "BPTNEE";
+	case Technique::BIDIRECTIONAL_PATHTRACER: 
 		if (bidirectional_debug_technique)
 			return "BDPT(s=" + std::to_string(vulkanHandler.m_pcRay.debug_technique_s) 
 					+ ",t=" + std::to_string(vulkanHandler.m_pcRay.debug_technique_t) + ")";
