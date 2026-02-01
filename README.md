@@ -77,6 +77,12 @@ El resto de los parámetros disponibles puede consultarse mediante:
 vk_path_tracer.exe --help
 ```
 
+### Escenas adicionales
+
+Se pueden obtener archivos de escena adicionales en el siguiente repositorio:
+
+https://github.com/StrikerMF4/vkraytracing-scenes
+
 ## Licencia
 
 Este proyecto se distribuye bajo la licencia **Creative Commons Atribución 4.0 (CC BY 4.0)**.
@@ -87,6 +93,7 @@ Este proyecto se distribuye bajo la licencia **Creative Commons Atribución 4.0 
 * [nvpro-samples](https://github.com/nvpro-samples/vk_mini_samples)
 * [glm](https://github.com/g-truc/glm)
 * [imgui](https://github.com/ocornut/imgui)
+* [imgui-filebrowser](https://github.com/AirGuanZ/imgui-filebrowser)
 * [tinyexr](https://github.com/syoyo/tinyexr)
 * [tinyobjloader](https://github.com/tinyobjloader/tinyobjloader)
 * [json-reader](https://github.com/nlohmann/json)
