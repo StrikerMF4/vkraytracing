@@ -19,7 +19,7 @@ El proyecto implementa distintas técnicas de transporte de luz basadas en traza
 <img src="images/monkey.png" width="49%"></img>
 <img src="images/sponza.png" width="49%"></img>
 
-## Getting Started
+## Primeros pasos
 
 ### Requisitos
 
