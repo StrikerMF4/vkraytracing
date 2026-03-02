@@ -36,8 +36,8 @@ void RayTracingPipeline::createRtPipeline(VkDevice* m_device, VkDescriptorSetLay
 		eMiss,
 		eAnyHit,
 		eClosestHit,
-		eClosestHitParametric,
-		eIntersectionParametric,
+		eClosestHitPrimitives,
+		eIntersectionPrimitives,
 		eShaderGroupCount
 	};
 
@@ -61,14 +61,14 @@ void RayTracingPipeline::createRtPipeline(VkDevice* m_device, VkDescriptorSetLay
 	stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/" + codename + ".rchit.spv", true, defaultSearchPaths, true));
 	stage.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 	stages[eClosestHit] = stage;
-	// Closest hit - Parametric
-	stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/" + codename + "_parametric.rchit.spv", true, defaultSearchPaths, true));
+	// Closest hit - Primitives
+	stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/" + codename + "_primitives.rchit.spv", true, defaultSearchPaths, true));
 	stage.stage = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-	stages[eClosestHitParametric] = stage;
+	stages[eClosestHitPrimitives] = stage;
 	// Intersection
-	stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/pathtracer_parametric.rint.spv", true, defaultSearchPaths, true));
+	stage.module = nvvk::createShaderModule(*m_device, nvh::loadFile("spv/pathtracer_primitives.rint.spv", true, defaultSearchPaths, true));
 	stage.stage = VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
-	stages[eIntersectionParametric] = stage;
+	stages[eIntersectionPrimitives] = stage;
 
 
 	// Shader groups
@@ -96,11 +96,11 @@ void RayTracingPipeline::createRtPipeline(VkDevice* m_device, VkDescriptorSetLay
 	m_rtShaderGroups.push_back(group);
 
 	//TO-DO: probablemente haya que marcar el anyhit de nuevo?
-	// Closest hit shader + Intersection (Hit group 2) - Formas parametricas
+	// Closest hit shader + Intersection (Hit group 2) - Formas primitives
 	group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
 	group.anyHitShader = eAnyHit;
-	group.closestHitShader = eClosestHitParametric;
-	group.intersectionShader = eIntersectionParametric;
+	group.closestHitShader = eClosestHitPrimitives;
+	group.intersectionShader = eIntersectionPrimitives;
 	m_rtShaderGroups.push_back(group);
 
 	// Push constant: we want to be able to update constants used by the shaders
