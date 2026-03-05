@@ -46,5 +46,5 @@ void main() {
 
 	vec2  uv    = outUV;
 	float gamma = 1. / 2.2;
-	fragColor   = pow(vec4(output_color, 1.f), vec4(gamma));
+	fragColor   = pow(vec4(output_color, 1.f) * pow(2, settings.exposition), vec4(gamma));
 }

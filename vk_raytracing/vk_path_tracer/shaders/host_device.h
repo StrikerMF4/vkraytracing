@@ -82,6 +82,7 @@ struct PushConstantPost
 	uint image_height;
 	bool bidirectional_correction;
 	int   frame;
+	float exposition;
 };
 
 // Push constant structure for the ray tracer
