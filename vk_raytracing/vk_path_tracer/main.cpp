@@ -521,7 +521,6 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 				{
 					current_technique = (Technique)item_current_idx;
 					vulkanHandler.changeTechnique(current_technique);
-					vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
 
 					paused = false;
 					pause_timer_start = std::chrono::high_resolution_clock::now();
@@ -700,7 +699,7 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.setupTechnique(Technique::BIDIRECTIONAL_PATHTRACER);
 
 	vulkanHandler.changeTechnique(current_technique);
-	vulkanHandler.m_pcRay.max_depth = max_depth = vulkanHandler.current_technique->default_depth;
+	vulkanHandler.m_pcRay.max_depth = max_depth = scene->maxdepth;
 
 	vulkanHandler.uploadImplicitObjects();
 	vulkanHandler.createOffscreenRender();
