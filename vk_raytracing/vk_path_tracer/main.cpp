@@ -617,6 +617,8 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 					CameraManip.setLookat(camera_default_position, camera_default_lookat, glm::vec3(0, 1, 0));
 				}
 
+				ImGui::DragFloat("Exposición", &vulkanHandler.m_pcPost.exposition, 0.01, -10.0f, 10.f);
+
 				ImGui::EndTabItem();
 			}
 
@@ -737,6 +739,8 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 
 	vulkanHandler.m_pcRay.debug_multiply_mis = !debug_mis_disabled;
 	vulkanHandler.m_pcRay.debug_multiply_contribution = !debug_contribution_disabled;
+
+	vulkanHandler.m_pcPost.exposition = 0.f;
 }
 
 std::string techniqueToString(Technique t) {
