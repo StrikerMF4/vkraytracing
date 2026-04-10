@@ -110,7 +110,7 @@ int main(int argc, char** argv)
 			"  -h, --help                 Muestra esta ayuda.\n";
 		};
 
-	std::string technique = "bdpt";  // valor por defecto
+	std::string technique = "bpt";  // valor por defecto
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
