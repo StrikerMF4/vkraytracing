@@ -12,7 +12,7 @@ El proyecto implementa distintas técnicas de transporte de luz basadas en traza
   Estrategia de muestreo utilizada para combinar eficientemente distintas técnicas de generación de caminos y reducir la varianza.
 
 - **Next Event Estimation (NEE)**  
-  Muestreo explícito de luces directas.
+  Muestreo explícito de luces.
 
 ## Capturas
 
