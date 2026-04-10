@@ -6,12 +6,6 @@
         "lookat": [0.0, 0.7, 0.0],
         "fov": 60
     },
-    "directional_lights": [
-        {
-            "direction": [-0.35, -1.0, -0.25],
-            "radiance": [3.0, 3.0, 2.8]
-        }
-    ],
     "materials": [
         {
             "name": "leftWall",
@@ -43,6 +37,11 @@
         }
     ],
     "entities": [
+        {
+            "type": "directional-light",
+            "direction": [-0.35, -1.0, -0.25],
+            "radiance": [3.0, 3.0, 2.8]
+        },
         {
             "type": "mesh",
             "file": "models/CornellBox-Empty.obj"

@@ -6,14 +6,14 @@
     "maxdepth": 5,
     "camera": {
         "position": [
-            6.3,
-            2.02,
-            8.6
+            430.504, 
+            26.458, 
+            174.774
         ],
         "lookat": [
-            15.1,
-            2.2,
-            3.9
+            429.685, 
+            26.450, 
+            174.200
         ],
         "fov": 70
     },
@@ -2421,27 +2421,26 @@
         },
         {
             "name": "Sky",
-            "albedotexture": "models/sponza/textures/Daylight.png",
             "emission": [
-                8.0,
-                8.0,
-                8.0
+                8.0, 
+                7.9, 
+                7.3
             ]
         }
     ],
     "entities": [
         {
-            "type": "mesh",
-            "file": "San_Miguel/san-miguel-low-poly.obj"
+            "type": "directional-light",
+            "direction": [-0.35, -1.0, -0.25],
+            "radiance": [3.0, 3.0, 2.8]
         },
         {
             "type": "mesh",
-            "file": "models/sponza/skybox.obj",
-            "material": "Sky",
+            "file": "San_Miguel/san-miguel-low-poly.obj",
             "scale": [
-                250.0,
-                250.0,
-                250.0
+                20.0,
+                20.0,
+                20.0
             ]
         }
     ]
