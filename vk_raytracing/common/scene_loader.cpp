@@ -1,6 +1,7 @@
 
 #include "scene_loader.h"
 #include <nvh/nvprint.hpp>
+#include <glm/geometric.hpp>
 
 using json = nlohmann::json;
 
@@ -143,6 +144,39 @@ Scene::Scene(const std::string& filepath) {
 
 		materials.push_back(default_material);
 		materials_map["default_material"] = default_material;
+	}
+
+	if (data.contains("directional_lights")) {
+		json directional_lights_data = data["directional_lights"];
+
+		for (json::iterator it = directional_lights_data.begin(); it != directional_lights_data.end(); ++it) {
+			if (!(*it).contains("direction") || !(*it).contains("radiance")) {
+				LOGI("SCENE_LOADER::INVALID_DIRECTIONAL_LIGHT:: missing direction or radiance");
+				continue;
+			}
+
+			DirectionalLight light;
+			light.direction = glm::vec3(
+				(*it)["direction"][0].template get<double>(),
+				(*it)["direction"][1].template get<double>(),
+				(*it)["direction"][2].template get<double>()
+			);
+			light.radiance = glm::vec3(
+				(*it)["radiance"][0].template get<double>(),
+				(*it)["radiance"][1].template get<double>(),
+				(*it)["radiance"][2].template get<double>()
+			);
+
+			float direction_length = glm::length(light.direction);
+			if (direction_length <= 0.0001f) {
+				LOGI("SCENE_LOADER::INVALID_DIRECTIONAL_LIGHT:: zero direction");
+				continue;
+			}
+
+			light.direction = light.direction / direction_length;
+			light.radiance = glm::max(light.radiance, glm::vec3(0.0f));
+			directional_lights.push_back(light);
+		}
 	}
 
 

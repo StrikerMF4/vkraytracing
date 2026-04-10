@@ -75,9 +75,9 @@ static void drawOverlay(std::string& technique_codename, float& render_time, int
 static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iteration_limit);
 
 // Render
-bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
-void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
-void render_loop(GLFWwindow* window);
+static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
+static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
+static void render_loop(GLFWwindow* window);
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -709,6 +709,7 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.createCameraUniformBuffer();
 	vulkanHandler.createObjDescriptionBuffer();
 	vulkanHandler.createLightBuffer();
+	vulkanHandler.createDirectionalLightBuffer();
 	vulkanHandler.updateDescriptorSet();
 
 	// #VKRay
@@ -733,6 +734,7 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	vulkanHandler.m_cameraFocalLength = 1.f;
 
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
+	vulkanHandler.m_pcRay.directional_light_count = vulkanHandler.m_directional_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = debug_technique_s;
 	vulkanHandler.m_pcRay.debug_technique_t = debug_technique_t;
 	vulkanHandler.m_pcRay.antialiasing_radius = scene->antialiasing_radius;
@@ -906,5 +908,3 @@ static void render_loop(GLFWwindow* window) {
 		}
 	}
 }
-
-
