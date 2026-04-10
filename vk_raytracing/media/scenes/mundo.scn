@@ -1,0 +1,64 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 8,
+    "camera": {
+        "position": [0.0, 1.08, 4.6],
+        "lookat": [0.0, 0.95, 0.0],
+        "fov": 26
+    },
+    "materials": [
+        {
+            "name": "earth",
+            "color": [1.0, 1.0, 1.0],
+            "roughness": 0.02,
+            "opacity": 0.0,
+            "ior": 1.45,
+            "roughnesstexture": "mundo/world-mask3.png"
+        },
+        {
+            "name": "floor",
+            "color": [0.98, 0.98, 0.97],
+            "roughness": 1
+        },
+        {
+            "name": "backdrop",
+            "color": [1.0, 1.0, 1.0],
+            "albedotexture": "mundo/background-stripes-v2.png",
+            "emission": [1.15, 1.15, 1.15]
+        },
+        {
+            "name": "light",
+            "color": [1.0, 1.0, 1.0],
+            "emission": [10.0, 10.0, 10.0]
+        }
+    ],
+    "entities": [
+        {
+            "type": "mesh",
+            "file": "models/plane.obj",
+            "material": "floor"
+        },
+		{
+            "type": "mesh",
+            "file": "mundo/sphere-cylcoords-4k.obj",
+            "material": "earth",
+            "position": [0.0, 1.3, 0.0],
+            "scale": [0.008, 0.008, 0.008],
+            "rotation": [0.35, -0.8, 0.0]
+        },
+        {
+            "type": "mesh",
+            "file": "models/vertical_panel.obj",
+            "material": "backdrop",
+            "position": [0.0, 1.4, -5],
+            "scale": [3, 3, 1.0]
+        },
+        {
+            "type": "mesh",
+            "file": "models/quad.obj",
+            "material": "light",
+            "position": [0.0, 3.1, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        }
+    ]
+}

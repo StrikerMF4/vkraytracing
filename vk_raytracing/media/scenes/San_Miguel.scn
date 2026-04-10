@@ -1,0 +1,2448 @@
+{
+    "resolution": [
+        1280,
+        720
+    ],
+    "maxdepth": 5,
+    "camera": {
+        "position": [
+            6.3,
+            2.02,
+            8.6
+        ],
+        "lookat": [
+            15.1,
+            2.2,
+            3.9
+        ],
+        "fov": 70
+    },
+    "materials": [
+        {
+            "name": "CafeChair_Metal",
+            "color": [
+                0.48,
+                0.48,
+                0.48
+            ],
+            "metallic": 0.9,
+            "roughness": 0.0891
+        },
+        {
+            "name": "material_032",
+            "albedotexture": "San_Miguel/textures/individual_b.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_033",
+            "albedotexture": "San_Miguel/textures/cenicero.png",
+            "metallic": 0.0,
+            "roughness": 0.1189,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_034",
+            "albedotexture": "San_Miguel/textures/ceramic_tile.png",
+            "metallic": 0.0,
+            "roughness": 0.1189,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_035",
+            "color": [
+                0.776471,
+                0.756863,
+                0.721569
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_036",
+            "color": [
+                0.121569,
+                0.113726,
+                0.101961
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_038",
+            "color": [
+                0.086274,
+                0.082353,
+                0.07451
+            ],
+            "metallic": 0.35,
+            "roughness": 0.0951,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_039",
+            "color": [
+                0.776471,
+                0.74902,
+                0.709804
+            ],
+            "displacementtexture": "San_Miguel/textures/N_PITTED.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_040",
+            "color": [
+                0.30195,
+                0.875973,
+                0.726676
+            ],
+            "metallic": 0.35,
+            "roughness": 0.0951,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_041",
+            "color": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "metallic": 0.35,
+            "roughness": 0.0951,
+            "speculartint": 0.05,
+            "opacity": 0.5,
+            "ior": 1.5
+        },
+        {
+            "name": "material_042",
+            "color": [
+                0.142338,
+                0.462081,
+                0.235328
+            ],
+            "metallic": 0.35,
+            "roughness": 0.0951,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_0",
+            "color": [
+                0.1,
+                0.1,
+                0.1
+            ],
+            "metallic": 0.35,
+            "roughness": 0.08,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_1",
+            "albedotexture": "San_Miguel/textures/jardinera_1_color.png",
+            "displacementtexture": "San_Miguel/textures/N_jardinera_1_displacement_2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_10",
+            "albedotexture": "San_Miguel/textures/losa.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_11",
+            "albedotexture": "San_Miguel/textures/moldura2piso_color.png",
+            "displacementtexture": "San_Miguel/textures/N_moldura2piso_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_12",
+            "color": [
+                0.75,
+                0.75,
+                0.75
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_127",
+            "albedotexture": "San_Miguel/textures/Maceta_B2_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_B_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_128",
+            "albedotexture": "San_Miguel/textures/Maceta_C_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_C_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_129",
+            "albedotexture": "San_Miguel/textures/Maceta_C2_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_C_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_13",
+            "color": [
+                0.54902,
+                0.54902,
+                0.54902
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_130",
+            "albedotexture": "San_Miguel/textures/Maceta_D2_Color_0.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_D_Bump_0.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_131",
+            "albedotexture": "San_Miguel/textures/dracaena_fragrans_leaf.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/dracaena_fragrans_leaf_alpha_mask.png"
+        },
+        {
+            "name": "material_132",
+            "albedotexture": "San_Miguel/textures/BS01brk.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_133",
+            "albedotexture": "San_Miguel/textures/BS01lef.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BS01lef_alpha_mask.png"
+        },
+        {
+            "name": "material_134",
+            "albedotexture": "San_Miguel/textures/BS01flo1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BS01flo1_alpha_mask.png"
+        },
+        {
+            "name": "material_135",
+            "albedotexture": "San_Miguel/textures/BS01flo2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BS01flo2_alpha_mask.png"
+        },
+        {
+            "name": "material_136",
+            "albedotexture": "San_Miguel/textures/aglaonema_leaf.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/aglaonema_leaf_alpha_mask.png"
+        },
+        {
+            "name": "material_137",
+            "albedotexture": "San_Miguel/textures/aglaonema_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_138",
+            "albedotexture": "San_Miguel/textures/FL13pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_139",
+            "color": [
+                0.445692,
+                0.119083,
+                0.004669
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_14",
+            "albedotexture": "San_Miguel/textures/piso_rustico.png",
+            "metallictexture": "San_Miguel/textures/piso_rustico_Spec.png",
+            "displacementtexture": "San_Miguel/textures/N_piso_rustico_displace2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_140",
+            "color": [
+                0.008911,
+                0.37788,
+                0.531663
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_141",
+            "albedotexture": "San_Miguel/textures/FL16stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_142",
+            "albedotexture": "San_Miguel/textures/FL16lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL16lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_143",
+            "albedotexture": "San_Miguel/textures/FL16pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL16pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_144",
+            "albedotexture": "San_Miguel/textures/FL16lef3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL16lef3_alpha_mask.png"
+        },
+        {
+            "name": "material_145",
+            "albedotexture": "San_Miguel/textures/TR14lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/TR14lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_146",
+            "albedotexture": "San_Miguel/textures/ampelopsis_brevipedunculata_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_147",
+            "albedotexture": "San_Miguel/textures/HP19stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_148",
+            "albedotexture": "San_Miguel/textures/HP19stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_149",
+            "albedotexture": "San_Miguel/textures/HP19lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP19lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_15",
+            "albedotexture": "San_Miguel/textures/madera_triplay_01.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_150",
+            "albedotexture": "San_Miguel/textures/HP19lef3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP19lef3_alpha_mask.png"
+        },
+        {
+            "name": "material_151",
+            "albedotexture": "San_Miguel/textures/HP19lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP19lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_152",
+            "albedotexture": "San_Miguel/textures/FL15lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_153",
+            "albedotexture": "San_Miguel/textures/FL15cnt2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_154",
+            "albedotexture": "San_Miguel/textures/FL15stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_155",
+            "albedotexture": "San_Miguel/textures/FL15pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_156",
+            "albedotexture": "San_Miguel/textures/FL15lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_157",
+            "albedotexture": "San_Miguel/textures/FL15cnt1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_158",
+            "albedotexture": "San_Miguel/textures/FL15lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_159",
+            "albedotexture": "San_Miguel/textures/FL15lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_16",
+            "albedotexture": "San_Miguel/textures/rust_a1.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_160",
+            "albedotexture": "San_Miguel/textures/FL15pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL15pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_161",
+            "albedotexture": "San_Miguel/textures/HP07lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP07lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_162",
+            "albedotexture": "San_Miguel/textures/HP07stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_163",
+            "albedotexture": "San_Miguel/textures/HP07lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP07lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_164",
+            "albedotexture": "San_Miguel/textures/HP07stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_165",
+            "albedotexture": "San_Miguel/textures/FL11pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_166",
+            "albedotexture": "San_Miguel/textures/FL11pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_167",
+            "albedotexture": "San_Miguel/textures/FL11sta.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11sta_alpha_mask.png"
+        },
+        {
+            "name": "material_168",
+            "albedotexture": "San_Miguel/textures/FL11pet3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet3_alpha_mask.png"
+        },
+        {
+            "name": "material_169",
+            "albedotexture": "San_Miguel/textures/FL11pet4.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet4_alpha_mask.png"
+        },
+        {
+            "name": "material_17",
+            "albedotexture": "San_Miguel/textures/muros_a.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_170",
+            "albedotexture": "San_Miguel/textures/FL11lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_171",
+            "albedotexture": "San_Miguel/textures/FL11lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_172",
+            "albedotexture": "San_Miguel/textures/FL11stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_173",
+            "albedotexture": "San_Miguel/textures/FL11pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_174",
+            "albedotexture": "San_Miguel/textures/FL11pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_175",
+            "albedotexture": "San_Miguel/textures/FL11pet3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet3_alpha_mask.png"
+        },
+        {
+            "name": "material_176",
+            "albedotexture": "San_Miguel/textures/FL11pet4.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11pet4_alpha_mask.png"
+        },
+        {
+            "name": "material_177",
+            "albedotexture": "San_Miguel/textures/FL11lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL11lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_178",
+            "albedotexture": "San_Miguel/textures/HP17lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP17lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_179",
+            "albedotexture": "San_Miguel/textures/HP17lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP17lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_18",
+            "albedotexture": "San_Miguel/textures/muros_b1.png",
+            "displacementtexture": "San_Miguel/textures/N_muros_b1.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_180",
+            "albedotexture": "San_Miguel/textures/HP17stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_181",
+            "albedotexture": "San_Miguel/textures/HP11stm.png",
+            "displacementtexture": "San_Miguel/textures/N_HP11stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_182",
+            "albedotexture": "San_Miguel/textures/HP11lef2.png",
+            "displacementtexture": "San_Miguel/textures/N_hp13lef1_bump.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP11lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_183",
+            "albedotexture": "San_Miguel/textures/FL13pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_184",
+            "albedotexture": "San_Miguel/textures/FL13pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_185",
+            "albedotexture": "San_Miguel/textures/FL13pet3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13pet3_alpha_mask.png"
+        },
+        {
+            "name": "material_186",
+            "albedotexture": "San_Miguel/textures/FL13stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_187",
+            "albedotexture": "San_Miguel/textures/FL13lef5.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13lef5_alpha_mask.png"
+        },
+        {
+            "name": "material_188",
+            "albedotexture": "San_Miguel/textures/FL13lef4.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13lef4_alpha_mask.png"
+        },
+        {
+            "name": "material_189",
+            "albedotexture": "San_Miguel/textures/FL13lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_19",
+            "albedotexture": "San_Miguel/textures/muros_c2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_190",
+            "albedotexture": "San_Miguel/textures/elaeagnus_umbellate_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_191",
+            "albedotexture": "San_Miguel/textures/impatiens_newguinea_hybrids_petal.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/impatiens_newguinea_hybrids_petal_alpha_mask.png"
+        },
+        {
+            "name": "material_192",
+            "albedotexture": "San_Miguel/textures/citrus_limon_leaf.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/citrus_limon_leaf_alpha_mask.png"
+        },
+        {
+            "name": "material_193",
+            "albedotexture": "San_Miguel/textures/HP13stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_194",
+            "albedotexture": "San_Miguel/textures/FL13lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL13lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_195",
+            "albedotexture": "San_Miguel/textures/HP13lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP13lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_196",
+            "albedotexture": "San_Miguel/textures/HP13stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_197",
+            "albedotexture": "San_Miguel/textures/HP13lef3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP13lef3_alpha_mask.png"
+        },
+        {
+            "name": "material_198",
+            "albedotexture": "San_Miguel/textures/BS04lef.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BS04lef_alpha_mask.png"
+        },
+        {
+            "name": "material_199",
+            "albedotexture": "San_Miguel/textures/BS04flo.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BS04flo_alpha_mask.png"
+        },
+        {
+            "name": "material_2",
+            "albedotexture": "San_Miguel/textures/cantera_naranja_liso.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_20",
+            "albedotexture": "San_Miguel/textures/muros_f.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_200",
+            "albedotexture": "San_Miguel/textures/BS04brk.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_201",
+            "albedotexture": "San_Miguel/textures/FL12lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL12lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_202",
+            "albedotexture": "San_Miguel/textures/FL12pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL12pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_203",
+            "albedotexture": "San_Miguel/textures/FL12pis1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_204",
+            "albedotexture": "San_Miguel/textures/FL12sta1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_205",
+            "albedotexture": "San_Miguel/textures/FL12stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_206",
+            "albedotexture": "San_Miguel/textures/FL12pis1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_207",
+            "albedotexture": "San_Miguel/textures/FL12pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL12pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_208",
+            "albedotexture": "San_Miguel/textures/FL12stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_209",
+            "albedotexture": "San_Miguel/textures/HP01stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_21",
+            "albedotexture": "San_Miguel/textures/muros_e.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_210",
+            "albedotexture": "San_Miguel/textures/HP01stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_211",
+            "albedotexture": "San_Miguel/textures/HP01stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_212",
+            "albedotexture": "San_Miguel/textures/FL16pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL16pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_213",
+            "albedotexture": "San_Miguel/textures/HP01stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_214",
+            "albedotexture": "San_Miguel/textures/HP01stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_215",
+            "albedotexture": "San_Miguel/textures/FL17lef6.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef6_alpha_mask.png"
+        },
+        {
+            "name": "material_216",
+            "albedotexture": "San_Miguel/textures/HP01lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP01lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_217",
+            "albedotexture": "San_Miguel/textures/HP01lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP01lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_218",
+            "albedotexture": "San_Miguel/textures/HP01pet3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_219",
+            "color": [
+                0.05491,
+                0.1519,
+                0.05235
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_22",
+            "albedotexture": "San_Miguel/textures/muros_d.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_220",
+            "albedotexture": "San_Miguel/textures/FL04lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL04lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_221",
+            "albedotexture": "San_Miguel/textures/FL04lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL04lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_222",
+            "albedotexture": "San_Miguel/textures/FL04pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL04pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_223",
+            "albedotexture": "San_Miguel/textures/FL04cnt2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_224",
+            "albedotexture": "San_Miguel/textures/FL04cnt1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL04cnt1_alpha_mask.png"
+        },
+        {
+            "name": "material_225",
+            "albedotexture": "San_Miguel/textures/FL04stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_226",
+            "albedotexture": "San_Miguel/textures/TR02lef5.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/TR02lef5_alpha_mask.png"
+        },
+        {
+            "name": "material_227",
+            "albedotexture": "San_Miguel/textures/quercus_rubra_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_228",
+            "albedotexture": "San_Miguel/textures/FL19pe13.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19pe13_alpha_mask.png"
+        },
+        {
+            "name": "material_229",
+            "albedotexture": "San_Miguel/textures/FL19pe16.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19pe16_alpha_mask.png"
+        },
+        {
+            "name": "material_23",
+            "albedotexture": "San_Miguel/textures/muros_g.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_230",
+            "albedotexture": "San_Miguel/textures/FL19pe14.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19pe14_alpha_mask.png"
+        },
+        {
+            "name": "material_231",
+            "albedotexture": "San_Miguel/textures/FL19pe15.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19pe15_alpha_mask.png"
+        },
+        {
+            "name": "material_232",
+            "albedotexture": "San_Miguel/textures/FL19lef4.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19lef4_alpha_mask.png"
+        },
+        {
+            "name": "material_233",
+            "albedotexture": "San_Miguel/textures/FL19lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_234",
+            "albedotexture": "San_Miguel/textures/FL19lef3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL19lef3_alpha_mask.png"
+        },
+        {
+            "name": "material_235",
+            "albedotexture": "San_Miguel/textures/FL19stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_236",
+            "albedotexture": "San_Miguel/textures/HP04lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/HP04lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_237",
+            "albedotexture": "San_Miguel/textures/zebrina_pendula_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_238",
+            "albedotexture": "San_Miguel/textures/BL05lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/BL05lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_239",
+            "albedotexture": "San_Miguel/textures/hypoestes_phyllostachya_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_24",
+            "albedotexture": "San_Miguel/textures/muros_h.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_240",
+            "albedotexture": "San_Miguel/textures/FL29cnt1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_241",
+            "albedotexture": "San_Miguel/textures/FL29cnt2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_242",
+            "albedotexture": "San_Miguel/textures/FL29lef.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL29lef_alpha_mask.png"
+        },
+        {
+            "name": "material_243",
+            "albedotexture": "San_Miguel/textures/FL29twg.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_244",
+            "albedotexture": "San_Miguel/textures/FL29pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL29pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_245",
+            "albedotexture": "San_Miguel/textures/FL29pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL29pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_246",
+            "albedotexture": "San_Miguel/textures/FL29stm1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_247",
+            "albedotexture": "San_Miguel/textures/FL29twg.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_248",
+            "albedotexture": "San_Miguel/textures/FL29stm2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_249",
+            "albedotexture": "San_Miguel/textures/FL29lef.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL29lef_alpha_mask.png"
+        },
+        {
+            "name": "material_25",
+            "albedotexture": "San_Miguel/textures/muros_l.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_250",
+            "albedotexture": "San_Miguel/textures/FL29pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL29pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_251",
+            "albedotexture": "San_Miguel/textures/FL17lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_252",
+            "albedotexture": "San_Miguel/textures/FL17lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_253",
+            "albedotexture": "San_Miguel/textures/FL17pet5.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17pet5_alpha_mask.png"
+        },
+        {
+            "name": "material_254",
+            "albedotexture": "San_Miguel/textures/FL17stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_255",
+            "albedotexture": "San_Miguel/textures/FL17lef6.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef6_alpha_mask.png"
+        },
+        {
+            "name": "material_256",
+            "albedotexture": "San_Miguel/textures/FL17cnt.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_257",
+            "albedotexture": "San_Miguel/textures/FL17lef3.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef3_alpha_mask.png"
+        },
+        {
+            "name": "material_258",
+            "albedotexture": "San_Miguel/textures/FL17pet1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17pet1_alpha_mask.png"
+        },
+        {
+            "name": "material_259",
+            "albedotexture": "San_Miguel/textures/FL17stm.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_26",
+            "albedotexture": "San_Miguel/textures/muros_j.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_260",
+            "albedotexture": "San_Miguel/textures/FL17cnt.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_261",
+            "albedotexture": "San_Miguel/textures/FL17lef5.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef5_alpha_mask.png"
+        },
+        {
+            "name": "material_262",
+            "albedotexture": "San_Miguel/textures/FL17lef2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17lef2_alpha_mask.png"
+        },
+        {
+            "name": "material_263",
+            "albedotexture": "San_Miguel/textures/FL17pet2.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL17pet2_alpha_mask.png"
+        },
+        {
+            "name": "material_264",
+            "albedotexture": "San_Miguel/textures/FL03lef1.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/FL03lef1_alpha_mask.png"
+        },
+        {
+            "name": "material_265",
+            "albedotexture": "San_Miguel/textures/fittonia_verschaffeltii_bark.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_266",
+            "albedotexture": "San_Miguel/textures/EU15lef.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/EU15lef_alpha_mask.png"
+        },
+        {
+            "name": "material_267",
+            "color": [
+                0.48,
+                0.48,
+                0.48
+            ],
+            "metallic": 0.0,
+            "roughness": 0.1189,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_268",
+            "albedotexture": "San_Miguel/textures/Fierro_A.png",
+            "metallictexture": "San_Miguel/textures/Fierro_A_Bump.png",
+            "displacementtexture": "San_Miguel/textures/N_Fierro_A_Bump.png",
+            "metallic": 0.9,
+            "roughness": 0.3375
+        },
+        {
+            "name": "material_269",
+            "albedotexture": "San_Miguel/textures/silla_d_piel.png",
+            "displacementtexture": "San_Miguel/textures/N_silla_d_piel_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_27",
+            "albedotexture": "San_Miguel/textures/muros_l.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_270",
+            "albedotexture": "San_Miguel/textures/WOOD08.png",
+            "displacementtexture": "San_Miguel/textures/N_WOOD08_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_271",
+            "albedotexture": "San_Miguel/textures/WOOD08.png",
+            "displacementtexture": "San_Miguel/textures/N_WOOD08_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_272",
+            "albedotexture": "San_Miguel/textures/tapa_talabera.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_273",
+            "albedotexture": "San_Miguel/textures/WOOD08.png",
+            "displacementtexture": "San_Miguel/textures/N_WOOD08_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_274",
+            "albedotexture": "San_Miguel/textures/tela_mesa_d.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_275",
+            "albedotexture": "San_Miguel/textures/tela_mesa_b.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_276",
+            "albedotexture": "San_Miguel/textures/WOOD08.png",
+            "displacementtexture": "San_Miguel/textures/N_WOOD08_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_277",
+            "albedotexture": "San_Miguel/textures/Finishes.Flooring.Carpet.Loop.5.png",
+            "displacementtexture": "San_Miguel/textures/N_Finishes.Flooring.Carpet.Loop.5.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_278",
+            "albedotexture": "San_Miguel/textures/BWK_1024.png",
+            "metallictexture": "San_Miguel/textures/bwk_1024_Spec2.png",
+            "displacementtexture": "San_Miguel/textures/N_bwk_1024_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_279",
+            "albedotexture": "San_Miguel/textures/tela_blanca.png",
+            "displacementtexture": "San_Miguel/textures/N_tela_blanca.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_28",
+            "albedotexture": "San_Miguel/textures/muros_m.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_280",
+            "albedotexture": "San_Miguel/textures/Fierro_A.png",
+            "displacementtexture": "San_Miguel/textures/N_Fierro_A_Bump.png",
+            "metallic": 0.9,
+            "roughness": 0.5846
+        },
+        {
+            "name": "material_281",
+            "albedotexture": "San_Miguel/textures/wood.3.Bubinga.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_282",
+            "albedotexture": "San_Miguel/textures/tela_silla_b.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_284",
+            "albedotexture": "San_Miguel/textures/Vigas_B.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_285",
+            "albedotexture": "San_Miguel/textures/BWK_1024.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_286",
+            "albedotexture": "San_Miguel/textures/tela_silla_b.png",
+            "sheen": 0.18,
+            "sheentint": 0.25,
+            "metallic": 0.0,
+            "roughness": 0.65,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_287",
+            "albedotexture": "San_Miguel/textures/plato_a.png",
+            "metallic": 0.0,
+            "roughness": 0.1189,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_29",
+            "albedotexture": "San_Miguel/textures/muros_n.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_3",
+            "albedotexture": "San_Miguel/textures/moldura_volado.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_30",
+            "albedotexture": "San_Miguel/textures/muros_b.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_31",
+            "albedotexture": "San_Miguel/textures/muros_p_.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_32",
+            "albedotexture": "San_Miguel/textures/muros_q3.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_33",
+            "albedotexture": "San_Miguel/textures/muros_q.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_34",
+            "albedotexture": "San_Miguel/textures/muros_q4.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_35",
+            "albedotexture": "San_Miguel/textures/techo.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_36",
+            "albedotexture": "San_Miguel/textures/052terresable.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_37",
+            "albedotexture": "San_Miguel/textures/muros_q_patio2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_39",
+            "albedotexture": "San_Miguel/textures/arcos_lisos_2_color.png",
+            "displacementtexture": "San_Miguel/textures/N_arcos_lisos_2_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_4",
+            "albedotexture": "San_Miguel/textures/moldura_techo.png",
+            "displacementtexture": "San_Miguel/textures/N_moldura_techo_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_40",
+            "albedotexture": "San_Miguel/textures/arcos_lisos_3_color_1.png",
+            "displacementtexture": "San_Miguel/textures/N_arcos_lisos_3_bump_1.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_41",
+            "albedotexture": "San_Miguel/textures/muros_b2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_42",
+            "albedotexture": "San_Miguel/textures/madera_rustica_2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_43",
+            "albedotexture": "San_Miguel/textures/madera_rustica_2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_44",
+            "albedotexture": "San_Miguel/textures/muros_k.png",
+            "displacementtexture": "San_Miguel/textures/Maceta_D_Bump_0.png",
+            "metallic": 0.0,
+            "roughness": 0.8538,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_45",
+            "albedotexture": "San_Miguel/textures/concreto_01.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_46",
+            "albedotexture": "San_Miguel/textures/Vigas_A2.png",
+            "displacementtexture": "San_Miguel/textures/N_vigas_a2_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_47",
+            "albedotexture": "San_Miguel/textures/techo_01.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_48",
+            "albedotexture": "San_Miguel/textures/piso_patio_exterior.png",
+            "displacementtexture": "San_Miguel/textures/N_piso_patio_exterior_displace_inv.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_49",
+            "albedotexture": "San_Miguel/textures/fuente_piedra_01.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_5",
+            "albedotexture": "San_Miguel/textures/escalera_color.png",
+            "displacementtexture": "San_Miguel/textures/N_escalera_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_51",
+            "albedotexture": "San_Miguel/textures/arco_frente.png",
+            "displacementtexture": "San_Miguel/textures/N_arco_frente_displace_inv.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_52",
+            "color": [
+                0.337255,
+                0.286275,
+                0.223529
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_53",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7785.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_54",
+            "albedotexture": "San_Miguel/textures/0001_carros.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_55",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7815.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_56",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7812.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_57",
+            "albedotexture": "San_Miguel/textures/027_Cola_Caballo_06-30-1997.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_58",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7812.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_59",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7843.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_6",
+            "albedotexture": "San_Miguel/textures/pared_barro_afinado.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_60",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7785.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_61",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7758.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_62",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7843.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_63",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7833.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_64",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7768.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_65",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7833.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_66",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7833.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_67",
+            "albedotexture": "San_Miguel/textures/D30_Smiguel_2003_7833.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_68",
+            "albedotexture": "San_Miguel/textures/madera_marcos.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_69",
+            "albedotexture": "San_Miguel/textures/postes_barandal_color.png",
+            "displacementtexture": "San_Miguel/textures/N_postes_barandal_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_7",
+            "albedotexture": "San_Miguel/textures/techo.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_70",
+            "albedotexture": "San_Miguel/textures/piso_patio_exterior2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_72",
+            "albedotexture": "San_Miguel/textures/rust_a1.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_73",
+            "albedotexture": "San_Miguel/textures/rust_detalle.png",
+            "displacementtexture": "San_Miguel/textures/N_rust_detalle_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_74",
+            "albedotexture": "San_Miguel/textures/madera_barandal_esc_2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_75",
+            "albedotexture": "San_Miguel/textures/pared_calle.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_76",
+            "albedotexture": "San_Miguel/textures/fierro_b.png",
+            "metallic": 0.9,
+            "roughness": 0.3375
+        },
+        {
+            "name": "material_77",
+            "albedotexture": "San_Miguel/textures/fierro_b.png",
+            "metallic": 0.9,
+            "roughness": 0.3375
+        },
+        {
+            "name": "material_78",
+            "color": [
+                0.80874,
+                0.585009,
+                0.479873
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_79",
+            "color": [
+                0.2,
+                0.2,
+                0.2
+            ],
+            "metallic": 0.35,
+            "roughness": 0.06,
+            "speculartint": 0.0,
+            "opacity": 0.0,
+            "ior": 1.5
+        },
+        {
+            "name": "material_8",
+            "albedotexture": "San_Miguel/textures/concreto_02.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_80",
+            "albedotexture": "San_Miguel/textures/candil_madera.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_81",
+            "albedotexture": "San_Miguel/textures/metal_viejo_2.png",
+            "displacementtexture": "San_Miguel/textures/N_metal_viejo_2.png",
+            "metallic": 0.9,
+            "roughness": 0.3375
+        },
+        {
+            "name": "material_82",
+            "color": [
+                0.058823,
+                0.058823,
+                0.058823
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_83",
+            "color": [
+                0.2,
+                0.2,
+                0.2
+            ],
+            "metallic": 0.0,
+            "roughness": 0.0852,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_84",
+            "albedotexture": "San_Miguel/textures/detmoldura_06_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_06_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_85",
+            "albedotexture": "San_Miguel/textures/detmoldura_05_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_05_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_86",
+            "albedotexture": "San_Miguel/textures/detmoldura_04_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_04_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_87",
+            "albedotexture": "San_Miguel/textures/detmoldura_03_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_03_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_88",
+            "albedotexture": "San_Miguel/textures/detmoldura_02_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_02_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_89",
+            "albedotexture": "San_Miguel/textures/detmoldura_01_color.png",
+            "displacementtexture": "San_Miguel/textures/N_detmoldura_01_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_9",
+            "albedotexture": "San_Miguel/textures/moldura_volado.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_90",
+            "albedotexture": "San_Miguel/textures/escurridera_color.png",
+            "displacementtexture": "San_Miguel/textures/N_escurridera_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_91",
+            "albedotexture": "San_Miguel/textures/rust_a1.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_92",
+            "albedotexture": "San_Miguel/textures/sm_leaf_seca_03b.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_leaf_seca_03b_alpha_mask.png"
+        },
+        {
+            "name": "material_93",
+            "albedotexture": "San_Miguel/textures/sm_leaf_seca_02b.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_leaf_seca_02b_alpha_mask.png"
+        },
+        {
+            "name": "material_94",
+            "albedotexture": "San_Miguel/textures/sm_hoja_c_seca.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_hoja_c_seca_alpha_mask.png"
+        },
+        {
+            "name": "material_95",
+            "albedotexture": "San_Miguel/textures/marco_puerta_1.png",
+            "displacementtexture": "San_Miguel/textures/N_marco_puerta_1_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_96",
+            "albedotexture": "San_Miguel/textures/madera_barandal_esc_2.png",
+            "displacementtexture": "San_Miguel/textures/N_madera_barandal_esc_2_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_97",
+            "albedotexture": "San_Miguel/textures/mold_arco_01_color.png",
+            "displacementtexture": "San_Miguel/textures/N_mold_arco_01_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_98",
+            "albedotexture": "San_Miguel/textures/molduraterraza__color.png",
+            "displacementtexture": "San_Miguel/textures/N_molduraterraza_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materiald",
+            "albedotexture": "San_Miguel/textures/puerta.png",
+            "displacementtexture": "San_Miguel/textures/N_puerta_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materiale",
+            "albedotexture": "San_Miguel/textures/Barro_2.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materiali",
+            "albedotexture": "San_Miguel/textures/columna_b_color.png",
+            "displacementtexture": "San_Miguel/textures/N_columna_b_displacement_3_inv.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materialn",
+            "color": [
+                0.710501,
+                0.513535,
+                0.303995
+            ],
+            "metallic": 0.0,
+            "roughness": 0.1417,
+            "speculartint": 0.0,
+            "opacity": 0.0,
+            "ior": 1.5
+        },
+        {
+            "name": "materialo",
+            "color": [
+                0.1,
+                0.1,
+                0.1
+            ],
+            "metallic": 0.35,
+            "roughness": 0.06,
+            "speculartint": 0.0,
+            "opacity": 0.0,
+            "ior": 1.0
+        },
+        {
+            "name": "materialp",
+            "albedotexture": "San_Miguel/textures/fuente_piedra_02.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materialq",
+            "albedotexture": "San_Miguel/textures/fuente_azulejo.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materialr",
+            "color": [
+                0.75,
+                0.75,
+                0.75
+            ],
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materials",
+            "albedotexture": "San_Miguel/textures/sm_tronco.png",
+            "displacementtexture": "San_Miguel/textures/N_sm_tronco_bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materialt",
+            "albedotexture": "San_Miguel/textures/sm_leaf_02a.png",
+            "displacementtexture": "San_Miguel/textures/N_sm_leaf_02_bump.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_leaf_02a_alpha_mask.png"
+        },
+        {
+            "name": "materialu",
+            "albedotexture": "San_Miguel/textures/sm_leaf_02b.png",
+            "displacementtexture": "San_Miguel/textures/N_sm_leaf_02_bump.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_leaf_02b_alpha_mask.png"
+        },
+        {
+            "name": "materialv",
+            "albedotexture": "San_Miguel/textures/sm_leaf_03a.png",
+            "displacementtexture": "San_Miguel/textures/N_sm_leaf_02_bump.png",
+            "subsurface": 0.12,
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/sm_leaf_03a_alpha_mask.png"
+        },
+        {
+            "name": "materialw",
+            "albedotexture": "San_Miguel/textures/bark06mi.png",
+            "displacementtexture": "San_Miguel/textures/N_bark06mi.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "materialx",
+            "albedotexture": "San_Miguel/textures/l33-upper.png",
+            "displacementtexture": "San_Miguel/textures/N_l33-upper.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/l33-upper_alpha_mask.png"
+        },
+        {
+            "name": "materialy",
+            "albedotexture": "San_Miguel/textures/l37-upper.png",
+            "displacementtexture": "San_Miguel/textures/N_l37-upper.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/l37-upper_alpha_mask.png"
+        },
+        {
+            "name": "materialz",
+            "albedotexture": "San_Miguel/textures/l04-upper.png",
+            "displacementtexture": "San_Miguel/textures/N_l04-upper.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05,
+            "masktexture": "San_Miguel/textures/l04-upper_alpha_mask.png"
+        },
+        {
+            "name": "material_123",
+            "albedotexture": "San_Miguel/textures/Forja_Macetas.png",
+            "displacementtexture": "San_Miguel/textures/N_Forja_Macetas_bump.png",
+            "metallic": 0.9,
+            "roughness": 0.3375
+        },
+        {
+            "name": "material_124",
+            "albedotexture": "San_Miguel/textures/Maceta_A_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_A_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_125",
+            "albedotexture": "San_Miguel/textures/Maceta_A2_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_A_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "material_126",
+            "albedotexture": "San_Miguel/textures/Maceta_B_Color.png",
+            "displacementtexture": "San_Miguel/textures/N_Maceta_B_Bump.png",
+            "metallic": 0.0,
+            "roughness": 0.45,
+            "speculartint": 0.05
+        },
+        {
+            "name": "Sky",
+            "albedotexture": "models/sponza/textures/Daylight.png",
+            "emission": [
+                8.0,
+                8.0,
+                8.0
+            ]
+        }
+    ],
+    "entities": [
+        {
+            "type": "mesh",
+            "file": "San_Miguel/san-miguel-low-poly.obj"
+        },
+        {
+            "type": "mesh",
+            "file": "models/sponza/skybox.obj",
+            "material": "Sky",
+            "scale": [
+                250.0,
+                250.0,
+                250.0
+            ]
+        }
+    ]
+}

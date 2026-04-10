@@ -1,0 +1,324 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 8,
+    "camera": {
+        "position": [0.0, 3.8, 14.5],
+        "lookat": [0.0, 1.0, 0.0],
+        "fov": 46
+    },
+    "materials": [
+        {
+            "name": "floor",
+            "color": [0.74, 0.75, 0.78],
+            "roughness": 0.9
+        },
+        {
+            "name": "lightPanel",
+            "color": [1.0, 1.0, 1.0],
+            "emission": [1.0, 1.0, 1.0]
+        },
+        {
+            "name": "mat_diffuse_cream",
+            "color": [0.82, 0.79, 0.73],
+            "roughness": 0.95
+        },
+        {
+            "name": "mat_diffuse_red",
+            "color": [0.78, 0.24, 0.18],
+            "roughness": 0.75
+        },
+        {
+            "name": "mat_diffuse_teal",
+            "color": [0.19, 0.48, 0.52],
+            "roughness": 0.55
+        },
+        {
+            "name": "mat_metal_gold",
+            "color": [0.98, 0.80, 0.25],
+            "metallic": 1.0,
+            "roughness": 0.12
+        },
+        {
+            "name": "mat_metal_copper",
+            "color": [0.92, 0.55, 0.32],
+            "metallic": 1.0,
+            "roughness": 0.28
+        },
+        {
+            "name": "mat_mirror_graphite",
+            "color": [0.80, 0.82, 0.85],
+            "metallic": 1.0,
+            "roughness": 0.001
+        },
+        {
+            "name": "mat_glass_clear",
+            "color": [1.0, 1.0, 1.0],
+            "roughness": 0.0001,
+            "opacity": 0.0,
+            "ior": 1.5
+        },
+        {
+            "name": "mat_glass_smoke",
+            "color": [0.76, 0.86, 0.90],
+            "roughness": 0.08,
+            "opacity": 0.0,
+            "ior": 1.45
+        },
+        {
+            "name": "mat_glass_dense",
+            "color": [0.95, 0.98, 1.0],
+            "roughness": 0.18,
+            "opacity": 0.0,
+            "ior": 2.1
+        },
+        {
+            "name": "mat_ice",
+            "color": [0.88, 0.97, 1.0],
+            "roughness": 0.03,
+            "opacity": 0.0,
+            "ior": 1.31
+        },
+        {
+            "name": "mat_sheen_fabric",
+            "color": [0.62, 0.29, 0.55],
+            "roughness": 0.85,
+            "sheen": 0.8,
+            "sheentint": 0.6
+        },
+        {
+            "name": "mat_subsurface_peach",
+            "color": [0.94, 0.68, 0.55],
+            "roughness": 0.55,
+            "subsurface": 0.65
+        },
+        {
+            "name": "mat_clearcoat_green",
+            "color": [0.12, 0.42, 0.20],
+            "roughness": 0.35,
+            "clearcoat": 1.0,
+            "clearcoatgloss": 0.85
+        },
+        {
+            "name": "mat_clearcoat_white",
+            "color": [0.92, 0.92, 0.90],
+            "roughness": 0.2,
+            "clearcoat": 0.7,
+            "clearcoatgloss": 1.0
+        },
+        {
+            "name": "mat_spec_tint",
+            "color": [0.33, 0.34, 0.78],
+            "roughness": 0.22,
+            "speculartint": 0.9,
+            "ior": 1.8
+        },
+        {
+            "name": "mat_aniso_brass",
+            "color": [0.86, 0.68, 0.18],
+            "metallic": 1.0,
+            "roughness": 0.22,
+            "anisotropic": 0.9
+        },
+        {
+            "name": "mat_aniso_steel",
+            "color": [0.78, 0.80, 0.84],
+            "metallic": 1.0,
+            "roughness": 0.42,
+            "anisotropic": 0.75
+        },
+        {
+            "name": "mat_bronze_brushed",
+            "color": [0.71, 0.47, 0.26],
+            "metallic": 1.0,
+            "roughness": 0.5,
+            "anisotropic": 0.6
+        },
+        {
+            "name": "mat_rubber_black",
+            "color": [0.08, 0.08, 0.09],
+            "roughness": 0.98
+        },
+        {
+            "name": "mat_ceramic_blue",
+            "color": [0.28, 0.42, 0.80],
+            "roughness": 0.15,
+            "clearcoat": 0.5,
+            "clearcoatgloss": 0.9
+        },
+        {
+            "name": "mat_pink_pearl",
+            "color": [0.92, 0.68, 0.82],
+            "roughness": 0.25,
+            "sheen": 0.25,
+            "speculartint": 0.45
+        },
+        {
+            "name": "mat_lime_plastic",
+            "color": [0.62, 0.83, 0.15],
+            "roughness": 0.35,
+            "ior": 1.5
+        },
+        {
+            "name": "mat_cherry_plastic",
+            "color": [0.74, 0.08, 0.12],
+            "roughness": 0.18,
+            "clearcoat": 0.4,
+            "clearcoatgloss": 0.8
+        }
+    ],
+    "entities": [
+        {
+            "type": "mesh",
+            "file": "models/plane.obj",
+            "material": "floor"
+        },
+        {
+            "type": "mesh",
+            "file": "models/quad.obj",
+            "material": "lightPanel",
+            "position": [0.0, 7.5, 0.0],
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "sphere",
+            "position": [-6.2, 0.55, -4.2],
+            "material": "mat_diffuse_cream",
+            "radius": 0.55
+        },
+        {
+            "type": "sphere",
+            "position": [-3.3, 0.95, -4.2],
+            "material": "mat_glass_smoke",
+            "radius": 0.95
+        },
+        {
+            "type": "sphere",
+            "position": [-0.3, 0.72, -4.2],
+            "material": "mat_clearcoat_green",
+            "radius": 0.72
+        },
+        {
+            "type": "sphere",
+            "position": [1.3, 0.38, -4.0],
+            "material": "mat_diffuse_red",
+            "radius": 0.38
+        },
+        {
+            "type": "sphere",
+            "position": [2.8, 1.02, -4.2],
+            "material": "mat_metal_gold",
+            "radius": 1.02
+        },
+        {
+            "type": "sphere",
+            "position": [5.9, 0.62, -4.2],
+            "material": "mat_rubber_black",
+            "radius": 0.62
+        },
+        {
+            "type": "sphere",
+            "position": [-6.0, 0.82, -1.4],
+            "material": "mat_subsurface_peach",
+            "radius": 0.82
+        },
+        {
+            "type": "sphere",
+            "position": [-3.2, 0.46, -1.4],
+            "material": "mat_mirror_graphite",
+            "radius": 0.46
+        },
+        {
+            "type": "sphere",
+            "position": [-0.5, 0.90, -1.4],
+            "material": "mat_aniso_brass",
+            "anisotropic_direction": [1.0, 0.0, 0.0],
+            "radius": 0.90
+        },
+        {
+            "type": "sphere",
+            "position": [2.3, 0.54, -1.4],
+            "material": "mat_ceramic_blue",
+            "radius": 0.54
+        },
+        {
+            "type": "sphere",
+            "position": [5.2, 0.76, -1.4],
+            "material": "mat_glass_clear",
+            "radius": 0.76
+        },
+        {
+            "type": "sphere",
+            "position": [0.9, 0.44, 0.2],
+            "material": "mat_clearcoat_white",
+            "radius": 0.44
+        },
+        {
+            "type": "sphere",
+            "position": [-5.8, 0.42, 1.6],
+            "material": "mat_lime_plastic",
+            "radius": 0.42
+        },
+        {
+            "type": "sphere",
+            "position": [-3.0, 0.98, 1.6],
+            "material": "mat_metal_copper",
+            "radius": 0.98
+        },
+        {
+            "type": "sphere",
+            "position": [-0.1, 0.68, 1.6],
+            "material": "mat_sheen_fabric",
+            "radius": 0.68
+        },
+        {
+            "type": "sphere",
+            "position": [2.8, 0.84, 1.6],
+            "material": "mat_spec_tint",
+            "radius": 0.84
+        },
+        {
+            "type": "sphere",
+            "position": [5.7, 0.57, 1.6],
+            "material": "mat_aniso_steel",
+            "anisotropic_direction": [0.0, 0.0, 1.0],
+            "radius": 0.57
+        },
+        {
+            "type": "sphere",
+            "position": [-6.2, 0.72, 4.4],
+            "material": "mat_glass_dense",
+            "radius": 0.72
+        },
+        {
+            "type": "sphere",
+            "position": [-3.5, 0.60, 4.4],
+            "material": "mat_cherry_plastic",
+            "radius": 0.60
+        },
+        {
+            "type": "sphere",
+            "position": [-0.7, 0.96, 4.4],
+            "material": "mat_ice",
+            "radius": 0.96
+        },
+        {
+            "type": "sphere",
+            "position": [0.9, 0.36, 3.3],
+            "material": "mat_diffuse_teal",
+            "radius": 0.36
+        },
+        {
+            "type": "sphere",
+            "position": [2.2, 0.50, 4.4],
+            "material": "mat_pink_pearl",
+            "radius": 0.50
+        },
+        {
+            "type": "sphere",
+            "position": [5.3, 0.88, 4.4],
+            "material": "mat_bronze_brushed",
+            "anisotropic_direction": [1.0, 0.0, 1.0],
+            "radius": 0.88
+        }
+    ]
+}
