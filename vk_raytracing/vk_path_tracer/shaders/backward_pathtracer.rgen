@@ -25,7 +25,7 @@ layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-const uint  rayFlags = gl_RayFlagsOpaqueEXT;
+const uint  rayFlags = 0u;
 
 void main() {
 	payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
