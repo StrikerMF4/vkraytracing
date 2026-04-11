@@ -56,17 +56,6 @@ void main() {
     int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
 
-    // Masking test
-    if(payload.material.maskTextureID >= 0) {
-        uint txtId    = payload.material.maskTextureID + objResource.txtOffset;
-        float mask = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
-        if (mask < 0.5) {
-            payload.origin = hit_position + payload.direction * EPSILON2;
-            payload.status = RAY_RETRY;
-            return;
-        }
-    }
-
     // Texture
     if (payload.material.anisotropicTextureID >= 0) {
         uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;

@@ -59,18 +59,6 @@ void main() {
     payload.material = materials.m[matIdx];
 
     vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
-
-    // Masking test
-    if(payload.material.maskTextureID >= 0) {
-        uint txtId    = payload.material.maskTextureID + objResource.txtOffset;
-        float mask = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).x;
-        if (mask < 0.5) {
-            payload.origin = hit_position + payload.direction * EPSILON2;
-            payload.status = RAY_RETRY;
-            return;
-        }
-    }
-
     vec3 local_geom_tangent = v0.tangent.xyz * barycentrics.x + v1.tangent.xyz * barycentrics.y + v2.tangent.xyz * barycentrics.z;
     vec3 final_tangent = vec3(0.0);
 

@@ -73,10 +73,6 @@ void main() {
 //            output_color += throughput * payload.Le / pdf;
             output_color += throughput * payload.Le;
             break;
-        } else if (payload.status == RAY_RETRY) {
-			depth--;
-			resetPayload(payload, payload.origin, payload.direction);
-			continue;
         } else if (payload.status == RAY_MISS) {
             output_color += throughput * vec3(0);
             break;
