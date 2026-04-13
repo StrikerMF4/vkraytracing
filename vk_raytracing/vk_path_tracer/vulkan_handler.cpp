@@ -312,10 +312,12 @@ void VulkanHandler::createDescriptorSetLayout()
 		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 	// Obj descriptions
 	m_descSetLayoutBind.addBinding(SceneBindings::eObjDescs, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
-		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+			VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 	// Textures
 	m_descSetLayoutBind.addBinding(SceneBindings::eTextures, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nbTxt,
-		VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+		VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+			VK_SHADER_STAGE_ANY_HIT_BIT_KHR);
 	// Lights
 	m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR);
@@ -536,6 +538,12 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 			ObjModel model;
 			model.nbIndices = static_cast<uint32_t>(shape->model_loader.LoadedIndices.size());
 			model.nbVertices = static_cast<uint32_t>(shape->model_loader.LoadedVertices.size());
+			for (unsigned int matIdx : shape->model_loader.LoadedMaterialIndices) {
+				if (matIdx < scene->materials.size() && scene->materials[matIdx].maskTextureID >= 0) {
+					model.hasMaskTexture = true;
+					break;
+				}
+			}
 
 			// Create the buffers on Device and copy vertices, indices and materials
 			nvvk::CommandPool  cmdBufGet(m_device, m_graphicsQueueIndex);
@@ -1119,10 +1127,12 @@ auto VulkanHandler::objectToVkGeometryKHR(const ObjModel& model)
 	//triangles.transformData = {};
 	triangles.maxVertex = model.nbVertices - 1;
 
-	// Identify the above data as containing opaque triangles.
 	VkAccelerationStructureGeometryKHR asGeom{ VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR };
 	asGeom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-	asGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR | VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+	asGeom.flags = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+	if (!model.hasMaskTexture) {
+		asGeom.flags |= VK_GEOMETRY_OPAQUE_BIT_KHR;
+	}
 	asGeom.geometry.triangles = triangles;
 
 	// The entire array will be used to build the BLAS.

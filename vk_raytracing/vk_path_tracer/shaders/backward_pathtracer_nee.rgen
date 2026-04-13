@@ -28,9 +28,8 @@ layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
 // clang-format on
 
-const uint  rayFlags = gl_RayFlagsOpaqueEXT;
-const uint connectionFlags = gl_RayFlagsOpaqueEXT | 
-							gl_RayFlagsSkipClosestHitShaderEXT |
+const uint  rayFlags = 0u;
+const uint connectionFlags = gl_RayFlagsSkipClosestHitShaderEXT |
 							gl_RayFlagsTerminateOnFirstHitEXT;
 
 vec3 RandomPointInLight(uint light_index, out vec3 surface_normal, out vec3 emission, out float pdf) {
@@ -159,10 +158,6 @@ void main()
 		if (payload.status == RAY_HIT_LIGHT) {
 			output_color += throughput * payload.Le;
 			break;
-		} else if (payload.status == RAY_RETRY) {
-			depth--;
-			resetPayload(payload, payload.origin, payload.direction);
-			continue;
 		} else if (payload.status == RAY_MISS) {
 			break;
 		}
