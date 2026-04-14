@@ -8,6 +8,11 @@
 #include <fstream>
 #include <glm/glm.hpp>
 
+namespace StartupLoad
+{
+class Feedback;
+}
+
 static int const DEFAULT_RESOLUTION_WIDTH = 1280;
 static int const DEFAULT_RESOLUTION_HEIGHT = 720;
 
@@ -66,7 +71,7 @@ namespace SceneLoader {
 		std::vector<objl::Material> materials;
 		std::vector<std::string> textures;
 
-		Scene(const std::string& filename);
+		Scene(const std::string& filename, StartupLoad::Feedback* feedback = nullptr);
 
 	};
 }

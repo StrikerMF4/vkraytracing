@@ -1,12 +1,19 @@
 
 #include "scene_loader.h"
+#include "startup_load.h"
 #include <nvh/nvprint.hpp>
+#include <memory>
+#include <stdexcept>
 
 using json = nlohmann::json;
 
 using namespace SceneLoader;
 
-Scene::Scene(const std::string& filepath) {
+Scene::Scene(const std::string& filepath, StartupLoad::Feedback* feedback) {
+	try {
+		StartupLoad::throwIfCancelled(feedback);
+		if (feedback != nullptr)
+			feedback->setDetail("Parseando archivo de escena");
 
 	std::filesystem::path path = filepath;
 
@@ -15,6 +22,7 @@ Scene::Scene(const std::string& filepath) {
 
 	std::ifstream f(filepath);
 	json data = json::parse(f);
+	StartupLoad::throwIfCancelled(feedback);
 
 	std::map<std::string, objl::Material> materials_map;
 
@@ -47,6 +55,9 @@ Scene::Scene(const std::string& filepath) {
 
 	bool defines_default_material = false;
 	if (data.contains("materials")) {
+		if (feedback != nullptr)
+			feedback->setDetail("Procesando materiales y texturas");
+
 		json materials_data = data["materials"];
 
 		for (json::iterator it = materials_data.begin(); it != materials_data.end(); ++it) {
@@ -147,10 +158,15 @@ Scene::Scene(const std::string& filepath) {
 
 
 	if (data.contains("entities")) {
+		if (feedback != nullptr)
+			feedback->setDetail("Preparando entidades");
+
 		json entities_data = data["entities"];
 
 		for (json::iterator it = entities_data.begin(); it != entities_data.end(); ++it) {
+			StartupLoad::throwIfCancelled(feedback);
 			Entity* entity = nullptr;
+			std::unique_ptr<Entity> entity_holder;
 
 			glm::vec3 position = glm::vec3();
 			glm::vec3 rotation = glm::vec3();
@@ -198,14 +214,24 @@ Scene::Scene(const std::string& filepath) {
 				else
 					default_material = &materials_map["default_material"];
 
-				Shape* shape = new Shape();
+				if (feedback != nullptr)
+					feedback->setDetail("Leyendo OBJ: " + model_name.filename().string());
 
-				shape->model_loader.LoadFile(path.string(), scale, &materials_map, default_material, replace_materials);
+				std::unique_ptr<Shape> shape = std::make_unique<Shape>();
 
-				entity = shape;
+				if (!shape->model_loader.LoadFile(path.string(), scale, &materials_map, default_material, replace_materials, feedback)) {
+					StartupLoad::throwIfCancelled(feedback);
+					throw std::runtime_error("No se pudo cargar el modelo OBJ: " + path.string());
+				}
+
+				entity = shape.get();
+				entity_holder = std::move(shape);
 			}
 			else if (entity_type == "sphere") {
-				Sphere* sphere = new Sphere();
+				if (feedback != nullptr)
+					feedback->setDetail("Construyendo primitivas");
+
+				std::unique_ptr<Sphere> sphere = std::make_unique<Sphere>();
 
 				sphere->radius = (*it)["radius"].template get<double>();
 				sphere->anisotropic_direction = ((*it).contains("anisotropic_direction") ?
@@ -218,7 +244,8 @@ Scene::Scene(const std::string& filepath) {
 				if ((*it).contains("inverted_normal"))
 					sphere->inverted_normal = (*it)["inverted_normal"].template get<int>();
 
-				entity = sphere;
+				entity = sphere.get();
+				entity_holder = std::move(sphere);
 			} else {
 				LOGI("SCENE_LOADER::UNRECOGNISED_ENTITY_TYPE:: received type: ",entity_type);
 			}
@@ -229,7 +256,20 @@ Scene::Scene(const std::string& filepath) {
 				entity->scale = scale;
 			}
 
-			entities.push_back(entity);
+			if (entity_holder) {
+				entities.push_back(entity_holder.release());
+			}
+			else {
+				entities.push_back(entity);
+			}
 		}
+	}
+	}
+	catch (...) {
+		for (Entity* entity : entities) {
+			delete entity;
+		}
+		entities.clear();
+		throw;
 	}
 }
