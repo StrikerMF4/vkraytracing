@@ -73,6 +73,7 @@ struct Node {
 	vec3 normal;
 	vec3 tangent;
 	vec3 w_i;
+	vec3 w_o;
 	Material material;
 };
 

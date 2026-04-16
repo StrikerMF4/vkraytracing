@@ -30,6 +30,10 @@ Scene::Scene(const std::string& filepath) {
 
 		if (camera_data.contains("fov"))
 			camera_fov = camera_data["fov"].template get<float>();
+		if (camera_data.contains("aperture"))
+			camera_aperture = camera_data["aperture"].template get<float>();
+		if (camera_data.contains("focus_distance"))
+			camera_focus_distance = camera_data["focus_distance"].template get<float>();
 		if (camera_data.contains("position"))
 			camera_position = glm::vec3(
 				camera_data["position"][0].template get<double>(),

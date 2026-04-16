@@ -4,7 +4,9 @@
     "camera": {
         "position": [0.0, 0.7, 2.2],
         "lookat": [0.0, 0.7, 0.0],
-        "fov": 60
+        "fov": 60,
+        "aperture": 0.05,
+        "focus_distance": 2.2
     },
     "materials": [
         {

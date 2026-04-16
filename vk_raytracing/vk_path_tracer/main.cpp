@@ -729,8 +729,8 @@ static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window)
 	CameraManip.setFov(scene->camera_fov);
 	CameraManip.setSpeed(5.0f);
 
-	vulkanHandler.m_cameraAperture = 0.f;
-	vulkanHandler.m_cameraFocalLength = 1.f;
+	vulkanHandler.m_cameraAperture = scene->camera_aperture;
+	vulkanHandler.m_cameraFocalLength = scene->camera_focus_distance;
 
 	vulkanHandler.m_pcRay.light_count = vulkanHandler.m_lights.size();
 	vulkanHandler.m_pcRay.debug_technique_s = debug_technique_s;

@@ -107,8 +107,16 @@ float sampleLightDirectionPDF(Light light, vec3 direction, vec3 normal) {
 	return AreaLightPDFDirection(direction, normal);
 }
 
+vec3 cameraForwardDir() {
+	return normalize((camera.viewInverse * vec4(0, 0, -1, 0)).xyz);
+}
+
+vec3 cameraLensCenter() {
+	return (camera.viewInverse * vec4(0, 0, 0, 1)).xyz;
+}
+
 float eyeDirectionPDF(vec3 direction) {
-	vec3 cameraForward = normalize((camera.viewInverse * vec4(0,0,-1,0)).xyz);
+	vec3 cameraForward = cameraForwardDir();
 	float cosTheta = dot(cameraForward, direction);
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
@@ -174,14 +182,17 @@ float misWeight(int s, int t, PDFConnection connection) {
 			if (light_hits[i - 1].isSpecular || light_hits[i].isSpecular)
 				continue;
 		} else { // t=0
-		 // pk/pk+1 = Pa(xk) / Po(xk-1->xk)G(xk-1,xk) 
-		 // Pa(xk) = light_hits[s-1].pdfF 
-		 // Po(xk-1->xk)G(xk-1,xk) = light_hits[s-2].pdfF * light_hits[s-1].G
-		 // Nota: no se usa porque no se implementa el caso t=0
-			pK *= light_hits[s - 1].pdfF /
-				  (light_hits[s - 2].pdfF * light_hits[s - 1].G);
-			if (light_hits[s - 2].isSpecular || light_hits[s - 1].isSpecular)
+			if (connection.lightF <= EPSILON2 || connection.G <= EPSILON2)
 				continue;
+
+			pK *= eye_hits[0].pdfB / (connection.lightF * connection.G);
+
+			if (s == 1) {
+				if (light_hits[0].isSpecular)
+					continue;
+			} else if (light_hits[s - 2].isSpecular || light_hits[s - 1].isSpecular) {
+				continue;
+			}
 		}
 		denom += pK * pK;
 	}
@@ -246,6 +257,34 @@ float misWeight(int s, int t, PDFConnection connection) {
 	return 1 / denom;
 }
 
+bool intersectLensRay(vec3 rayOrigin, vec3 rayDirection, out vec3 lensPoint, out float lensDistance) {
+	if (camera.camAperture <= 0.0f) {
+		return false;
+	}
+
+	vec3 lensCenter = cameraLensCenter();
+	vec3 cameraForward = cameraForwardDir();
+	float denom = dot(rayDirection, cameraForward);
+
+	if (abs(denom) < EPSILON2) {
+		return false;
+	}
+
+	lensDistance = dot(lensCenter - rayOrigin, cameraForward) / denom;
+	if (lensDistance <= T_MIN) {
+		return false;
+	}
+
+	lensPoint = rayOrigin + rayDirection * lensDistance;
+
+	vec4 lensLocal = camera.view * vec4(lensPoint, 1.0f);
+	float lensRadius = camera.camAperture * 0.5f;
+	if (lensLocal.x * lensLocal.x + lensLocal.y * lensLocal.y > lensRadius * lensRadius) {
+		return false;
+	}
+
+	return true;
+}
 
 ivec2 worldToScreen(vec3 pWorld, vec3 pLens) {
     vec4 pView = camera.view * vec4(pWorld, 1.0f);
@@ -318,6 +357,24 @@ float evalWe(vec3 pCamera, vec3 pWorld) {
     return We;
 }
 
+bool sampleSensorFromLensHit(vec3 pWorld, vec3 pLens, out ivec2 pixel, out float sensorWe, out float eyePdfF) {
+	pixel = worldToScreen(pWorld, pLens);
+	if (pixel == ivec2(-1)) {
+		return false;
+	}
+
+	vec3 eyeDirection = normalize(pWorld - pLens);
+	vec3 cameraForward = cameraForwardDir();
+	float lensCos = abs(dot(cameraForward, eyeDirection));
+	if (lensCos < EPSILON2) {
+		return false;
+	}
+
+	sensorWe = evalWe(pLens, pWorld);
+	eyePdfF = eyeDirectionPDF(eyeDirection) / (lensCos + EPSILON);
+	return !isnan(sensorWe) && sensorWe > 0.0f;
+}
+
 vec3 connectionFactor(inout Node light_point, inout Node eye_point, uint s, uint t, vec3 direction, vec3 light_emission, out PDFConnection pdf) {
 	vec3 eye_color = vec3(0);
 	if (t == 1) {
@@ -387,7 +444,7 @@ void main() {
 	}
 
 	float aspectRatio = gl_LaunchSizeEXT.x / gl_LaunchSizeEXT.y;
-	vec3 cameraForward = normalize((camera.viewInverse * vec4(0,0,-1,0)).xyz);
+	vec3 cameraForward = cameraForwardDir();
 	float lensToFilmDistance2 = (focus_dist * focus_dist) / max(abs(dot(normalize(target.xyz), vec3(0,0,1))), EPSILON);
 	float cosTheta = abs(dot(cameraForward, direction));
 
@@ -412,6 +469,7 @@ void main() {
 		1.0 / (filmArea * G + EPSILON);
 	eye_hits[0].alpha = vec3(1.0) / eye_hits[0].pdfB;
 	eye_hits[0].w_i = vec3(0);
+	eye_hits[0].w_o = vec3(0);
 	eye_hits[0].normal = cameraForward;
 
 	vec3 alpha_E = eye_hits[0].alpha * vec3(We / pdfF);
@@ -490,6 +548,7 @@ void main() {
 	light_hits[0].isSpecular = false;
 	light_hits[0].G = 1.0;
 	light_hits[0].w_i = vec3(0);
+	light_hits[0].w_o = light_direction;
 	vec3 alpha_L = light_hits[0].alpha * Le / light_hits[0].pdfF;
 
 	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
@@ -522,6 +581,7 @@ void main() {
 		light_hits[light_max_index].tangent = payload.tangent;
 		light_hits[light_max_index].material = payload.material;
 		light_hits[light_max_index].w_i = -light_direction;
+		light_hits[light_max_index].w_o = payload.direction;
 		light_hits[light_max_index].alpha = alpha_L;
 		light_hits[light_max_index].pdfF = pdfF;
 		light_hits[light_max_index].isSpecular = payload.isDeltaDirac;
@@ -558,8 +618,7 @@ void main() {
 				continue;
 			}
 
-			// We dont support direct camera connections
-			if ((t == 0)) {
+			if (t == 0 && (s == 0 || aperture <= 0.0f)) {
 				continue;
 			}
 				
@@ -578,6 +637,53 @@ void main() {
 				pdf.lightF = eye_hits[t-1].pdfF;
 				pdf.lightB = eye_hits[t-1].pdfB;
 				contribution = eye_hits[t-1].alpha;
+			}
+			else if (t == 0) {
+				Node light_point = light_hits[s - 1];
+				vec3 light_direction = normalize(light_point.w_o);
+				vec3 lens_point = vec3(0.0);
+				float lens_distance = 0.0;
+				float sensor_we = 0.0;
+				float sensor_eye_pdf = 0.0;
+
+				if (length(light_direction) < EPSILON2) continue;
+				if (!intersectLensRay(light_point.point, light_direction, lens_point, lens_distance)) continue;
+				if (!sampleSensorFromLensHit(light_point.point, lens_point, pixel, sensor_we, sensor_eye_pdf)) continue;
+
+				origin = light_point.point + light_direction * 0.001f;
+				float visibility_distance = length(lens_point - origin);
+				if (visibility_distance <= T_MIN) continue;
+
+				resetPayload(payload, origin, light_direction);
+				traceRayEXT(topLevelAS, connectionFlags, 0xFF, 0, 0, 0, origin, T_MIN, light_direction, visibility_distance - EPSILON, 0);
+				if (payload.status != RAY_MISS) continue;
+
+				pdf.eyeF = sensor_eye_pdf;
+				pdf.eyeB = eye_hits[0].pdfB;
+				pdf.G = GeometricTerm(lens_point, eye_hits[0].normal, light_point.point, light_point.normal);
+				if (pdf.G <= 0.0f) continue;
+
+				if (s == 1) {
+					pdf.lightF = light_hits[0].pdfF;
+					pdf.lightB = light_hits[0].pdfB;
+					contribution = vec3(sensor_we) * pdf.G * (Le / (light_hits[0].pdfF + EPSILON));
+				}
+				else {
+					vec3 light_color = vec3(0.0);
+					float light_pdfF = 0.0;
+					float light_pdfB = 0.0;
+					float light_cos = abs(dot(light_point.normal, light_point.w_o));
+					DisneyBSDF(light_point.w_o, light_point.w_i, light_point.normal, light_point.tangent, light_point.material, light_color, light_pdfF, light_pdfB, payload.random_seed);
+					if (light_cos < EPSILON2 || light_pdfF < EPSILON2) continue;
+
+					pdf.lightF = light_pdfF;
+					pdf.lightB = light_pdfB;
+
+					float light_pdf_area = light_pdfF / light_cos;
+					if (light_pdf_area < EPSILON2) continue;
+
+					contribution = light_color * (sensor_we * pdf.G / (light_pdf_area + EPSILON));
+				}
 			}
 			else {
 				vec3 eye_point = eye_hits[t-1].point;
@@ -622,7 +728,7 @@ void main() {
 			if(isnan(final_contribution.r) || isnan(final_contribution.g) || isnan(final_contribution.b))
 				continue;
 
-			if(t == 1) {
+			if(t <= 1) {
 				pixel.x = pixel.x * 4;
 				imageAtomicAdd(light_output_image, pixel, uint(final_contribution.r * FLOAT_UINT_CONVERSION_CONSTANT)); //r
 				imageAtomicAdd(light_output_image, pixel + ivec2(1,0), uint(final_contribution.g * FLOAT_UINT_CONVERSION_CONSTANT)); //g
