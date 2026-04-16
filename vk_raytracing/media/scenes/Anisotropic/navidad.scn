@@ -54,12 +54,6 @@
 		{
             "type": "mesh",
             "file": "Navidad/escena.obj"
-        },
-        {
-            "type": "mesh",
-            "file": "Navidad/bola.obj",
-            "rotation": [1.6, 0, 0],
-            "position": [0, 1.5, 0]
         }
     ]
 }

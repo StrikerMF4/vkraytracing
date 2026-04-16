@@ -32,7 +32,7 @@
         },
         {
             "type": "mesh",
-            "file": "../models/sponza/skybox.obj",
+            "file": "../models/skybox.obj",
             "material": "Paredes",
             "scale": [
                 200,
