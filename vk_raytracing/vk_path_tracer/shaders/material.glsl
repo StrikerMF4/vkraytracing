@@ -7,32 +7,54 @@
 #define MIN_ALPHA 1e-3
 #define DELTA_R   1e-3
 
-vec3 TangentToLocal(vec3 normal, vec3 vector) {
+bool ProjectToTangentPlane(vec3 normal, vec3 vector, out vec3 tangent) {
+    vec3 projected = vector - dot(vector, normal) * normal;
+    float len2 = dot(projected, projected);
+    if (len2 <= EPSILON2)
+        return false;
+
+    tangent = projected * inversesqrt(len2);
+    return true;
+}
+
+void FallbackTangentFrame(vec3 normal, out vec3 tangent, out vec3 bitangent) {
     float sgn = normal.z > 0.0F ? 1.0F : -1.0F;
     float a = -1.0F / (sgn + normal.z);
     float b = normal.x * normal.y * a;
 
-    vec3 tangent = vec3(1.0f + sgn * normal.x * normal.x * a, sgn * b, -sgn * normal.x);
-    vec3 bitangent = vec3(b, sgn + normal.y * normal.y * a, -normal.y);
-
-    return vector.x * tangent + vector.y * bitangent + vector.z * normal;
+    tangent = normalize(vec3(1.0f + sgn * normal.x * normal.x * a, sgn * b, -sgn * normal.x));
+    bitangent = normalize(vec3(b, sgn + normal.y * normal.y * a, -normal.y));
 }
-
-//void TangentVectors(in vec3 N, inout vec3 T, inout vec3 B) {
-//    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-//    T = normalize(cross(up, N));
-//    B = cross(N, T);
-//}
 
 void TangentVectors(in vec3 N, in vec3 tangent, out vec3 T, out vec3 B) 
 {
-    if (length(tangent) < EPSILON2) {
-        vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
-        T = normalize(cross(up, N));
-    } else {
-        T = normalize(tangent - dot(tangent, N) * N);
+    if (!ProjectToTangentPlane(N, tangent, T))
+        FallbackTangentFrame(N, T, B);
+    else
+        B = normalize(cross(N, T));
+}
+
+vec3 ResolveAnisotropicTangent(vec3 N, vec3 geomTangent, float tangentSign, vec3 materialDirection, vec2 textureDirection, bool hasTextureDirection) {
+    vec3 geomT, geomB;
+    TangentVectors(N, geomTangent, geomT, geomB);
+    geomB *= tangentSign < 0.0 ? -1.0 : 1.0;
+
+    vec3 candidate;
+    vec3 resolved;
+    if (hasTextureDirection && dot(textureDirection, textureDirection) > EPSILON2) {
+        candidate = textureDirection.x * geomT + textureDirection.y * geomB;
+        if (ProjectToTangentPlane(N, candidate, resolved))
+            return resolved;
     }
-    B = cross(N, T);
+
+    candidate = materialDirection.x * geomT + materialDirection.y * geomB + materialDirection.z * N;
+    if (ProjectToTangentPlane(N, candidate, resolved))
+        return resolved;
+
+    if (ProjectToTangentPlane(N, geomTangent, resolved))
+        return resolved;
+
+    return geomT;
 }
 
 float GeometricTerm(vec3 xi, vec3 ni, vec3 xo, vec3 no) {
@@ -72,40 +94,39 @@ float DielectricFresnel(float cosThetaI, float eta) {
     return 0.5f * (rs * rs + rp * rp);
 }
 
-vec3 GGXMicronormal(vec3 normal, float alpha, inout uint seed, inout float theta) {
-    if (alpha == 0) return normal;
+vec3 GGXMicronormal(vec3 N, vec3 T, vec3 B, float alpha, inout uint seed, inout float theta) {
+    if (alpha == 0) return N;
 
-    float e1 = rand(seed);
+    float e1 = min(rand(seed), 1.0 - EPSILON2);
     float e2 = rand(seed);
-    theta = atan(alpha * sqrt(e1) / sqrt(1.0 - e1));
-    float phi = 2 * PI * e2;
+    theta = atan(alpha * sqrt(e1) / sqrt(max(1.0 - e1, EPSILON2)));
+    float phi = TWO_PI * e2;
 
     float x = sin(theta) * cos(phi);
     float y = sin(theta) * sin(phi);
     float z = cos(theta);
-    vec3 micro_normal = vec3(x, y, z);
 
-    return TangentToLocal(normal, micro_normal);
+    return normalize(T * x + B * y + N * z);
 }
 
 vec3 GGXAnisotropicMicronormal(vec3 N, vec3 T, vec3 B, float ax, float ay, inout uint seed) {
     float e1 = rand(seed);
-    float e2 = rand(seed);
+    float e2 = min(rand(seed), 1.0 - EPSILON2);
 
-    // Mapeo a disco elíptico en el plano tangente
-    float phi = 2.0 * PI * e1;
-    float r = sqrt(e2);
-    float x = r * cos(phi);
-    float y = r * sin(phi);
+    float phiSample = TWO_PI * e1;
+    float phi = atan((ay / ax) * tan(phiSample));
+    if (e1 > 0.25 && e1 <= 0.75)
+        phi += PI;
+    else if (e1 > 0.75)
+        phi += TWO_PI;
 
-    // Proyección al hemisferio
-    vec3 H_tan;
-    H_tan.x = ax * x;
-    H_tan.y = ay * y;
-    H_tan.z = sqrt(max(0.0, 1.0 - (H_tan.x * H_tan.x) - (H_tan.y * H_tan.y)));
+    float cosPhi = cos(phi);
+    float sinPhi = sin(phi);
+    float tanTheta2 = e2 / max(1.0 - e2, EPSILON2) / ((cosPhi * cosPhi) / (ax * ax) + (sinPhi * sinPhi) / (ay * ay));
+    float cosTheta = inversesqrt(1.0 + tanTheta2);
+    float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 
-    // Transformar del espacio tangente al espacio del mundo
-    return normalize(T * H_tan.x + B * H_tan.y + N * H_tan.z);
+    return normalize(T * (sinTheta * cosPhi) + B * (sinTheta * sinPhi) + N * cosTheta);
 }
 
 vec3 MicroReflect(vec3 i_ray, vec3 micro_normal) {
@@ -199,14 +220,16 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float aspect = sqrt(1.0 - material.anisotropic * 0.9);
     float ax = max(MIN_ALPHA, material.roughness * material.roughness / aspect);
     float ay = max(MIN_ALPHA, material.roughness * material.roughness * aspect);
-
-    float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
+    float NDotH = abs(dot(H, normal));
+    float IDotH = abs(dot(w_i, H));
+    float ODotH = abs(dot(w_o, H));
+    float D = GGXAnisotropicD(NDotH, dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
-    pdfF = G1 * D / (4.0 * IDotN + EPSILON);
-    pdfB = G2 * D / (4.0 * ODotN + EPSILON);
+    pdfF = D * NDotH / (4.0 * IDotH + EPSILON);
+    pdfB = D * NDotH / (4.0 * ODotH + EPSILON);
     return F * D * G / (4.0 * ODotN * IDotN + EPSILON);
 }
 
@@ -222,21 +245,26 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     vec3 T, B;
     TangentVectors(normal,tangent, T, B);
-    float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
+    float NDotH = abs(dot(H, normal));
+    float absIDotH = abs(IDotH);
+    float absODotH = abs(ODotH);
+    float D = GGXAnisotropicD(NDotH, dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
     float eta2 = eta * eta;
-    float denom = (abs(IDotH) + eta * abs(ODotH));
-    denom = denom * denom;
-    float denom_f = denom * max(abs(IDotN) * abs(ODotN), EPSILON);
+    float denom = absIDotH + eta * absODotH;
+    float denom2 = denom * denom;
+    float denom_f = denom2 * max(abs(IDotN) * abs(ODotN), EPSILON);
     float factor = eta2 * abs((IDotH * ODotH) / (denom_f));
 
     vec3 f = sqrt(material.baseColor) * (1.0 - F) * D * G * factor;
 
-    pdfF = eta2 * ((G1 * abs(IDotH) * abs(ODotH) * D) / (denom * IDotN + EPSILON));
-    pdfB = eta2 * ((G2 * abs(IDotH) * abs(ODotH) * D) / (denom * ODotN + EPSILON));
+    pdfF = D * NDotH * eta2 * absODotH / (denom2 + EPSILON);
+    float invEta = 1.0 / max(eta, EPSILON2);
+    float denomB = absODotH + invEta * absIDotH;
+    pdfB = D * NDotH * invEta * invEta * absIDotH / (denomB * denomB + EPSILON);
 
     return f;
 }

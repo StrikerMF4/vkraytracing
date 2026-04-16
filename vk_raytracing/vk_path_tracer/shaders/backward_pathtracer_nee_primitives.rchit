@@ -40,30 +40,43 @@ void main() {
     ImplicitObj object = implicitObjs.i[gl_PrimitiveID];
 
     // Computing the normal and uv at hit position
-    vec2 texCoord;
+    vec2 texCoord = vec2(0.0);
+    vec3 geom_tangent = vec3(0.0);
+    float tangent_sign = 1.0;
     if(gl_HitKindEXT == KIND_SPHERE) {
         Sphere instance = allSpheres.i[object.kind_id];
         payload.surface_normal = normalize(hit_position - instance.center);
-        payload.tangent = instance.anisotropic_direction;
 
         texCoord = vec2(
             atan(payload.surface_normal.x, payload.surface_normal.z) / (2 * PI) + 0.5,
             payload.surface_normal.y * 0.5 + 0.5
         );
+
+        geom_tangent = vec3(payload.surface_normal.z, 0.0, -payload.surface_normal.x);
+        if (dot(instance.anisotropic_direction, instance.anisotropic_direction) > EPSILON2)
+            geom_tangent = instance.anisotropic_direction;
     }
 
     // Material of the object
     int matIdx = matIndices.i[gl_PrimitiveID];
     payload.material = materials.m[matIdx];
 
-    // Texture
+    vec2 anisotropic_texture_dir = vec2(0.0);
+    bool has_anisotropic_texture_dir = false;
     if (payload.material.anisotropicTextureID >= 0) {
         uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
-        
-        vec3 aniso_dir_tangent_space = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
-
-        payload.tangent = normalize(aniso_dir_tangent_space);
+        anisotropic_texture_dir = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rg * 2.0 - 1.0;
+        has_anisotropic_texture_dir = dot(anisotropic_texture_dir, anisotropic_texture_dir) > EPSILON2;
     }
+
+    payload.tangent = ResolveAnisotropicTangent(
+        payload.surface_normal,
+        geom_tangent,
+        tangent_sign,
+        payload.material.anisotropicDirection,
+        anisotropic_texture_dir,
+        has_anisotropic_texture_dir
+    );
 
     vec3 texture_color = vec3(1);
     if(payload.material.albedoTextureID >= 0) {

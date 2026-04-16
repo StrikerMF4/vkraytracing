@@ -54,6 +54,7 @@ namespace objl
 			ID = 0;
 			baseColor = glm::vec3(1.0);
 			emission = glm::vec3(0.0);
+			anisotropicDirection = glm::vec3(1.0f, 0.0f, 0.0f);
 			anisotropic = 0.0f;
 			metallic = 0.0f;
 			roughness = 1.0f;
@@ -84,6 +85,8 @@ namespace objl
 		glm::vec3 baseColor;
 
 		glm::vec3 emission;
+
+		glm::vec3 anisotropicDirection;
 
 		float metallic;
 		float roughness;

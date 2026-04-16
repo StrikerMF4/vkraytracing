@@ -82,7 +82,13 @@ Scene::Scene(const std::string& filepath) {
 			if ((*it).contains("speculartint"))
 				material.specularTint = (*it)["speculartint"].template get<float>();
 			if ((*it).contains("anisotropic"))
-				material.anisotropic = (*it)["anisotropic"].template get<float>();
+				material.anisotropic = fminf(fmaxf((*it)["anisotropic"].template get<float>(), 0.0f), 1.0f);
+			if ((*it).contains("anisotropic_direction"))
+				material.anisotropicDirection = glm::vec3(
+					(*it)["anisotropic_direction"][0].template get<double>(),
+					(*it)["anisotropic_direction"][1].template get<double>(),
+					(*it)["anisotropic_direction"][2].template get<double>()
+				);
 			if ((*it).contains("sheen"))
 				material.sheen = (*it)["sheen"].template get<float>();
 			if ((*it).contains("sheentint"))
