@@ -75,6 +75,7 @@ public:
 	void createCameraUniformBuffer();
 	void createObjDescriptionBuffer();
 	void createLightBuffer();
+	void createDirectionalLightBuffer();
 	void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/");
 	void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
 	void onResize(int /*w*/, int /*h*/) override;
@@ -107,6 +108,7 @@ public:
 	std::vector<ObjDesc>     m_objDesc;    // Model description for device access
 	std::vector<ObjInstance> m_instances;  // Scene model instances
 	std::vector<Light>    m_lights;     // Lights in the scene
+	std::vector<DirectionalLight> m_directional_lights; // Directional lights in the scene
 	std::vector<ImplicitObj> m_implicitObj; //Implicits objects in the scene
 
 	//implicit objects arrays/buffers
@@ -132,6 +134,7 @@ public:
 	nvvk::Buffer m_bGlobals;  // Device-Host of the camera matrices
 	nvvk::Buffer m_bObjDesc;  // Device buffer of the OBJ descriptions
 	nvvk::Buffer m_bLights;  // Device buffer of the lights descriptions
+	nvvk::Buffer m_bDirectionalLights;  // Device buffer of the directional lights descriptions
 
 	std::vector<nvvk::Texture> m_textures;  // vector of all textures of the scene
 

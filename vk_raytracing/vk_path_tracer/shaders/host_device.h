@@ -28,7 +28,8 @@ eObjDescs = 1,  // Access to the object descriptions
 eTextures = 2,  // Access to textures
 eLights = 3,
 eImplicit = 4,
-eImplicitSpheres = 5
+eImplicitSpheres = 5,
+eDirectionalLights = 6
 END_BINDING();
 
 START_BINDING(RtxBindings)
@@ -89,6 +90,7 @@ struct PushConstantPost
 struct PushConstantRayTracer
 {
 	uint light_count;
+	uint directional_light_count;
 	int   frame;
 
 	float antialiasing_radius;
@@ -177,6 +179,13 @@ struct Light {
 	//If mesh_type is KIND_GEOMETRY, first_index is the index of the sphere in the implicit objects buffer
 	uint first_index;
 	uint last_index;
+};
+
+struct DirectionalLight {
+	vec3 direction;
+	float weight;
+	vec3 radiance;
+	float _pad0;
 };
 
 

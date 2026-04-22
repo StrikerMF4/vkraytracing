@@ -37,6 +37,11 @@ namespace SceneLoader {
 		glm::vec3 anisotropic_direction = glm::vec3(0.0f);
 	};
 
+	struct DirectionalLight {
+		glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
+		glm::vec3 radiance = glm::vec3(0.0f);
+	};
+
 
 	class Scene {
 	public:
@@ -65,6 +70,7 @@ namespace SceneLoader {
 		std::vector<Entity*> entities;
 		std::vector<objl::Material> materials;
 		std::vector<std::string> textures;
+		std::vector<DirectionalLight> directional_lights;
 
 		Scene(const std::string& filename);
 

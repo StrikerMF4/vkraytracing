@@ -1,10 +1,43 @@
 
 #include "scene_loader.h"
 #include <nvh/nvprint.hpp>
+#include <glm/geometric.hpp>
 
 using json = nlohmann::json;
 
 using namespace SceneLoader;
+
+namespace {
+	void appendDirectionalLight(const json& light_data, std::vector<DirectionalLight>& directional_lights)
+	{
+		if (!light_data.contains("direction") || !light_data.contains("radiance")) {
+			LOGI("SCENE_LOADER::INVALID_DIRECTIONAL_LIGHT:: missing direction or radiance");
+			return;
+		}
+
+		DirectionalLight light;
+		light.direction = glm::vec3(
+			light_data["direction"][0].template get<double>(),
+			light_data["direction"][1].template get<double>(),
+			light_data["direction"][2].template get<double>()
+		);
+		light.radiance = glm::vec3(
+			light_data["radiance"][0].template get<double>(),
+			light_data["radiance"][1].template get<double>(),
+			light_data["radiance"][2].template get<double>()
+		);
+
+		float direction_length = glm::length(light.direction);
+		if (direction_length <= 0.0001f) {
+			LOGI("SCENE_LOADER::INVALID_DIRECTIONAL_LIGHT:: zero direction");
+			return;
+		}
+
+		light.direction = light.direction / direction_length;
+		light.radiance = glm::max(light.radiance, glm::vec3(0.0f));
+		directional_lights.push_back(light);
+	}
+}
 
 Scene::Scene(const std::string& filepath) {
 
@@ -145,7 +178,6 @@ Scene::Scene(const std::string& filepath) {
 		materials_map["default_material"] = default_material;
 	}
 
-
 	if (data.contains("entities")) {
 		json entities_data = data["entities"];
 
@@ -219,6 +251,9 @@ Scene::Scene(const std::string& filepath) {
 					sphere->inverted_normal = (*it)["inverted_normal"].template get<int>();
 
 				entity = sphere;
+			}
+			else if (entity_type == "directional-light") {
+				appendDirectionalLight(*it, directional_lights);
 			} else {
 				LOGI("SCENE_LOADER::UNRECOGNISED_ENTITY_TYPE:: received type: ",entity_type);
 			}
@@ -227,9 +262,8 @@ Scene::Scene(const std::string& filepath) {
 				entity->position = position;
 				entity->rotation = rotation;
 				entity->scale = scale;
+				entities.push_back(entity);
 			}
-
-			entities.push_back(entity);
 		}
 	}
 }

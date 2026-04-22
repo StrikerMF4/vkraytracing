@@ -7,6 +7,7 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_scalar_block_layout : enable
 
+#include "lights.glsl"
 #include "material.glsl"
 
 // clang-format off
@@ -23,6 +24,7 @@ layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms cam
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+layout(set = 1, binding = eDirectionalLights, scalar) buffer DirectionalLights_ { DirectionalLight i[]; } directional_lights;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 
 layout(push_constant) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
@@ -104,6 +106,22 @@ vec3 DirectLightsource(vec3 origin, vec3 viewer, vec3 normal, vec3 tangent, Mate
 		float g = GeometricTerm(origin, normal, light_point, light_normal);
 		DisneyBSDF(viewer, direction, normal, tangent, material, bsdf, pdfF, pdfB, random_seed);
 		output_color += emission * g * bsdf / pdf_light;
+	}
+	for (uint light_index = 0; light_index < settings.directional_light_count; light_index++) {
+		DirectionalLight light = directional_lights.i[light_index];
+		vec3 direction = directionalLightIncomingDirection(light);
+		float cos_theta = directionalLightCosTerm(normal, direction);
+		if (cos_theta <= 0.0) continue;
+
+		resetPayload(payload, origin, direction);
+		traceRayEXT(topLevelAS, connectionFlags, 0xFF, 0, 0, 0, origin, T_MIN, direction, T_MAX, 0);
+
+		if (payload.status != RAY_MISS) continue;
+
+		vec3 bsdf = vec3(0);
+		float pdfF, pdfB;
+		DisneyBSDF(viewer, direction, normal, tangent, material, bsdf, pdfF, pdfB, random_seed);
+		output_color += light.radiance * bsdf * cos_theta;
 	}
 	return output_color;
 }

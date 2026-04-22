@@ -321,6 +321,9 @@ void VulkanHandler::createDescriptorSetLayout()
 	// Lights
 	m_descSetLayoutBind.addBinding(SceneBindings::eLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
 		VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+	// Directional lights
+	m_descSetLayoutBind.addBinding(SceneBindings::eDirectionalLights, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
+		VK_SHADER_STAGE_RAYGEN_BIT_KHR);
 
 	// Storing implicit objects
 	m_descSetLayoutBind.addBinding(eImplicit, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
@@ -359,6 +362,9 @@ void VulkanHandler::updateDescriptorSet()
 
 	VkDescriptorBufferInfo dbiLights{ m_bLights.buffer, 0, VK_WHOLE_SIZE };
 	writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eLights, &dbiLights));
+
+	VkDescriptorBufferInfo dbiDirectionalLights{ m_bDirectionalLights.buffer, 0, VK_WHOLE_SIZE };
+	writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, SceneBindings::eDirectionalLights, &dbiDirectionalLights));
 
 	VkDescriptorBufferInfo dbiImplicitObjs{ m_implicitObjBuffer.buffer, 0, VK_WHOLE_SIZE };
 	writes.emplace_back(m_descSetLayoutBind.makeWrite(m_descSet, eImplicit, &dbiImplicitObjs));
@@ -421,6 +427,15 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 	}
 
 	float total_area = 0.0f;
+	m_directional_lights.clear();
+	for (auto& directional_light : scene->directional_lights) {
+		DirectionalLight result;
+		result.direction = directional_light.direction;
+		result.weight = 1.0f;
+		result.radiance = directional_light.radiance;
+		result._pad0 = 0.0f;
+		m_directional_lights.push_back(result);
+	}
 
 	// Upload all entities from scene to Vulkan
 	for (int i = 0; i < scene->entities.size(); i++) {
@@ -582,10 +597,12 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 			m_objDesc.emplace_back(desc);
 		}
 	}
-	float cumulative_weight = 0.0f;
-	for (int i = 0; i < m_lights.size(); i++) {
-		cumulative_weight += m_lights[i].area / total_area;
-		m_lights[i].weight = cumulative_weight;
+	if (total_area > 0.0f) {
+		float cumulative_weight = 0.0f;
+		for (int i = 0; i < m_lights.size(); i++) {
+			cumulative_weight += m_lights[i].area / total_area;
+			m_lights[i].weight = cumulative_weight;
+		}
 	}
 }
 
@@ -753,6 +770,30 @@ void VulkanHandler::createLightBuffer()
 	m_debug.setObjectName(m_bLights.buffer, "Lights");
 }
 
+void VulkanHandler::createDirectionalLightBuffer()
+{
+	nvvk::CommandPool cmdGen(m_device, m_graphicsQueueIndex);
+
+	auto cmdBuf = cmdGen.createCommandBuffer();
+
+	if (m_directional_lights.size() == 0) {
+		std::vector<DirectionalLight> vector_data;
+		vector_data.resize(1);
+
+		m_bDirectionalLights = m_alloc.createBuffer(cmdBuf, vector_data, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		cmdGen.submitAndWait(cmdBuf);
+
+		m_alloc.finalizeAndReleaseStaging();
+	}
+	else {
+		m_bDirectionalLights = m_alloc.createBuffer(cmdBuf, m_directional_lights, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+		cmdGen.submitAndWait(cmdBuf);
+
+		m_alloc.finalizeAndReleaseStaging();
+	}
+	m_debug.setObjectName(m_bDirectionalLights.buffer, "DirectionalLights");
+}
+
 //--------------------------------------------------------------------------------------------------
 // Creating all textures and samplers
 //
@@ -844,6 +885,7 @@ void VulkanHandler::destroyResources()
 	m_alloc.destroy(m_bGlobals);
 	m_alloc.destroy(m_bObjDesc);
 	m_alloc.destroy(m_bLights);
+	m_alloc.destroy(m_bDirectionalLights);
 
 	for (auto& m : m_objModel)
 	{
@@ -1569,4 +1611,3 @@ void VulkanHandler::imageToBuffer(const VkImage& imgIn, const VkBuffer& pixelBuf
 	nvvk::cmdBarrierImageLayout(cmdBuf, imgIn, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, subresource_range);
 	cmdBufGet.submitAndWait(cmdBuf);
 }
-

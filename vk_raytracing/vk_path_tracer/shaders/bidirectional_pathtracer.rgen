@@ -29,6 +29,7 @@ layout(set = 1, binding = eGlobals) uniform _CameraUniforms { CameraUniforms cam
 
 layout(set = 1, binding = eObjDescs, scalar) buffer ObjDesc_ { ObjDesc i[]; } objDesc;
 layout(set = 1, binding = eLights, scalar) buffer Lights_ { Light i[]; } lights;
+layout(set = 1, binding = eDirectionalLights, scalar) buffer DirectionalLights_ { DirectionalLight i[]; } directional_lights;
 layout(set = 1, binding = eTextures) uniform sampler2D textureSamplers[];
 
 layout(push_constant, std430) uniform _PushConstantRayTracer { PushConstantRayTracer settings; };
@@ -45,6 +46,13 @@ MISNode misNodes[MAX_DEPTH + 1];
 uint RandomPointInLight(out vec3 point, out vec3 surface_normal, out vec3 emission, out float pdf) {
 	// Pick a random light
 	const uint lightCount = settings.light_count;
+	if (lightCount == 0) {
+		point = vec3(0.0);
+		surface_normal = vec3(0.0, 1.0, 0.0);
+		emission = vec3(0.0);
+		pdf = 0.0;
+		return 0;
+	}
 	uint light_index = 0;
 	float random = rand(payload.random_seed);
 
@@ -480,19 +488,28 @@ void main() {
 	/* LIGHT PATH */ 
 	float light_point_pdf, light_dir_pdf;
 	vec3 Le;
-	uint light_index = RandomPointInLight(light_hits[0].point, light_hits[0].normal, Le, light_point_pdf);
-	vec3 light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
+	uint light_index = 0;
+	vec3 light_direction = vec3(0.0);
+	vec3 alpha_L = vec3(0.0);
+
+	if (settings.light_count > 0) {
+		light_index = RandomPointInLight(light_hits[0].point, light_hits[0].normal, Le, light_point_pdf);
+		light_direction = sampleLightDirection(light_index, light_hits[0].normal, light_dir_pdf);
 	
 
-	light_hits[0].pdfF = light_dir_pdf / max(dot(light_direction, light_hits[0].normal), EPSILON2);
-	light_hits[0].pdfB = light_point_pdf;
-	light_hits[0].alpha = vec3(1.0) / light_hits[0].pdfB;
-	light_hits[0].isSpecular = false;
-	light_hits[0].G = 1.0;
-	light_hits[0].w_i = vec3(0);
-	vec3 alpha_L = light_hits[0].alpha * Le / light_hits[0].pdfF;
+		light_hits[0].pdfF = light_dir_pdf / max(dot(light_direction, light_hits[0].normal), EPSILON2);
+		light_hits[0].pdfB = light_point_pdf;
+		light_hits[0].alpha = vec3(1.0) / light_hits[0].pdfB;
+		light_hits[0].isSpecular = false;
+		light_hits[0].G = 1.0;
+		light_hits[0].w_i = vec3(0);
+		alpha_L = light_hits[0].alpha * Le / light_hits[0].pdfF;
 
-	resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
+		resetPayload(payload, light_hits[0].point+light_direction*0.001, light_direction);
+	}
+	else {
+		payload.status = RAY_MISS;
+	}
 
 	isInsideObject = false;
 
@@ -543,6 +560,38 @@ void main() {
 		resetPayload(payload, payload.origin, payload.direction);
 	}
 
+	for (int eye_index = 1; eye_index <= int(eye_max_index); eye_index++) {
+		int t = eye_index + 1;
+		if ((settings.debug_technique_s >= 0 && settings.debug_technique_s != 1) ||
+			(settings.debug_technique_t >= 0 && settings.debug_technique_t != t)) {
+			continue;
+		}
+		if (eye_hits[eye_index].isSpecular) continue;
+
+		for (uint directional_index = 0; directional_index < settings.directional_light_count; directional_index++) {
+			DirectionalLight light = directional_lights.i[directional_index];
+			vec3 direction_to_light = directionalLightIncomingDirection(light);
+			float cos_theta = directionalLightCosTerm(eye_hits[eye_index].normal, direction_to_light);
+			if (cos_theta <= 0.0) continue;
+
+			resetPayload(payload, eye_hits[eye_index].point, direction_to_light);
+			traceRayEXT(topLevelAS, connectionFlags, 0xFF, 0, 0, 0, eye_hits[eye_index].point, T_MIN, direction_to_light, T_MAX, 0);
+			if (payload.status != RAY_MISS) continue;
+
+			vec3 bsdf = vec3(0.0);
+			float pdfF, pdfB;
+			DisneyBSDF(eye_hits[eye_index].w_i, direction_to_light, eye_hits[eye_index].normal, eye_hits[eye_index].tangent,
+				eye_hits[eye_index].material, bsdf, pdfF, pdfB, payload.random_seed);
+
+			vec3 contribution = eye_hits[eye_index].alpha * light.radiance * bsdf * cos_theta;
+			vec3 final_contribution =
+				(settings.debug_multiply_contribution == 1 ? contribution : vec3(1.0));
+
+			if(!isnan(final_contribution.r) && !isnan(final_contribution.g) && !isnan(final_contribution.b))
+				output_color += final_contribution;
+		}
+	}
+
 	// Iterar en k 
 	for (int pathLength = 1; pathLength <= settings.max_depth; pathLength++) {
 		int pathVertexCount = pathLength + 1;
@@ -551,6 +600,10 @@ void main() {
 
 			if ((settings.debug_technique_s >= 0 && s != settings.debug_technique_s) ||
 				(settings.debug_technique_t >= 0 && t != settings.debug_technique_t)) {
+				continue;
+			}
+
+			if (settings.light_count == 0 && s > 0) {
 				continue;
 			}
 
