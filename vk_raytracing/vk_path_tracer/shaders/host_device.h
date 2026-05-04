@@ -135,6 +135,8 @@ struct Material  // See ObjLoader, copy of MaterialObj, could be compressed for 
 
 	vec3 emission;
 
+	vec3 anisotropicDirection;
+
 	float metallic;
 	float roughness;
 	float subsurface;

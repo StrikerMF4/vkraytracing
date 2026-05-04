@@ -60,26 +60,25 @@ void main() {
 
     vec2 texCoord = v0.texCoord * barycentrics.x + v1.texCoord * barycentrics.y + v2.texCoord * barycentrics.z;
     vec3 local_geom_tangent = v0.tangent.xyz * barycentrics.x + v1.tangent.xyz * barycentrics.y + v2.tangent.xyz * barycentrics.z;
-    vec3 final_tangent = vec3(0.0);
+    vec3 world_geom_tangent = objToWorld * local_geom_tangent;
+    float tangent_sign = (v0.tangent.w * barycentrics.x + v1.tangent.w * barycentrics.y + v2.tangent.w * barycentrics.z) < 0.0 ? -1.0 : 1.0;
 
-    if (dot(local_geom_tangent, local_geom_tangent) > EPSILON2) {
-        vec3 world_geom_tangent = normalize(objToWorld * local_geom_tangent);
-        world_geom_tangent = normalize(world_geom_tangent - dot(world_geom_tangent, payload.surface_normal) * payload.surface_normal);
-        vec3 world_geom_bitangent = cross(payload.surface_normal, world_geom_tangent) * v0.tangent.w;
-        final_tangent = world_geom_tangent;
-
-        if (payload.material.anisotropicTextureID >= 0) {
-            uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
-            vec3 map_vector = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rgb * 2.0 - 1.0;
-
-            final_tangent = normalize(
-                map_vector.x * world_geom_tangent +
-                map_vector.y * world_geom_bitangent + 
-                map_vector.z * payload.surface_normal
-            );
-        }
+    vec2 anisotropic_texture_dir = vec2(0.0);
+    bool has_anisotropic_texture_dir = false;
+    if (payload.material.anisotropicTextureID >= 0) {
+        uint txtId = payload.material.anisotropicTextureID + objResource.txtOffset;
+        anisotropic_texture_dir = texture(textureSamplers[nonuniformEXT(txtId)], texCoord * payload.material.tiling).rg * 2.0 - 1.0;
+        has_anisotropic_texture_dir = dot(anisotropic_texture_dir, anisotropic_texture_dir) > EPSILON2;
     }
-    payload.tangent = final_tangent;
+
+    payload.tangent = ResolveAnisotropicTangent(
+        payload.surface_normal,
+        world_geom_tangent,
+        tangent_sign,
+        payload.material.anisotropicDirection,
+        anisotropic_texture_dir,
+        has_anisotropic_texture_dir
+    );
     
 
     // Texture

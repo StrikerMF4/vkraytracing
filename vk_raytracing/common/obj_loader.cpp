@@ -3,6 +3,23 @@
 
 using namespace objl;
 
+namespace {
+	glm::vec3 safeNormalizeOr(const glm::vec3& value, const glm::vec3& fallback)
+	{
+		float len2 = glm::dot(value, value);
+		if (len2 <= 1e-12f || !isfinite(len2))
+			return fallback;
+		return value / sqrtf(len2);
+	}
+
+	glm::vec3 fallbackTangent(const glm::vec3& normal)
+	{
+		glm::vec3 n = safeNormalizeOr(normal, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::vec3 up = fabsf(n.z) < 0.999f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+		return safeNormalizeOr(glm::cross(up, n), glm::vec3(1.0f, 0.0f, 0.0f));
+	}
+}
+
 float math::MagnitudeV3(const glm::vec3 in)
 {
 	return (sqrtf(powf(in.x, 2) + powf(in.y, 2) + powf(in.z, 2)));
@@ -772,9 +789,10 @@ void Loader::CalcTangents()
 		glm::vec2 deltaUV1 = v1.TextureCoordinate - v0.TextureCoordinate;
 		glm::vec2 deltaUV2 = v2.TextureCoordinate - v0.TextureCoordinate;
 
-		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+		float det = deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y;
+		if (fabsf(det) <= 1e-8f || !isfinite(det)) continue;
 
-		if (isinf(f) || isnan(f)) continue;
+		float f = 1.0f / det;
 
 		// Tangente (U)
 		glm::vec3 tangent;
@@ -805,12 +823,15 @@ void Loader::CalcTangents()
 		glm::vec3 b = tempBitangents[i];
 		glm::vec3 n = vert.Normal;
 
-		// Gram-Schmidt
-		glm::vec3 orthoT = glm::normalize(t - n * glm::dot(n, t));
+		glm::vec3 safeN = safeNormalizeOr(n, glm::vec3(0.0f, 1.0f, 0.0f));
+
+		// Gram-Schmidt, with a fallback for missing or degenerate UV tangents.
+		glm::vec3 projectedT = t - safeN * glm::dot(safeN, t);
+		glm::vec3 orthoT = safeNormalizeOr(projectedT, fallbackTangent(safeN));
 
 		// Calcular Handedness (Signo del determinante)
-		// Si el producto cruz N x T va en dirección opuesta a la bitangente B, invertimos.
-		float w = (glm::dot(glm::cross(n, orthoT), b) < 0.0f) ? -1.0f : 1.0f;
+		// Si el producto cruz N x T va en direccion opuesta a la bitangente B, invertimos.
+		float w = (glm::dot(glm::cross(safeN, orthoT), b) < 0.0f) ? -1.0f : 1.0f;
 
 		vert.Tangent = glm::vec4(orthoT, w);
 	}
