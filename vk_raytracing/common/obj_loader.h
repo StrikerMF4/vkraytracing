@@ -19,8 +19,10 @@
 
 #include <glm/glm.hpp>
 
-// Print progress to console while loading (large models)
-#define OBJL_CONSOLE_OUTPUT
+namespace StartupLoad
+{
+class Feedback;
+}
 
 // Namespace: OBJL
 //
@@ -233,7 +235,7 @@ namespace objl
 		//
 		// If the file is unable to be found
 		// or unable to be loaded return false
-		bool LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials = false);
+		bool LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials = false, StartupLoad::Feedback* feedback = nullptr);
 
 		// Loaded Mesh Objects
 		std::vector<Mesh> LoadedMeshes;
@@ -262,6 +264,6 @@ namespace objl
 		void VertexTriangluation(std::vector<unsigned int>& oIndices,
 			const std::vector<Vertex>& iVerts);
 		
-		void CalcTangents();
+		void CalcTangents(StartupLoad::Feedback* feedback = nullptr);
 	};
 }

@@ -6,6 +6,7 @@
 #include <imgui_helper.h>
 #include <imfilebrowser.h>
 #include <scene_loader.h>
+#include <startup_load.h>
 
 #include "vulkan_handler.h"
 #include "imgui/imgui_camera_widget.h"
@@ -15,10 +16,17 @@
 #include "nvvk/commands_vk.hpp"
 #include "nvvk/context_vk.hpp"
 #include <iostream>
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <time.h>
+#include <cmath>
+#include <filesystem>
 #include <fstream>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <thread>
 
 //////////////////////////////////////////////////////////////////////////
 #define UNUSED(x) (void)(x)
@@ -73,11 +81,23 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 // GUI
 static void drawOverlay(std::string& technique_codename, float& render_time, int iterations);
 static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iteration_limit);
+static void drawLoadingOverlay(const std::string& scene_name, const std::string& stage_text, const std::string& detail_text);
+static void drawIndeterminateProgressBar(const char* id, const ImVec2& size);
 
 // Render
-bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
-void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
-void render_loop(GLFWwindow* window);
+struct AsyncSceneLoadResult
+{
+	std::unique_ptr<SceneLoader::Scene> scene;
+	std::string error;
+	bool cancelled = false;
+};
+
+static bool renderUIFrame(GLFWwindow* window, const std::function<void()>& draw_ui);
+static bool render_loading_frame(GLFWwindow* window, const std::string& scene_name, const std::string& stage_text, const std::string& detail_text = std::string(), int repeat_frames = 2);
+static AsyncSceneLoadResult load_scene_async(GLFWwindow* window, const std::string& scene_path);
+static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path);
+static void render_initialization(SceneLoader::Scene* scene, GLFWwindow* window);
+static void render_loop(GLFWwindow* window);
 
 //--------------------------------------------------------------------------------------------------
 // Application Entry
@@ -324,21 +344,35 @@ int main(int argc, char** argv)
 	if (scene_path.size() == 0)
 		valid_scene = scene_file_dialog_loop(window, &scene_path);
 
-	vkDeviceWaitIdle(vulkanHandler.getDevice());
-
 	//Load Scene
+	std::unique_ptr<SceneLoader::Scene> scene;
 	if (valid_scene) {
-		SceneLoader::Scene* scene = new SceneLoader::Scene(scene_path);
-		vulkanHandler.loadScene(scene, scene_path);
+		AsyncSceneLoadResult load_result = load_scene_async(window, scene_path);
 
-		camera_default_position = scene->camera_position;
-		camera_default_lookat = scene->camera_lookat;
+		if (load_result.scene) {
+			scene = std::move(load_result.scene);
 
-		render_initialization(scene, window);
+			if (render_loading_frame(window, scene_path, "Subiendo recursos", "Creando texturas y buffers")) {
+				vkDeviceWaitIdle(vulkanHandler.getDevice());
+				vulkanHandler.loadScene(scene.get(), scene_path);
 
-		vulkanHandler.resetFrame();
+				if (render_loading_frame(window, scene_path, "Inicializando renderer", "Creando pipelines y estructuras")) {
+					vkDeviceWaitIdle(vulkanHandler.getDevice());
 
-		render_loop(window);
+					camera_default_position = scene->camera_position;
+					camera_default_lookat = scene->camera_lookat;
+
+					render_initialization(scene.get(), window);
+
+					vulkanHandler.resetFrame();
+
+					render_loop(window);
+				}
+			}
+		}
+		else if (!load_result.cancelled && !load_result.error.empty()) {
+			std::cerr << "Error al cargar la escena: " << load_result.error << std::endl;
+		}
 	}
 
 	// Cleanup
@@ -420,6 +454,79 @@ static void onErrorCallback(int error, const char* description)
 }
 
 //GUI
+
+static void drawIndeterminateProgressBar(const char* id, const ImVec2& size)
+{
+	const ImVec2 item_size = ImGui::CalcItemSize(size, ImGui::GetContentRegionAvail().x, 12.0f);
+	const ImVec2 pos = ImGui::GetCursorScreenPos();
+	ImGui::InvisibleButton(id, item_size);
+
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	const float rounding = item_size.y * 0.5f;
+	const float segment_width = item_size.x * 0.28f;
+	const float cycle = std::fmod(static_cast<float>(ImGui::GetTime()) * 0.85f, 1.0f);
+	float segment_start = pos.x + cycle * (item_size.x + segment_width) - segment_width;
+	float segment_end = segment_start + segment_width;
+
+	draw_list->AddRectFilled(pos, ImVec2(pos.x + item_size.x, pos.y + item_size.y), IM_COL32(45, 45, 52, 255), rounding);
+	draw_list->AddRect(pos, ImVec2(pos.x + item_size.x, pos.y + item_size.y), IM_COL32(95, 95, 105, 255), rounding);
+
+	segment_start = segment_start < pos.x ? pos.x : segment_start;
+	segment_end = segment_end > (pos.x + item_size.x) ? (pos.x + item_size.x) : segment_end;
+
+	if (segment_end > segment_start)
+		draw_list->AddRectFilled(ImVec2(segment_start, pos.y), ImVec2(segment_end, pos.y + item_size.y), ImGui::GetColorU32(yellow), rounding);
+}
+
+static void drawLoadingOverlay(const std::string& scene_name, const std::string& stage_text, const std::string& detail_text)
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImDrawList* overlay_draw_list = ImGui::GetBackgroundDrawList();
+	const ImVec2 overlay_min = viewport->Pos;
+	const ImVec2 overlay_max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
+	overlay_draw_list->AddRectFilled(overlay_min, overlay_max, IM_COL32(0, 0, 0, 180));
+
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoResize;
+
+	float width = viewport->Size.x - 40.0f;
+	width = width > 520.0f ? 520.0f : width;
+	width = width < 260.0f ? 260.0f : width;
+
+	std::string display_name = std::filesystem::path(scene_name).filename().string();
+	if (display_name.empty())
+		display_name = scene_name;
+
+	ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + viewport->Size.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSize(ImVec2(width, 0.0f), ImGuiCond_Always);
+	ImGui::SetNextWindowBgAlpha(0.96f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 18.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+
+	if (ImGui::Begin("LoadingOverlay", nullptr, window_flags))
+	{
+		ImGui::TextColored(yellow, "Loading...");
+		ImGui::Spacing();
+
+		ImGui::PushTextWrapPos();
+		ImGui::TextColored(white, "%s", display_name.c_str());
+		ImGui::TextWrapped("%s", stage_text.c_str());
+		if (!detail_text.empty())
+		{
+			ImGui::Spacing();
+			ImGui::TextWrapped("%s", detail_text.c_str());
+		}
+		ImGui::PopTextWrapPos();
+
+		ImGui::Spacing();
+		drawIndeterminateProgressBar("##loading_bar", ImVec2(ImGui::GetContentRegionAvail().x, 14.0f));
+	}
+	ImGui::End();
+
+	ImGui::PopStyleVar(3);
+}
 
 static void drawOverlay(std::string& technique_codename, float& render_time, int iterations)
 {
@@ -631,6 +738,149 @@ static void drawConfigWindow(float& time_limit, float& time_elapsed, int& iterat
 
 //Render
 
+static bool renderUIFrame(GLFWwindow* window, const std::function<void()>& draw_ui)
+{
+	glfwPollEvents();
+	if (glfwWindowShouldClose(window))
+		return false;
+
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	draw_ui();
+	ImGui::Render();
+
+	if (vulkanHandler.isMinimized())
+		return !glfwWindowShouldClose(window);
+
+	vulkanHandler.prepareFrame();
+
+	auto curFrame = vulkanHandler.getCurFrame();
+	const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
+
+	VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+	std::array<VkClearValue, 3> clearValues{};
+	clearValues[0].color = { {0, 0, 0, 0} };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+	clearValues[2].color = { {0, 0, 0, 0} };
+
+	VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+	postRenderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	postRenderPassBeginInfo.pClearValues = clearValues.data();
+	postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
+	postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];
+	postRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
+
+	vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
+	vkCmdEndRenderPass(cmdBuf);
+
+	vkEndCommandBuffer(cmdBuf);
+	vulkanHandler.submitFrame();
+
+	return !glfwWindowShouldClose(window);
+}
+
+static bool render_loading_frame(GLFWwindow* window, const std::string& scene_name, const std::string& stage_text, const std::string& detail_text, int repeat_frames)
+{
+	for (int i = 0; i < repeat_frames; i++)
+	{
+		if (!renderUIFrame(window, [&]() { drawLoadingOverlay(scene_name, stage_text, detail_text); }))
+			return false;
+	}
+
+	return true;
+}
+
+static AsyncSceneLoadResult load_scene_async(GLFWwindow* window, const std::string& scene_path)
+{
+	struct SharedState
+	{
+		std::atomic<bool> finished{ false };
+		std::atomic<bool> succeeded{ false };
+		std::mutex mutex;
+		std::unique_ptr<SceneLoader::Scene> scene;
+		std::string error;
+	};
+
+	AsyncSceneLoadResult result;
+	SharedState shared;
+	StartupLoad::Feedback feedback;
+
+	std::thread worker([&]() {
+		try {
+			auto scene = std::make_unique<SceneLoader::Scene>(scene_path, &feedback);
+			{
+				std::lock_guard<std::mutex> lock(shared.mutex);
+				shared.scene = std::move(scene);
+			}
+			shared.succeeded.store(true, std::memory_order_relaxed);
+		}
+		catch (const StartupLoad::Cancelled&) {
+		}
+		catch (const std::exception& e) {
+			feedback.setError(e.what());
+			std::lock_guard<std::mutex> lock(shared.mutex);
+			shared.error = e.what();
+		}
+		catch (...) {
+			static const std::string unknown_error = "Error desconocido al cargar la escena.";
+			feedback.setError(unknown_error);
+			std::lock_guard<std::mutex> lock(shared.mutex);
+			shared.error = unknown_error;
+		}
+
+		shared.finished.store(true, std::memory_order_relaxed);
+		});
+
+	bool can_present = true;
+	while (!shared.finished.load(std::memory_order_relaxed))
+	{
+		if (can_present)
+		{
+			StartupLoad::Snapshot snapshot = feedback.snapshot();
+			const std::string stage_text = feedback.isCancelRequested() ? "Cancelando..." : "Leyendo escena";
+			can_present = renderUIFrame(window, [&]() { drawLoadingOverlay(scene_path, stage_text, snapshot.detail); });
+			if (!can_present)
+				feedback.requestCancel();
+		}
+		else
+		{
+			feedback.requestCancel();
+			std::this_thread::sleep_for(std::chrono::milliseconds(15));
+		}
+	}
+
+	if (worker.joinable())
+		worker.join();
+
+	if (shared.succeeded.load(std::memory_order_relaxed) && !feedback.isCancelRequested() && !glfwWindowShouldClose(window))
+	{
+		std::lock_guard<std::mutex> lock(shared.mutex);
+		result.scene = std::move(shared.scene);
+		return result;
+	}
+
+	if (feedback.isCancelRequested() || glfwWindowShouldClose(window))
+	{
+		result.cancelled = true;
+		return result;
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(shared.mutex);
+		result.error = shared.error;
+	}
+
+	if (result.error.empty())
+		result.error = feedback.snapshot().error;
+
+	return result;
+}
+
 static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) {
 	ImGui::FileBrowser fileDialog = ImGui::FileBrowser(
 		ImGuiFileBrowserFlags_ConfirmOnEnter | ImGuiFileBrowserFlags_EditPathString |
@@ -641,48 +891,8 @@ static bool scene_file_dialog_loop(GLFWwindow* window, std::string* scene_path) 
 	fileDialog.Open();
 
 	while (!glfwWindowShouldClose(window)) {
-		glfwPollEvents();
-		if (vulkanHandler.isMinimized())
-			continue;
-
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		fileDialog.Display();
-
-		vulkanHandler.prepareFrame();
-
-		auto curFrame = vulkanHandler.getCurFrame();
-		const VkCommandBuffer& cmdBuf = vulkanHandler.getCommandBuffers()[curFrame];
-
-		VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		vkBeginCommandBuffer(cmdBuf, &beginInfo);
-
-		// Clearing screen
-		std::array<VkClearValue, 2> clearValues{};
-		clearValues[0].color = { {0, 0, 0, 0} };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		// 2nd rendering pass: tone mapper, UI
-		{
-			VkRenderPassBeginInfo postRenderPassBeginInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-			postRenderPassBeginInfo.clearValueCount = 3;
-			postRenderPassBeginInfo.pClearValues = clearValues.data();
-			postRenderPassBeginInfo.renderPass = vulkanHandler.getRenderPass();
-			postRenderPassBeginInfo.framebuffer = vulkanHandler.getFramebuffers()[curFrame];
-			postRenderPassBeginInfo.renderArea = { {0, 0}, vulkanHandler.getSize() };
-
-			// Rendering tonemapper
-			vkCmdBeginRenderPass(cmdBuf, &postRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-			// Rendering UI
-			ImGui::Render();
-			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmdBuf);
-			vkCmdEndRenderPass(cmdBuf);
-		}
-
-		vkEndCommandBuffer(cmdBuf);
-		vulkanHandler.submitFrame();
+		if (!renderUIFrame(window, [&]() { fileDialog.Display(); }))
+			return false;
 
 		if (fileDialog.HasSelected())
 		{

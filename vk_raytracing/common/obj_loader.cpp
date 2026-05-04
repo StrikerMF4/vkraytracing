@@ -1,5 +1,9 @@
-
+Ôªø
 #include <obj_loader.h>
+#include "startup_load.h"
+#include <filesystem>
+
+#undef OBJL_CONSOLE_OUTPUT
 
 using namespace objl;
 
@@ -161,8 +165,18 @@ inline const T& algorithm::getElement(const std::vector<T>& elements, std::strin
 
 
 
-bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials)
+bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, objl::Material>* materials, objl::Material* default_material, bool replace_materials, StartupLoad::Feedback* feedback)
 {
+	const std::string path_label = std::filesystem::path(Path).filename().string();
+	const unsigned int cancel_check_interval = 8192;
+	const unsigned int detail_update_interval = 250000;
+
+	if (feedback != nullptr) {
+		feedback->setDetail("Leyendo OBJ: " + path_label);
+		if (feedback->isCancelRequested())
+			return false;
+	}
+
 	// If the file is not an .obj file return false
 	if (Path.substr(Path.size() - 4, 4) != ".obj")
 		return false;
@@ -199,8 +213,18 @@ bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, o
 #endif
 
 	std::string curline;
+	unsigned int line_count = 0;
 	while (std::getline(file, curline))
 	{
+		line_count++;
+		if (feedback != nullptr)
+		{
+			if ((line_count % cancel_check_interval) == 0 && feedback->isCancelRequested())
+				return false;
+			if ((line_count % detail_update_interval) == 0)
+				feedback->setDetail("Leyendo OBJ: " + path_label + " (" + std::to_string(line_count / 1000) + "k lineas)");
+		}
+
 #ifdef OBJL_CONSOLE_OUTPUT
 		if ((outputIndicator = ((outputIndicator + 1) % outputEveryNth)) == 1)
 		{
@@ -458,7 +482,15 @@ bool Loader::LoadFile(std::string Path, glm::vec3 scale, std::map<std::string, o
 	}
 
 	if (!LoadedVertices.empty() && !LoadedIndices.empty()) {
-		CalcTangents();
+		if (feedback != nullptr)
+		{
+			feedback->setDetail("Calculando tangentes: " + path_label);
+			if (feedback->isCancelRequested())
+				return false;
+		}
+		CalcTangents(feedback);
+		if (feedback != nullptr && feedback->isCancelRequested())
+			return false;
 	}
 
 	file.close();
@@ -746,8 +778,10 @@ void Loader::VertexTriangluation(std::vector<unsigned int>& oIndices,
 	}
 }
 
-void Loader::CalcTangents()
+void Loader::CalcTangents(StartupLoad::Feedback* feedback)
 {
+	const size_t cancel_check_interval = 32768;
+
 	// Vector temporal para acumular bitangentes (necesario para calcular el signo W)
 	std::vector<glm::vec3> tempBitangents(LoadedVertices.size(), glm::vec3(0.0f));
 
@@ -756,8 +790,11 @@ void Loader::CalcTangents()
 		vert.Tangent = glm::vec4(0.0f);
 	}
 
-	// 2. Acumular tangentes y bitangentes por tri·ngulo
+	// 2. Acumular tangentes y bitangentes por tri√°ngulo
 	for (size_t i = 0; i < LoadedIndices.size(); i += 3) {
+		if (feedback != nullptr && (i % cancel_check_interval) == 0 && feedback->isCancelRequested())
+			return;
+
 		unsigned int i0 = LoadedIndices[i];
 		unsigned int i1 = LoadedIndices[i + 1];
 		unsigned int i2 = LoadedIndices[i + 2];
@@ -800,6 +837,9 @@ void Loader::CalcTangents()
 
 	// 3. Orthonormalizar y calcular signo W
 	for (size_t i = 0; i < LoadedVertices.size(); i++) {
+		if (feedback != nullptr && (i % cancel_check_interval) == 0 && feedback->isCancelRequested())
+			return;
+
 		Vertex& vert = LoadedVertices[i];
 		glm::vec3 t = glm::vec3(vert.Tangent);
 		glm::vec3 b = tempBitangents[i];
@@ -809,9 +849,10 @@ void Loader::CalcTangents()
 		glm::vec3 orthoT = glm::normalize(t - n * glm::dot(n, t));
 
 		// Calcular Handedness (Signo del determinante)
-		// Si el producto cruz N x T va en direcciÛn opuesta a la bitangente B, invertimos.
+		// Si el producto cruz N x T va en direcci√≥n opuesta a la bitangente B, invertimos.
 		float w = (glm::dot(glm::cross(n, orthoT), b) < 0.0f) ? -1.0f : 1.0f;
 
 		vert.Tangent = glm::vec4(orthoT, w);
 	}
 }
+
