@@ -1,4 +1,4 @@
-# Vulkan Ray Tracing
+# Codificación de algoritmos de trazado de rayos en Vulkan
 
 El proyecto implementa distintas técnicas de transporte de luz basadas en trazado de rayos, ejecutadas íntegramente en GPU mediante la API Vulkan
 
