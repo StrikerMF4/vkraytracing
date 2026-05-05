@@ -11,38 +11,33 @@
             "name": "Sphere1",
 			"color": [0.033864, 0.053029, 0.800000],
 			"roughness": 0.3,
+            "roughnesstexture": "Navidad/roughness_brush_vertical_fine.png",
             "metallic": 0.5,
-            "anisotropictexture": "Navidad/anisotropic_lines.png",
+            "anisotropic_direction": [1.0, 0.0, 0.0],
             "anisotropic": 1
         },
         {
             "name": "Sphere2",
 			"color": [0.024427, 0.800000, 0.000000],
 			"roughness": 0.3,
+            "roughnesstexture": "Navidad/roughness_brush_vertical_fine.png",
             "metallic": 0.5,
-            "anisotropictexture": "Navidad/anisotropic_lines.png",
+            "anisotropic_direction": [1.0, 0.0, 0.0],
             "anisotropic": 1
         },
         {
             "name": "Sphere3",
 			"color": [0.800000, 0.030628, 0.024199],
 			"roughness": 0.3,
+            "roughnesstexture": "Navidad/roughness_brush_vertical_fine.png",
             "metallic": 0.5,
-            "anisotropictexture": "Navidad/anisotropic_lines.png",
+            "anisotropic_direction": [1.0, 0.0, 0.0],
             "anisotropic": 1
         }, 
         {
             "name": "Light",
             "emission": [20.0, 20.0, 20.0]
-        },  
-        {
-            "name": "Sphere",
-			"color": [0.800000, 0.030628, 0.024199],
-			"roughness": 0.3,
-            "metallic": 0.5,
-            "anisotropictexture": "Navidad/anisotropic_lines.png",
-            "anisotropic": 1
-        },  
+        },
         {
             "name": "Gold",
 			"color": [0.706176, 0.800000, 0.045491],

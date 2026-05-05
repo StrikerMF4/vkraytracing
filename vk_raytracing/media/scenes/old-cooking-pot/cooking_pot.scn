@@ -1,0 +1,116 @@
+{
+    "resolution": [1280, 720],
+    "maxdepth": 6,
+    "camera": {
+        "position": [23.0, 13.5, 21.0],
+        "lookat": [0.0, 5.9, 0.0],
+        "fov": 35
+    },
+    "materials": [
+        {
+            "name": "PotMaterial",
+            "color": [1.0, 1.0, 1.0],
+            "albedotexture": "textures/Pot_BaseColor_AO.png",
+            "metallictexture": "textures/Pot_Metallic.png",
+            "roughnesstexture": "textures/Pot_Roughness2.png",
+            "anisotropictexture": "textures/Pot_Anisotropy_angle_Sketchfab.png",
+            "anisotropic": 0.92
+        },
+        {
+            "name": "Ground",
+            "color": [0.18, 0.18, 0.19],
+            "roughness": 1
+        },
+        {
+            "name": "Backdrop",
+            "color": [0.08, 0.08, 0.09],
+            "roughness": 0.92
+        },
+        {
+            "name": "KeyLight",
+            "emission": [85.0, 79.0, 72.0]
+        },
+        {
+            "name": "FillLight",
+            "emission": [15.0, 10.0, 10.0]
+        }
+    ],
+    "entities": [
+        {
+            "type": "mesh",
+            "file": "pot.obj",
+            "material": "PotMaterial",
+            "position": [10, 10, 5],
+            "rotation": [-0.8, 0.0,  1.3]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Ground",
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Ground",
+            "position": [0.0, 60.0, 0],
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Backdrop",
+            "position": [0.0, 20.0, -20.0],
+            "rotation": [1.5707963, 0.0, 0.0],
+            "scale": [4.5, 4.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Backdrop",
+            "position": [0.0, 20.0, 100.0],
+            "rotation": [1.5707963, 0.0, 0.0],
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Backdrop",
+            "position": [-100.0, 20.0, 0],
+            "rotation": [1.5707963, 0.0, 1.5707963],
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "Backdrop",
+            "position": [100.0, 20.0, 0],
+            "rotation": [1.5707963, 0.0, 1.5707963],
+            "scale": [4.5, 1.0, 4.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "KeyLight",
+            "position": [80.0, 30.0, 0.0],
+            "rotation": [2.074122, 0.653970, 1.060714],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "FillLight",
+            "position": [-80.0, 30.0, 0.0],
+            "rotation": [0, 0, 1.482717],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "type": "mesh",
+            "file": "../models/plane.obj",
+            "material": "FillLight",
+            "position": [0.0, 20.0, 80.0],
+            "rotation": [-1.500783, 0.898571, -0.432815],
+            "scale": [0.5, 0.5, 0.5]
+        }
+    ]
+}
