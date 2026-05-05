@@ -220,16 +220,13 @@ vec3 EvalMicrofacetReflection(Material material, vec3 w_i, vec3 w_o, vec3 normal
     float aspect = sqrt(1.0 - material.anisotropic * 0.9);
     float ax = max(MIN_ALPHA, material.roughness * material.roughness / aspect);
     float ay = max(MIN_ALPHA, material.roughness * material.roughness * aspect);
-    float NDotH = abs(dot(H, normal));
-    float IDotH = abs(dot(w_i, H));
-    float ODotH = abs(dot(w_o, H));
-    float D = GGXAnisotropicD(NDotH, dot(H, T), dot(H, B), ax, ay);
+    float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
-    pdfF = D * NDotH / (4.0 * IDotH + EPSILON);
-    pdfB = D * NDotH / (4.0 * ODotH + EPSILON);
+    pdfF = G1 * D / (4.0 * IDotN + EPSILON);
+    pdfB = G2 * D / (4.0 * ODotN + EPSILON);
     return F * D * G / (4.0 * ODotN * IDotN + EPSILON);
 }
 
@@ -245,26 +242,21 @@ vec3 EvalMicrofacetRefraction(Material material, vec3 w_i, vec3 w_o, vec3 normal
 
     vec3 T, B;
     TangentVectors(normal,tangent, T, B);
-    float NDotH = abs(dot(H, normal));
-    float absIDotH = abs(IDotH);
-    float absODotH = abs(ODotH);
-    float D = GGXAnisotropicD(NDotH, dot(H, T), dot(H, B), ax, ay);
+    float D = GGXAnisotropicD(dot(H, normal), dot(H, T), dot(H, B), ax, ay);
     float G1 = GGXAnisotropicG(abs(IDotN), dot(w_i, T), dot(w_i, B), ax, ay);
     float G2 = GGXAnisotropicG(abs(ODotN), dot(w_o, T), dot(w_o, B), ax, ay);
     float G = G1 * G2;
 
     float eta2 = eta * eta;
-    float denom = absIDotH + eta * absODotH;
-    float denom2 = denom * denom;
-    float denom_f = denom2 * max(abs(IDotN) * abs(ODotN), EPSILON);
+    float denom = (abs(IDotH) + eta * abs(ODotH));
+    denom = denom * denom;
+    float denom_f = denom * max(abs(IDotN) * abs(ODotN), EPSILON);
     float factor = eta2 * abs((IDotH * ODotH) / (denom_f));
 
     vec3 f = sqrt(material.baseColor) * (1.0 - F) * D * G * factor;
 
-    pdfF = D * NDotH * eta2 * absODotH / (denom2 + EPSILON);
-    float invEta = 1.0 / max(eta, EPSILON2);
-    float denomB = absODotH + invEta * absIDotH;
-    pdfB = D * NDotH * invEta * invEta * absIDotH / (denomB * denomB + EPSILON);
+    pdfF = eta2 * ((G1 * abs(IDotH) * abs(ODotH) * D) / (denom * IDotN + EPSILON));
+    pdfB = eta2 * ((G2 * abs(IDotH) * abs(ODotH) * D) / (denom * ODotN + EPSILON));
 
     return f;
 }

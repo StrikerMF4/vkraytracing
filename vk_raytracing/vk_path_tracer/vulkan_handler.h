@@ -75,7 +75,10 @@ public:
 	void createCameraUniformBuffer();
 	void createObjDescriptionBuffer();
 	void createLightBuffer();
-	void createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir = "media/textures/");
+	void createTextureImages(const VkCommandBuffer& cmdBuf,
+		const std::vector<std::string>& textures,
+		const std::vector<objl::Material>& materials,
+		const std::string base_dir = "media/textures/");
 	void updateUniformBuffer(const VkCommandBuffer& cmdBuf);
 	void onResize(int /*w*/, int /*h*/) override;
 	void destroyResources();
