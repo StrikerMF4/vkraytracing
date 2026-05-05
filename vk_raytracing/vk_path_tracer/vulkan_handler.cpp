@@ -396,7 +396,7 @@ void VulkanHandler::loadScene(SceneLoader::Scene* scene, std::string scene_path)
 		VkCommandBuffer    cmdBuf = cmdBufGet.createCommandBuffer();
 
 		textureOffset = static_cast<uint32_t>(m_textures.size());
-		createTextureImages(cmdBuf, scene->textures, texture_path.string() + "/");
+		createTextureImages(cmdBuf, scene->textures, scene->materials, texture_path.string() + "/");
 		cmdBufGet.submitAndWait(cmdBuf);
 	}
 
@@ -756,7 +756,10 @@ void VulkanHandler::createLightBuffer()
 //--------------------------------------------------------------------------------------------------
 // Creating all textures and samplers
 //
-void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std::vector<std::string>& textures, const std::string base_dir)
+void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf,
+	const std::vector<std::string>& textures,
+	const std::vector<objl::Material>& materials,
+	const std::string base_dir)
 {
 	VkSamplerCreateInfo samplerCreateInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 	samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
@@ -787,13 +790,26 @@ void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std
 	}
 	else
 	{
+		auto isAnisotropicTexture = [&](size_t textureIndex) {
+			for (const auto& material : materials)
+			{
+				if (material.anisotropicTextureID == static_cast<int>(textureIndex))
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+
 		// Uploading all images
-		for (const auto& texture : textures)
+		for (size_t textureIndex = 0; textureIndex < textures.size(); ++textureIndex)
 		{
+			const auto& texture = textures[textureIndex];
 			std::stringstream o;
 			int               texWidth, texHeight, texChannels;
 			o << base_dir << texture;
 			std::string txtFile = nvh::findFile(o.str(), defaultSearchPaths, true);
+			VkFormat textureFormat = isAnisotropicTexture(textureIndex) ? VK_FORMAT_R8G8B8A8_UNORM : format;
 
 			stbi_uc* stbi_pixels = stbi_load(txtFile.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
@@ -810,11 +826,11 @@ void VulkanHandler::createTextureImages(const VkCommandBuffer& cmdBuf, const std
 
 			VkDeviceSize bufferSize = static_cast<uint64_t>(texWidth) * texHeight * sizeof(uint8_t) * 4;
 			auto         imgSize = VkExtent2D{ (uint32_t)texWidth, (uint32_t)texHeight };
-			auto         imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, format, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+			auto         imageCreateInfo = nvvk::makeImage2DCreateInfo(imgSize, textureFormat, VK_IMAGE_USAGE_SAMPLED_BIT, true);
 
 			{
 				nvvk::Image image = m_alloc.createImage(cmdBuf, bufferSize, pixels, imageCreateInfo);
-				nvvk::cmdGenerateMipmaps(cmdBuf, image.image, format, imgSize, imageCreateInfo.mipLevels);
+				nvvk::cmdGenerateMipmaps(cmdBuf, image.image, textureFormat, imgSize, imageCreateInfo.mipLevels);
 				VkImageViewCreateInfo ivInfo = nvvk::makeImageViewCreateInfo(image.image, imageCreateInfo);
 				nvvk::Texture         texture = m_alloc.createTexture(image, ivInfo, samplerCreateInfo);
 
