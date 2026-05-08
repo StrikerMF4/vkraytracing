@@ -266,6 +266,7 @@ int main(int argc, char** argv)
 
 	// Search path for shaders and other media
 	defaultSearchPaths = {
+		NVPSystem::exePath(),
 		NVPSystem::exePath() + PROJECT_RELDIRECTORY,
 		NVPSystem::exePath() + PROJECT_RELDIRECTORY "..",
 		std::string(PROJECT_NAME),
