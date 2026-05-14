@@ -112,7 +112,8 @@ vec3 DirectLightsource(vec3 origin, vec3 viewer, vec3 normal, vec3 tangent, Mate
 
 void main()
 {
-	payload.random_seed = InitRandomSeed(gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x, settings.frame);
+	uint pixel_index = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x;
+	payload.random_seed = InitRandomSeed(pixel_index, uint(settings.frame) ^ settings.seed_salt);
 
 	vec3 output_color = vec3(0);
 	int depth = 0;
