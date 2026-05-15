@@ -90,6 +90,7 @@ struct PushConstantRayTracer
 {
 	uint light_count;
 	int   frame;
+	uint  seed_salt;
 
 	float antialiasing_radius;
 

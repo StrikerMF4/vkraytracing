@@ -1,5 +1,6 @@
-#include <sstream>
+#include <chrono>
 #include <filesystem> 
+#include <sstream>
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -1380,6 +1381,8 @@ void VulkanHandler::updateFrame()
 void VulkanHandler::resetFrame()
 {
 	m_pcPost.frame = m_pcRay.frame = -1;
+	const auto ticks = std::chrono::steady_clock::now().time_since_epoch().count();
+	m_pcRay.seed_salt = static_cast<uint>(ticks) ^ static_cast<uint>(ticks >> 32);
 }
 
 void VulkanHandler::onKeyboard(int key, int /*scancode*/, int action, int mods)
