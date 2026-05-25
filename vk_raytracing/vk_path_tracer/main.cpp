@@ -91,6 +91,7 @@ int main(int argc, char** argv)
 			"Uso:\n"
 			"  programa -scene <ruta_escena>\n"
 			"          [-technique <bpt|nee|bdpt>]\n"
+			"          [-gpu <indice_gpu>]\n"
 			"          [-screenshot_time <segundos>]\n"
 			"          [-screenshot_iter <iteraciones>]\n"
 			"          [-auto-exit <num_capturas>]\n"
@@ -99,6 +100,7 @@ int main(int argc, char** argv)
 			"Descripcion de parametros:\n"
 			"  -scene <ruta>              Ruta al archivo .scn de la escena.\n"
 			"  -technique <...>           Tecnica de render: bpt | nee | bdpt.\n"
+			"  -gpu <indice>              Indice de la GPU compatible a utilizar.\n"
 			"  -screenshot_time <s>       Toma una captura cada <s> segundos.\n"
 			"  -screenshot_iter <n>       Toma una captura cada <n> iteraciones.\n"
 			"  -screenshot_path <ruta>    Ruta donde se guardan las capturas.\n"
@@ -111,6 +113,7 @@ int main(int argc, char** argv)
 		};
 
 	std::string technique = "bpt";  // valor por defecto
+	uint32_t gpu_index = 0;
 
 	for (int i = 1; i < argc; ++i) {
 		std::string arg = argv[i];
@@ -145,6 +148,25 @@ int main(int argc, char** argv)
 				return 1;
 			}
 			technique = argv[++i];
+		}
+		else if (arg == "-gpu") {
+			if (i + 1 >= argc) {
+				std::cerr << "Error: -gpu requiere un indice entero.\n";
+				print_usage();
+				return 1;
+			}
+			try {
+				int parsed_gpu_index = std::stoi(argv[++i]);
+				if (parsed_gpu_index < 0) {
+					throw std::out_of_range("gpu index negativo");
+				}
+				gpu_index = static_cast<uint32_t>(parsed_gpu_index);
+			}
+			catch (...) {
+				std::cerr << "Error: valor invalido para -gpu.\n";
+				print_usage();
+				return 1;
+			}
 		}
 		else if (arg == "-screenshot_time") {
 			if (i + 1 >= argc) {
@@ -299,8 +321,14 @@ int main(int argc, char** argv)
 	// Find all compatible devices
 	auto compatibleDevices = vkctx.getCompatibleDevices(contextInfo);
 	assert(!compatibleDevices.empty());
+	if (gpu_index >= compatibleDevices.size())
+	{
+		std::cerr << "Error: -gpu " << gpu_index << " fuera de rango. GPUs compatibles disponibles: "
+			<< compatibleDevices.size() << ".\n";
+		return 1;
+	}
 	// Use a compatible device
-	vkctx.initDevice(compatibleDevices[0], contextInfo);
+	vkctx.initDevice(compatibleDevices[gpu_index], contextInfo);
 
 	// Window need to be opened to get the surface on which to draw
 	const VkSurfaceKHR surface = vulkanHandler.getVkSurface(vkctx.m_instance, window);
